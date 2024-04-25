@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
 
 import requests
 import time
 import pandas as pd
-df2 = pd.read_excel(r'C:/Users/Lucas/Documents/base_caballito.xlsx')
+url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
-
-# In[2]:
+response = requests.get(url)
+df2 = pd.read_excel(response.content)
 
 
 import dash
@@ -111,11 +109,7 @@ def display_click_data(clickData):
 
 # Ejecuta la aplicación Dash
 if __name__ == '__main__':
-    app.run_server(debug=True,port=9090)
-
-
-# In[ ]:
-
+    app.run_server(debug=True)
 
 
 
