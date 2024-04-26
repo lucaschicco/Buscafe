@@ -5,3 +5,4 @@ requests==2.26.0
 dash-bootstrap-components==1.6.0
 flask==2.2.5
 gunicorn==22.0.0
+openpyxl==3.0.10
