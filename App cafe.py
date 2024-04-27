@@ -6,6 +6,7 @@ import requests
 import time
 import pandas as pd
 import openpyxl
+import os
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
 response = requests.get(url)
