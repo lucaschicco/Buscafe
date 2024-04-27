@@ -6,7 +6,7 @@ import requests
 import time
 import pandas as pd
 import openpyxl
-import os
+
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
 response = requests.get(url)
@@ -21,7 +21,8 @@ import plotly.express as px
 
 # Crea la aplicación Dash
 app = dash.Dash(__name__)
-
+# Asigna la aplicación Dash al objeto 'server'
+server = app.server
 # Define los valores intermedios del slider
 valores_intermedios = [i / 10 for i in range(int(df2['Rating'].min() * 10), int(df2['Rating'].max() * 10) + 1)]
 
@@ -109,12 +110,6 @@ def display_click_data(clickData):
     else:
         return ''
 
-# Asigna la aplicación Dash al objeto 'server'
-server = app.server
-
-# Define el puerto en el que tu aplicación Dash escuchará
-port = int(os.environ.get('PORT', 9090))  # Utiliza el puerto 9090 si PORT no está definido en las variables de entorno
-
 # Ejecuta la aplicación Dash
 if __name__ == '__main__':
-    app.run_server(debug=True, port=port)
+    app.run_server(debug=False)
