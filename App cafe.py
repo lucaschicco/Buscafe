@@ -111,8 +111,9 @@ def display_click_data(clickData):
 # Asigna la aplicación Dash al objeto 'server'
 server = app.server
 
-# Ejecuta la aplicación Dash con Gunicorn
+# Define el puerto en el que tu aplicación Dash escuchará
+port = int(os.environ.get('PORT', 9090))  # Utiliza el puerto 9090 si PORT no está definido en las variables de entorno
+
+# Ejecuta la aplicación Dash
 if __name__ == '__main__':
-    app.run_server(debug=True)
-
-
+    app.run_server(debug=True, port=port)
