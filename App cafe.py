@@ -108,9 +108,11 @@ def display_click_data(clickData):
     else:
         return ''
 
-# Ejecuta la aplicación Dash
+# Asigna la aplicación Dash al objeto 'server'
+server = app.server
+
+# Ejecuta la aplicación Dash con Gunicorn
 if __name__ == '__main__':
     app.run_server(debug=True)
-
 
 
