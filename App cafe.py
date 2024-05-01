@@ -24,7 +24,7 @@ app = dash.Dash(__name__)
 # Asigna la aplicación Dash al objeto 'server'
 server = app.server
 # Define los valores intermedios del slider
-valores_intermedios = [i / 10 for i in range(int(df2['Rating'].min() * 10), int(df2['Rating'].max() * 10) + 1)]
+valores_intermedios = [i for i in range(int(df2['Rating'].min() * 10), int(df2['Rating'].max() * 10) + 1)]
 
 # Define los valores enteros del slider
 valores_enteros = list(range(int(df2['Rating'].min()), int(df2['Rating'].max()) + 1))
@@ -32,63 +32,122 @@ valores_enteros = list(range(int(df2['Rating'].min()), int(df2['Rating'].max()) 
 # Define las marcas del slider
 marcas = {**{valor: str(valor) for valor in valores_enteros}, **{valor: str(valor) for valor in valores_intermedios}}
 
-# Define el layout de la aplicación
 app.layout = html.Div([
     html.H1("Filtro de Cafeterías por Rating y Características"),
-    dcc.RangeSlider(
-        id='rating-slider',
-        min=df2['Rating'].min(),
-        max=df2['Rating'].max(),
-        step=0.01,  # Ajusta el paso para incluir valores intermedios
-        marks=marcas,
-        value=[df2['Rating'].min(), df2['Rating'].max()]
-    ),
-    html.Div(id='output-container-slider'),
     html.Div([
-        dcc.Checklist(
-            id='feature-filter',
-            options=[
-                {'label': 'Delivery', 'value': 'Delivery'},
-                {'label': 'Comer en lugar', 'value': 'Comer en lugar'},
-                {'label': 'Almuerzo', 'value': 'Almuerzo'},
-                {'label': 'Cena', 'value': 'Cena'},
-                {'label': 'Brunch', 'value': 'Brunch'},
-                {'label': 'Vino', 'value': 'Vino'},
-                {'label': 'Espacio afuera', 'value': 'Espacio afuera'},
-                {'label': 'Accesible para silla de ruedas', 'value': 'Accesible para silla de ruedas'},
-                {'label': 'Sirve postre', 'value': 'Sirve postre'},
-                {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
-                {'label': 'Desayuno', 'value': 'Desayuno'},
-                {'label': 'Reservable', 'value': 'Reservable'}
-            ],
-            value=[]
-        )
-    ]),
-    dcc.Graph(id='mapa-cafeterias')
+        html.Div([
+            dcc.RangeSlider(
+                id='rating-slider',
+                min=df2['Rating'].min(),
+                max=df2['Rating'].max(),
+                step=0.1,
+                marks=marcas,
+                value=[df2['Rating'].min(), df2['Rating'].max()]
+            ),
+            html.Div(id='output-container-slider'),
+            dcc.Dropdown(
+                id='feature-filter',
+                options=[
+                    {'label': 'Delivery', 'value': 'Delivery'},
+                    {'label': 'Comer en lugar', 'value': 'Comer en lugar'},
+                    {'label': 'Almuerzo', 'value': 'Almuerzo'},
+                    {'label': 'Cena', 'value': 'Cena'},
+                    {'label': 'Brunch', 'value': 'Brunch'},
+                    {'label': 'Vino', 'value': 'Vino'},
+                    {'label': 'Espacio afuera', 'value': 'Espacio afuera'},
+                    {'label': 'Accesible para silla de ruedas', 'value': 'Accesible para silla de ruedas'},
+                    {'label': 'Sirve postre', 'value': 'Sirve postre'},
+                    {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
+                    {'label': 'Desayuno', 'value': 'Desayuno'},
+                    {'label': 'Reservable', 'value': 'Reservable'}
+                ],
+                value=[],
+                multi=True,
+                optionHeight=30,
+                placeholder="Seleccione filtros...",
+                className='select_box',
+                style={'color': 'black'}
+            )
+        ], className='three columns'),
+        html.Div([
+            dcc.Graph(id='mapa-cafeterias')
+        ], className='seven columns'),
+        html.Div([
+            dcc.Input(
+                id='search-input',
+                type='text',
+                placeholder='Buscar cafetería por nombre...',
+                className='select_box',
+                style={'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)'}
+            )
+        ], className='two columns', style={'margin-top': '10px', 'color': 'black'})
+    ], className='row')
 ])
+
+# Variable global para almacenar el último nivel de zoom
+last_zoom = 12
 
 # Define la callback para actualizar el gráfico según el filtro de rating y características
 @app.callback(
     Output('mapa-cafeterias', 'figure'),
     [Input('rating-slider', 'value'),
-     Input('feature-filter', 'value')]
+     Input('feature-filter', 'value'),
+     Input('search-input', 'value')]  # Agregar el input del buscador
 )
-def update_map(selected_range, selected_features):
-    filtered_df = df2[(df2['Rating'] >= selected_range[0]) & (df2['Rating'] <= selected_range[1])]
+def update_map(selected_range, selected_features,search_input):
+    global last_zoom  # Accede a la variable global
+    global texto_personalizado  # Accede a la lista de texto personalizado
     
+    filtered_df = df2[(df2['Rating'] >= selected_range[0]) & (df2['Rating'] <= selected_range[1])]
     # Aplica los filtros de características seleccionadas
+    # Filtrar por el valor ingresado en el buscador
+    if search_input:
+        filtered_df = filtered_df[filtered_df['Nombre'].str.contains(search_input, case=False)]
+    
     for feature in selected_features:
         filtered_df = filtered_df[filtered_df[feature] == True]
+    # Limpiar la lista de texto personalizado para evitar duplicados
+    texto_personalizado = []
     
-    fig = px.scatter_mapbox(filtered_df, lat="Latitud", lon="Longitud", hover_name="Nombre", 
-                             hover_data={"Rating": True, "Cantidad Reviews": True, 
-                                         "Sitio Web": True, "Dirección": True,'Latitud': False,'Longitud':False},
-                            color_discrete_sequence=["black"], zoom=10, height=500)
-    fig.update_layout(mapbox_style="open-street-map")
-    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-    fig.update_traces(marker={'size': 8})
+    for index, row in filtered_df.iterrows():
+        hover_text = f"<b>{row['Nombre']}<br></b><br>"
+        hover_text += f"<b>Rating:</b> {row['Rating']}<br>"
+        hover_text += f"<b>Cantidad Reviews:</b> {row['Cantidad Reviews']}<br>"
+        hover_text += f"<b>Sitio Web:</b> {row['Sitio Web']}<br>"
+        hover_text += f"<b>Dirección:</b> {row['Dirección']}<br>"
+        texto_personalizado.append(hover_text)
+    
+    fig = go.Figure(go.Scattermapbox(
+        lat=filtered_df['Latitud'],
+        lon=filtered_df['Longitud'],
+        mode='markers',
+        marker=dict(symbol="cafe", size=15, allowoverlap=True),
+        text=texto_personalizado  # Usar el texto personalizado como texto del marcador
+    ))
+    
+    fig.update_layout(
+        hovermode='closest',
+        showlegend=False,
+        autosize=True,
+        width=1000,
+        height=800,
+        mapbox=dict(
+            style="streets",
+            accesstoken=token,
+            bearing=0,
+            center=dict(
+                lat=filtered_df['Latitud'].mean(),
+                lon=filtered_df['Longitud'].mean()
+            ),
+            pitch=0,
+            zoom=12,
+        )
+    )
+    fig.update_traces(hoverinfo='text') 
+    fig.update_traces(hoverlabel=dict(bgcolor="gray", font=dict(color="white", family="Arial", size=12)))
 
-    return fig
+    
+    return fig 
 
 # Callback para abrir el sitio web al hacer clic en el enlace
 @app.callback(
@@ -96,16 +155,16 @@ def update_map(selected_range, selected_features):
     [Input('mapa-cafeterias', 'clickData')]
 )
 def display_click_data(clickData):
+    global texto_personalizado
+    
     if clickData:
-        nombre_cafeteria = clickData['points'][0]['hovertext']
-        sitio_web = df2[df2['Nombre'] == nombre_cafeteria]['Sitio Web'].iloc[0]
+        indice_marcador = clickData['points'][0]['pointIndex']
+        texto = texto_personalizado[indice_marcador]
+        texto_sin_html = texto.replace('<br>', '\n').replace('<b>', '**').replace('</b>', '**')
+        
         return html.Div([
-            html.H4(nombre_cafeteria),
-            html.P("Sitio Web: "),
-            dcc.Link(sitio_web, href=sitio_web),
-            html.P("Rating: " + str(df2[df2['Nombre'] == nombre_cafeteria]['Rating'].iloc[0])),
-            html.P("Cantidad Reviews: " + str(df2[df2['Nombre'] == nombre_cafeteria]['Cantidad Reviews'].iloc[0])),
-            html.P("Dirección: " + str(df2[df2['Nombre'] == nombre_cafeteria]['Dirección'].iloc[0]))
+            html.H4("Información de la cafetería"),
+            dcc.Markdown(texto_sin_html)
         ])
     else:
         return ''
