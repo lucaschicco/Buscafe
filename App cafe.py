@@ -7,7 +7,12 @@ import time
 import pandas as pd
 import openpyxl
 import os
-
+import dash
+import numpy as np
+from dash import dcc, html
+from dash.dependencies import Input, Output
+import plotly.express as px
+import plotly.graph_objects as go
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
@@ -16,13 +21,6 @@ token = os.getenv('MAPBOX_TOKEN')
 response = requests.get(url)
 df2 = pd.read_excel(response.content)
 
-
-import dash
-import numpy as np
-from dash import dcc, html
-from dash.dependencies import Input, Output
-import plotly.express as px
-import plotly.graph_objects as go
 
 # Crea la aplicación Dash
 app = dash.Dash(__name__)
@@ -39,9 +37,10 @@ marcas = {**{valor: str(valor) for valor in valores_enteros}, **{valor: str(valo
 
 app.layout = html.Div([
     html.Link(rel='stylesheet', href='/assets/bWLwgP.css'),
-    html.H1("Filtro de Cafeterías por Rating y Características"),
+    html.H1("Mapa de Cafeterías interactivo"),
     html.Div([
         html.Div([
+            html.Label("Filtro por Rating"),
             dcc.RangeSlider(
                 id='rating-slider',
                 min=df2['Rating'].min(),
@@ -55,12 +54,12 @@ app.layout = html.Div([
                 id='feature-filter',
                 options=[
                     {'label': 'Delivery', 'value': 'Delivery'},
-                    {'label': 'Comer en lugar', 'value': 'Comer en lugar'},
+                    {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
                     {'label': 'Almuerzo', 'value': 'Almuerzo'},
                     {'label': 'Cena', 'value': 'Cena'},
                     {'label': 'Brunch', 'value': 'Brunch'},
                     {'label': 'Vino', 'value': 'Vino'},
-                    {'label': 'Espacio afuera', 'value': 'Espacio afuera'},
+                    {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
                     {'label': 'Accesible para silla de ruedas', 'value': 'Accesible para silla de ruedas'},
                     {'label': 'Sirve postre', 'value': 'Sirve postre'},
                     {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
