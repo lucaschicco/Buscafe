@@ -38,6 +38,7 @@ valores_enteros = list(range(int(df2['Rating'].min()), int(df2['Rating'].max()) 
 marcas = {**{valor: str(valor) for valor in valores_enteros}, **{valor: str(valor) for valor in valores_intermedios}}
 
 app.layout = html.Div([
+    html.Link(rel='stylesheet', href='/assets/bWLwgP.css'),
     html.H1("Filtro de Cafeterías por Rating y Características"),
     html.Div([
         html.Div([
