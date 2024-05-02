@@ -22,6 +22,7 @@ import numpy as np
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.express as px
+import plotly.graph_objects as go
 
 # Crea la aplicación Dash
 app = dash.Dash(__name__)
