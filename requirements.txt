@@ -6,3 +6,4 @@ dash-bootstrap-components==1.6.0
 flask==2.2.5
 gunicorn
 openpyxl==3.0.10
+os
