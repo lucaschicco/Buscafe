@@ -6,8 +6,13 @@ import requests
 import time
 import pandas as pd
 import openpyxl
+import os
+
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
+
+<link rel="stylesheet" href="/assets/bWLwgP.css">
+token = os.getenv('MAPBOX_TOKEN')
 
 response = requests.get(url)
 df2 = pd.read_excel(response.content)
