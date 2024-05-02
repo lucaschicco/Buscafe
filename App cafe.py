@@ -11,7 +11,6 @@ import os
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
-<link rel="stylesheet" href="/assets/bWLwgP.css">
 token = os.getenv('MAPBOX_TOKEN')
 
 response = requests.get(url)
