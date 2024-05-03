@@ -132,7 +132,7 @@ def update_map(selected_range, selected_features,search_input):
         lat=filtered_df['Latitud'],
         lon=filtered_df['Longitud'],
         mode='markers',
-        marker=dict(symbol=Image(
+        marker=dict(symbol=go.Image(
             source=cafe_icon,
             x=0,
             y=1,
