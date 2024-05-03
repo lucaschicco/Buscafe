@@ -82,7 +82,7 @@ app.layout = html.Div([
         html.Div([
             dcc.Graph(id='mapa-cafeterias'
                      )
-        ], ),
+        ], className='seven columns'),
         html.Div([
             dcc.Input(
                 id='search-input',
@@ -131,9 +131,17 @@ def update_map(selected_range, selected_features,search_input):
     fig = px.scatter_mapbox(filtered_df, lat="Latitud", lon="Longitud", hover_name="Nombre", 
                              hover_data={"Rating": True, "Cantidad Reviews": True, 
                                          "Sitio Web": True, "Dirección": True,'Latitud': False,'Longitud':False},
-                            color_discrete_sequence=["black"], zoom=10, height=500,text=texto_personalizado)
-
-
+                            #color_discrete_sequence=["black"],
+                            color="Rating",zoom=12, height=700,width=850,
+                            color_continuous_scale=px.colors.cyclical.IceFire,
+                            range_color=[1,5],
+                           size='Rating'    
+                           )
+                            
+                        
+    fig.update_layout(mapbox_style="open-street-map")
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    fig.update_traces(marker={'size': 12})
 
     return fig 
 
