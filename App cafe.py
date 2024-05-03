@@ -16,11 +16,7 @@ import plotly.graph_objects as go
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
-# Define la ruta para obtener el ícono como marker
-icon_dir = "/assets/"
-
-# Define la ruta completa al ícono 'cafe.svg'
-cafe_icon = icon_dir + "cafe.svg"
+cafe_icon = dash.get_asset_url('cafe.svg')
 
 token = os.getenv('MAPBOX_TOKEN')
 
