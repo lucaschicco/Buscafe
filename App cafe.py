@@ -133,22 +133,7 @@ def update_map(selected_range, selected_features,search_input):
                                          "Sitio Web": True, "Dirección": True,'Latitud': False,'Longitud':False},
                             color_discrete_sequence=["black"], zoom=10, height=500,text=texto_personalizado)
 
-    fig.update_layout(
-        hovermode='closest',
-        showlegend=False,
-        autosize=True,
-        width=1000,
-        height=800,
-        mapbox=dict(
-            style="streets",
-            bearing=0,
-            center=dict(lat=filtered_df['Latitud'].mean(), lon=filtered_df['Longitud'].mean()),
-            pitch=0,
-            zoom=12,
-        )
-    )
-    fig.update_traces(hoverinfo='text') 
-    fig.update_traces(hoverlabel=dict(bgcolor="gray", font=dict(color="white", family="Arial", size=12)))
+
 
     return fig 
 
