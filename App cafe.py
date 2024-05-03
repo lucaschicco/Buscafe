@@ -75,7 +75,7 @@ app.layout = html.Div([
             )
         ], className='three columns'),
         html.Div([
-            dcc.Graph(id='mapa-cafeterias')
+            dcc.Graph(id='mapa-cafeterias', style={'width': '100%', 'height': '600px'} )
         ], className='seven columns'),
         html.Div([
             dcc.Input(
