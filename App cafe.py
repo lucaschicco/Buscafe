@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
-cafe_icon = dash.get_asset_url('cafe.svg')
+
 
 token = os.getenv('MAPBOX_TOKEN')
 
@@ -25,11 +25,13 @@ df2 = pd.read_excel(response.content)
 
 
 # Crea la aplicación Dash
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, assets_folder="/assets")
 # Asigna la aplicación Dash al objeto 'server'
 server = app.server
 # Define los valores intermedios del slider
 valores_intermedios = [i for i in range(int(df2['Rating'].min() * 10), int(df2['Rating'].max() * 10) + 1)]
+
+cafe_icon = dash.get_asset_url('cafe.svg')
 
 # Define los valores enteros del slider
 valores_enteros = list(range(int(df2['Rating'].min()), int(df2['Rating'].max()) + 1))
