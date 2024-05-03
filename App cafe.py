@@ -16,6 +16,12 @@ import plotly.graph_objects as go
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
+# Define la ruta para obtener el ícono como marker
+icon_dir = "/assets/"
+
+# Define la ruta completa al ícono 'cafe.svg'
+cafe_icon = icon_dir + "cafe.svg"
+
 token = os.getenv('MAPBOX_TOKEN')
 
 response = requests.get(url)
@@ -126,7 +132,15 @@ def update_map(selected_range, selected_features,search_input):
         lat=filtered_df['Latitud'],
         lon=filtered_df['Longitud'],
         mode='markers',
-        marker=dict(symbol="cafe", size=15, allowoverlap=True),
+        marker=dict(symbol=Image(
+            source=cafe_icon,
+            x=0,
+            y=1,
+            sizex=50,
+            sizey=50,
+            sizing="stretch",
+            opacity=0.8
+        ), size=15, allowoverlap=True),
         text=texto_personalizado  # Usar el texto personalizado como texto del marcador
     ))
     
