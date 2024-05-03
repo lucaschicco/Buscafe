@@ -132,7 +132,7 @@ def update_map(selected_range, selected_features,search_input):
         mode='markers',
         marker=dict(
         size=14,
-        symbol=cafe_icon, allowoverlap=True),
+        symbol='circle', allowoverlap=True),
         text=texto_personalizado  # Usar el texto personalizado como texto del marcador
     ))
     
