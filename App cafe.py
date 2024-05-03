@@ -128,13 +128,10 @@ def update_map(selected_range, selected_features,search_input):
         hover_text += f"<b>Dirección:</b> {row['Dirección']}<br>"
         texto_personalizado.append(hover_text)
     
-    fig = go.Figure(go.Scattermapbox(
-        lat=filtered_df['Latitud'],
-        lon=filtered_df['Longitud'],
-        mode='markers',
-        
-        text=texto_personalizado
-    ))
+    fig = px.scatter_mapbox(filtered_df, lat="Latitud", lon="Longitud", hover_name="Nombre", 
+                             hover_data={"Rating": True, "Cantidad Reviews": True, 
+                                         "Sitio Web": True, "Dirección": True,'Latitud': False,'Longitud':False},
+                            color_discrete_sequence=["black"], zoom=10, height=500,text=texto_personalizado)
 
     fig.update_layout(
         hovermode='closest',
