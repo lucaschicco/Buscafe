@@ -18,7 +18,7 @@ url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.
 
 
 
-token = os.getenv('MAPBOX_TOKEN')
+#token = os.getenv('MAPBOX_TOKEN')
 
 response = requests.get(url)
 df2 = pd.read_excel(response.content)
@@ -132,12 +132,10 @@ def update_map(selected_range, selected_features,search_input):
         lat=filtered_df['Latitud'],
         lon=filtered_df['Longitud'],
         mode='markers',
-        marker=dict(
-        size=14,
-        symbol='circle', allowoverlap=True),
-        text=texto_personalizado  # Usar el texto personalizado como texto del marcador
+        marker=dict(size=14, symbol='circle', allowoverlap=True),
+        text=texto_personalizado
     ))
-    
+
     fig.update_layout(
         hovermode='closest',
         showlegend=False,
@@ -146,12 +144,8 @@ def update_map(selected_range, selected_features,search_input):
         height=800,
         mapbox=dict(
             style="streets",
-            accesstoken=token,
             bearing=0,
-            center=dict(
-                lat=filtered_df['Latitud'].mean(),
-                lon=filtered_df['Longitud'].mean()
-            ),
+            center=dict(lat=filtered_df['Latitud'].mean(), lon=filtered_df['Longitud'].mean()),
             pitch=0,
             zoom=12,
         )
@@ -159,7 +153,6 @@ def update_map(selected_range, selected_features,search_input):
     fig.update_traces(hoverinfo='text') 
     fig.update_traces(hoverlabel=dict(bgcolor="gray", font=dict(color="white", family="Arial", size=12)))
 
-    
     return fig 
 
 # Callback para abrir el sitio web al hacer clic en el enlace
