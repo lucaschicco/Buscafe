@@ -82,7 +82,7 @@ app.layout = html.Div([
         html.Div([
             dcc.Graph(id='mapa-cafeterias'
                      )
-        ], className='seven columns'),
+        ], ),
         html.Div([
             dcc.Input(
                 id='search-input',
@@ -132,7 +132,7 @@ def update_map(selected_range, selected_features,search_input):
         lat=filtered_df['Latitud'],
         lon=filtered_df['Longitud'],
         mode='markers',
-        marker=dict(size=14, symbol='circle', allowoverlap=True),
+        
         text=texto_personalizado
     ))
 
