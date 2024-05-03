@@ -25,13 +25,14 @@ df2 = pd.read_excel(response.content)
 
 
 # Crea la aplicación Dash
-app = dash.Dash(__name__, assets_folder="/assets")
+app = dash.Dash(__name__)
+
 # Asigna la aplicación Dash al objeto 'server'
 server = app.server
+
 # Define los valores intermedios del slider
 valores_intermedios = [i for i in range(int(df2['Rating'].min() * 10), int(df2['Rating'].max() * 10) + 1)]
 
-cafe_icon = dash.get_asset_url('cafe.svg')
 
 # Define los valores enteros del slider
 valores_enteros = list(range(int(df2['Rating'].min()), int(df2['Rating'].max()) + 1))
@@ -79,7 +80,8 @@ app.layout = html.Div([
             )
         ], className='three columns'),
         html.Div([
-            dcc.Graph(id='mapa-cafeterias', style={'width': '100%', 'height': '600px'} )
+            dcc.Graph(id='mapa-cafeterias'
+                     )
         ], className='seven columns'),
         html.Div([
             dcc.Input(
