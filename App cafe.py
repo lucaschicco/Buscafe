@@ -16,7 +16,14 @@ import plotly.graph_objects as go
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_caballito.xlsx"
 
-
+external_stylesheets = [
+    'https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
+    'https://fonts.googleapis.com/css?family=Roboto:400,300,500,700',
+    'https://codepen.io/bcd/pen/KQrXdb.css',
+    'https://codepen.io/chriddyp/pen/bWLwgP.css'
+]
 
 #token = os.getenv('MAPBOX_TOKEN')
 
@@ -25,7 +32,7 @@ df2 = pd.read_excel(response.content)
 
 
 # Crea la aplicación Dash
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # Asigna la aplicación Dash al objeto 'server'
 server = app.server
@@ -41,60 +48,48 @@ valores_enteros = list(range(int(df2['Rating'].min()), int(df2['Rating'].max()) 
 marcas = {**{valor: str(valor) for valor in valores_enteros}, **{valor: str(valor) for valor in valores_intermedios}}
 
 app.layout = html.Div([
-    html.Link(rel='stylesheet', href='/assets/bWLwgP.css'),
     html.H1("Mapa de Cafeterías interactivo"),
-    html.Div([
-        html.Div([
-            html.Label("Filtro por Rating"),
-            dcc.RangeSlider(
-                id='rating-slider',
-                min=df2['Rating'].min(),
-                max=df2['Rating'].max(),
-                step=0.1,
-                marks=marcas,
-                value=[df2['Rating'].min(), df2['Rating'].max()]
-            ),
-            html.Div(id='output-container-slider'),
-            dcc.Dropdown(
-                id='feature-filter',
-                options=[
-                    {'label': 'Delivery', 'value': 'Delivery'},
-                    {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
-                    {'label': 'Almuerzo', 'value': 'Almuerzo'},
-                    {'label': 'Cena', 'value': 'Cena'},
-                    {'label': 'Brunch', 'value': 'Brunch'},
-                    {'label': 'Vino', 'value': 'Vino'},
-                    {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
-                    {'label': 'Accesible para silla de ruedas', 'value': 'Accesible para silla de ruedas'},
-                    {'label': 'Sirve postre', 'value': 'Sirve postre'},
-                    {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
-                    {'label': 'Desayuno', 'value': 'Desayuno'},
-                    {'label': 'Reservable', 'value': 'Reservable'}
-                ],
-                value=[],
-                multi=True,
-                optionHeight=30,
-                placeholder="Seleccione filtros...",
-                className='select_box',
-                style={'color': 'black'}
-            )
-        ], className='three columns'),
-        html.Div([
-            dcc.Graph(id='mapa-cafeterias'
-                     )
-        ], className='seven columns'),
-        html.Div([
-            dcc.Input(
-                id='search-input',
-                type='text',
-                placeholder='Buscar cafetería por nombre...',
-                className='select_box',
-                style={'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)'}
-            )
-        ], className='two columns', style={'margin-top': '10px', 'color': 'black'})
-    ], className='row')
+    dcc.RangeSlider(
+        id='rating-slider',
+        min=df2['Rating'].min(),
+        max=df2['Rating'].max(),
+        step=0.1,
+        marks=marcas,
+        value=[df2['Rating'].min(), df2['Rating'].max()]
+    ),
+    html.Div(id='output-container-slider'),
+    dcc.Dropdown(
+        id='feature-filter',
+        options=[
+            {'label': 'Delivery', 'value': 'Delivery'},
+            {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
+            {'label': 'Almuerzo', 'value': 'Almuerzo'},
+            {'label': 'Cena', 'value': 'Cena'},
+            {'label': 'Brunch', 'value': 'Brunch'},
+            {'label': 'Vino', 'value': 'Vino'},
+            {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
+            {'label': 'Accesible para silla de ruedas', 'value': 'Accesible para silla de ruedas'},
+            {'label': 'Sirve postre', 'value': 'Sirve postre'},
+            {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
+            {'label': 'Desayuno', 'value': 'Desayuno'},
+            {'label': 'Reservable', 'value': 'Reservable'}
+        ],
+        value=[],
+        multi=True,
+        optionHeight=30,
+        placeholder="Seleccione filtros...",
+        className='select_box',
+        style={'color': 'black'}
+    ),
+    dcc.Graph(id='mapa-cafeterias', className='map-container'),
+    dcc.Input(
+        id='search-input',
+        type='text',
+        placeholder='Buscar cafetería por nombre...',
+        className='search-box',
+        style={'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)'}
+    )
 ])
-
 # Variable global para almacenar el último nivel de zoom
 last_zoom = 12
 
@@ -132,7 +127,7 @@ def update_map(selected_range, selected_features,search_input):
                              hover_data={"Rating": True, "Cantidad Reviews": True, 
                                          "Sitio Web": True, "Dirección": True,'Latitud': False,'Longitud':False},
                             #color_discrete_sequence=["black"],
-                            color="Rating",zoom=12, height=700,width=850,
+                            color="Rating",zoom=12, height=700,width=1400,
                             color_continuous_scale=px.colors.cyclical.IceFire,
                             range_color=[1,5],
                            size='Rating'    
@@ -159,7 +154,7 @@ def display_click_data(clickData):
         texto_sin_html = texto.replace('<br>', '\n').replace('<b>', '**').replace('</b>', '**')
         
         return html.Div([
-            html.H4("Información de la cafetería"),
+            html.H6("Información de la cafetería"),
             dcc.Markdown(texto_sin_html)
         ])
     else:
