@@ -16,17 +16,6 @@ import plotly.graph_objects as go
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
 
-external_stylesheets = [
-    'https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
-    'https://fonts.googleapis.com/css?family=Roboto:400,300,500,700',
-    'https://codepen.io/bcd/pen/KQrXdb.css',
-    'https://codepen.io/chriddyp/pen/bWLwgP.css'
-]
-
-#token = os.getenv('MAPBOX_TOKEN')
-
 response = requests.get(url)
 df2 = pd.read_excel(response.content)
 
@@ -48,7 +37,7 @@ for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sab
 df2.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
 
 # Crea la aplicación Dash
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__)
 
 # Asigna la aplicación Dash al objeto 'server'
 server = app.server
