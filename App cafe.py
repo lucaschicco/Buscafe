@@ -37,7 +37,9 @@ for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sab
 df2.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
 
 # Crea la aplicación Dash
-app = dash.Dash(__name__)
+app = dash.Dash(__name__,meta_tags=[
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+    ])
 
 # Asigna la aplicación Dash al objeto 'server'
 server = app.server
