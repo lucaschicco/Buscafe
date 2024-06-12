@@ -185,7 +185,6 @@
 @media (max-width: 768px) {
     #info-registro {
         width: 50%; /* Ancho en tabletas */
-        right: 5%;  /* Ajustar posición en dispositivos móviles */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.8em; /* Reducir tamaño de fuente */
@@ -195,7 +194,6 @@
 @media (max-width: 425px) {
     #info-registro {
         width: 80%; /* Ancho en dispositivos móviles más pequeños */
-        right: 5%;  /* Ajustar posición en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.75em; /* Reducir tamaño de fuente */
@@ -205,7 +203,6 @@
 @media (max-width: 375px) {
     #info-registro {
         width: 90%; /* Ancho completo en dispositivos móviles más pequeños */
-        right: 2.5%;  /* Ajustar posición en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.7em; /* Reducir tamaño de fuente */
