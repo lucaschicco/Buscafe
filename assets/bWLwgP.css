@@ -140,74 +140,61 @@
     left: 10px;
     z-index: 1000;
 }
-/* Estilo general para el panel de información */
 #info-registro {
+    display: none; /* Default to hidden */
     position: absolute;
-    top: 60px;
-    right: 90px;
-    width: 35% !important;
-    border: 2px solid #404040;
-    background-color: rgba(255, 255, 255, 1);
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    top: 10%;
+    right: 5%;
+    width: 30%;
+    overflow-y: auto; /* Allow vertical scrolling if content overflows */
+    background-color: white;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    border-radius: 10px;
     z-index: 1000;
-    display: none; /* Initially hidden */
 }
 
-#info-registro h4, #info-registro p {
-    font-size: 1em; /* Tamaño de fuente para pantallas grandes */
-}
-
-#info-registro a {
-    word-wrap: break-word;
-}
-
-/* Ajustes de tamaño de panel y texto para pantallas más pequeñas */
-@media (max-width: 1440px) {
+/* Estilo responsivo para dispositivos móviles */
+@media only screen and (max-width: 600px) {
     #info-registro {
-        width: 40% !important; /* Ancho en pantallas un poco más pequeñas */
+        position: relative; /* Cambia la posición a relativa */
+        top: auto; /* Resetea el valor top */
+        right: auto; /* Resetea el valor right */
+        width: 100%; /* Ocupa el 100% del ancho del contenedor */
+        margin-top: 20px; /* Añade un margen superior para separar el mapa del panel */
     }
-    #info-registro h4, #info-registro p {
-        font-size: 0.9em; /* Reducir tamaño de fuente */
+
+    #info-registro h4 {
+        font-size: 1.2em; /* Ajusta el tamaño de fuente del nombre de la cafetería */
     }
 }
 
-@media (max-width: 1024px) {
+/* Estilo responsivo para tabletas */
+@media only screen and (min-width: 600px) and (max-width: 768px) {
     #info-registro {
-        width: 45% !important; /* Ancho en tabletas grandes */
+        width: 100%;
+        position: relative; /* Cambia la posición a relativa */
+        top: auto; /* Resetea el valor top */
+        right: auto; /* Resetea el valor right */
+        margin-top: 20px; /* Añade un margen superior para separar el mapa del panel */
     }
-    #info-registro h4, #info-registro p {
-        font-size: 0.85em; /* Reducir tamaño de fuente */
+
+    #info-registro h4 {
+        font-size: 1.5em; /* Ajusta el tamaño de fuente del nombre de la cafetería */
     }
 }
 
-@media (max-width: 768px) {
+/* Estilo responsivo para escritorio */
+@media only screen and (min-width: 769px) {
     #info-registro {
-        width: 70% !important; /* Ancho en tabletas */
-        #right: 3%;  /* Ajustar posición en dispositivos móviles */
+        width: 30%;
+        position: absolute; /* Mantén la posición absoluta */
+        top: 10%;
+        right: 5%;
+        margin-top: 0; /* Sin margen superior */
     }
-    #info-registro h4, #info-registro p {
-        font-size: 0.8em; /* Reducir tamaño de fuente */
-    }
-}
 
-@media (max-width: 425px) {
-    #info-registro {
-        width: 70% !important; /* Ancho en dispositivos móviles más pequeños */
-        #right: 2%;  /* Ajustar posición en dispositivos móviles más pequeños */
-    }
-    #info-registro h4, #info-registro p {
-        font-size: 0.75em; /* Reducir tamaño de fuente */
-    }
-}
-
-@media (max-width: 375px) {
-    #info-registro {
-        width: 70% !important; /* Ancho completo en dispositivos móviles más pequeños */
-        right: 1%;  /* Ajustar posición en dispositivos móviles más pequeños */
-    }
-    #info-registro h4, #info-registro p {
-        font-size: 0.7em; /* Reducir tamaño de fuente */
+    #info-registro h4 {
+        font-size: 1.8em; /* Ajusta el tamaño de fuente del nombre de la cafetería */
     }
 }
