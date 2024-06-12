@@ -194,7 +194,7 @@
 
 @media (max-width: 425px) {
     #info-registro {
-        width: 60%; /* Ancho en dispositivos móviles más pequeños */
+        width: 80%; /* Ancho en dispositivos móviles más pequeños */
         right: 5%;  /* Ajustar posición en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
@@ -204,10 +204,21 @@
 
 @media (max-width: 375px) {
     #info-registro {
-        width: 70%; /* Ancho completo en dispositivos móviles más pequeños */
+        width: 90%; /* Ancho completo en dispositivos móviles más pequeños */
         right: 2.5%;  /* Ajustar posición en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.7em; /* Reducir tamaño de fuente */
     }
+}
+
+/* Estilo para el botón de cerrado del panel de información */
+.close-info-button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: transparent;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
 }
