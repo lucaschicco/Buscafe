@@ -145,7 +145,7 @@
     position: absolute;
     top: 60px;
     right: 90px;
-    width: 25%;
+    width: 35% !important;
     border: 2px solid #404040;
     background-color: rgba(255, 255, 255, 1);
     padding: 10px;
@@ -166,7 +166,7 @@
 /* Ajustes de tamaño de panel y texto para pantallas más pequeñas */
 @media (max-width: 1440px) {
     #info-registro {
-        width: 30%; /* Ancho en pantallas un poco más pequeñas */
+        width: 40% !important; /* Ancho en pantallas un poco más pequeñas */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.9em; /* Reducir tamaño de fuente */
@@ -175,7 +175,7 @@
 
 @media (max-width: 1024px) {
     #info-registro {
-        width: 35%; /* Ancho en tabletas grandes */
+        width: 45% !important; /* Ancho en tabletas grandes */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.85em; /* Reducir tamaño de fuente */
@@ -184,8 +184,8 @@
 
 @media (max-width: 768px) {
     #info-registro {
-        width: 60%; /* Ancho en tabletas */
-        right: 3%;  /* Ajustar posición en dispositivos móviles */
+        width: 70% !important; /* Ancho en tabletas */
+        #right: 3%;  /* Ajustar posición en dispositivos móviles */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.8em; /* Reducir tamaño de fuente */
@@ -194,8 +194,8 @@
 
 @media (max-width: 425px) {
     #info-registro {
-        width: 60%; /* Ancho en dispositivos móviles más pequeños */
-        right: 2%;  /* Ajustar posición en dispositivos móviles más pequeños */
+        width: 70% !important; /* Ancho en dispositivos móviles más pequeños */
+        #right: 2%;  /* Ajustar posición en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.75em; /* Reducir tamaño de fuente */
@@ -204,7 +204,7 @@
 
 @media (max-width: 375px) {
     #info-registro {
-        width: 60%; /* Ancho completo en dispositivos móviles más pequeños */
+        width: 70% !important; /* Ancho completo en dispositivos móviles más pequeños */
         right: 1%;  /* Ajustar posición en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
