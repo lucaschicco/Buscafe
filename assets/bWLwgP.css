@@ -35,14 +35,14 @@
 
 @media (max-width: 425px) {
     .controls-container {
-        width: 90%; /* Ancho en dispositivos móviles más pequeños */
+        width: 85%; /* Ancho en dispositivos móviles más pequeños */
         left: 5%;  /* Centrando el panel en dispositivos móviles más pequeños */
     }
 }
 
 @media (max-width: 375px) {
     .controls-container {
-        width: 95%; /* Ancho completo en dispositivos móviles más pequeños */
+        width: 90%; /* Ancho completo en dispositivos móviles más pequeños */
         left: 2.5%;  /* Centrando el panel en dispositivos móviles más pequeños */
     }
 }
@@ -139,4 +139,75 @@
     top: 10px;
     left: 10px;
     z-index: 1000;
+}
+/* Estilo general para el panel de información */
+#info-registro {
+    position: absolute;
+    top: 60px;
+    right: 110px;
+    width: 15%;
+    border: 2px solid #404040;
+    background-color: rgba(255, 255, 255, 1);
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none; /* Initially hidden */
+}
+
+#info-registro h4, #info-registro p {
+    font-size: 1em; /* Tamaño de fuente para pantallas grandes */
+}
+
+#info-registro a {
+    word-wrap: break-word;
+}
+
+/* Ajustes de tamaño de panel y texto para pantallas más pequeñas */
+@media (max-width: 1440px) {
+    #info-registro {
+        width: 20%; /* Ancho en pantallas un poco más pequeñas */
+    }
+    #info-registro h4, #info-registro p {
+        font-size: 0.9em; /* Reducir tamaño de fuente */
+    }
+}
+
+@media (max-width: 1024px) {
+    #info-registro {
+        width: 25%; /* Ancho en tabletas grandes */
+    }
+    #info-registro h4, #info-registro p {
+        font-size: 0.85em; /* Reducir tamaño de fuente */
+    }
+}
+
+@media (max-width: 768px) {
+    #info-registro {
+        width: 30%; /* Ancho en tabletas */
+        right: 5%;  /* Ajustar posición en dispositivos móviles */
+    }
+    #info-registro h4, #info-registro p {
+        font-size: 0.8em; /* Reducir tamaño de fuente */
+    }
+}
+
+@media (max-width: 425px) {
+    #info-registro {
+        width: 40%; /* Ancho en dispositivos móviles más pequeños */
+        right: 5%;  /* Ajustar posición en dispositivos móviles más pequeños */
+    }
+    #info-registro h4, #info-registro p {
+        font-size: 0.75em; /* Reducir tamaño de fuente */
+    }
+}
+
+@media (max-width: 375px) {
+    #info-registro {
+        width: 50%; /* Ancho completo en dispositivos móviles más pequeños */
+        right: 2.5%;  /* Ajustar posición en dispositivos móviles más pequeños */
+    }
+    #info-registro h4, #info-registro p {
+        font-size: 0.7em; /* Reducir tamaño de fuente */
+    }
 }
