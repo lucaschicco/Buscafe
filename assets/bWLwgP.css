@@ -159,7 +159,7 @@
     #info-registro {
         position: relative; /* Cambia la posición a relativa */
         top: auto; /* Resetea el valor top */
-        right: auto; /* Resetea el valor right */
+        #right: auto; /* Resetea el valor right */
         width: 100%; /* Ocupa el 100% del ancho del contenedor */
         margin-top: 20px; /* Añade un margen superior para separar el mapa del panel */
     }
@@ -175,7 +175,7 @@
         width: 100%;
         position: relative; /* Cambia la posición a relativa */
         top: auto; /* Resetea el valor top */
-        right: auto; /* Resetea el valor right */
+        #right: auto; /* Resetea el valor right */
         margin-top: 20px; /* Añade un margen superior para separar el mapa del panel */
     }
 
@@ -190,7 +190,7 @@
         width: 30%;
         position: absolute; /* Mantén la posición absoluta */
         top: 10%;
-        right: 5%;
+        #right: 5%;
         margin-top: 0; /* Sin margen superior */
     }
 
