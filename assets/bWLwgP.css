@@ -167,6 +167,7 @@
 @media (max-width: 1440px) {
     #info-registro {
         width: 35%; /* Ancho en pantallas un poco más pequeñas */
+        right: 20px;
     }
     #info-registro h4, #info-registro p {
         font-size: 0.9em; /* Reducir tamaño de fuente */
@@ -176,6 +177,7 @@
 @media (max-width: 1024px) {
     #info-registro {
         width: 40%; /* Ancho en tabletas grandes */
+        right: 20px;
     }
     #info-registro h4, #info-registro p {
         font-size: 0.85em; /* Reducir tamaño de fuente */
@@ -185,6 +187,7 @@
 @media (max-width: 768px) {
     #info-registro {
         width: 30% !important; /* Ancho en tabletas */
+        right: 20px;
     }
     #info-registro h4, #info-registro p {
         font-size: 0.8em; /* Reducir tamaño de fuente */
@@ -194,6 +197,7 @@
 @media (max-width: 425px) {
     #info-registro {
         width: 30%; /* Ancho en dispositivos móviles más pequeños */
+        right: 20px;
     }
     #info-registro h4, #info-registro p {
         font-size: 0.75em; /* Reducir tamaño de fuente */
@@ -203,6 +207,7 @@
 @media (max-width: 375px) {
     #info-registro {
         width: 30% !important; /* Ancho completo en dispositivos móviles más pequeños */
+        right: 20px;
     }
     #info-registro h4, #info-registro p {
         font-size: 0.7em; /* Reducir tamaño de fuente */
