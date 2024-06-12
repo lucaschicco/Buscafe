@@ -145,7 +145,7 @@
     position: absolute;
     top: 60px;
     right: 90px;
-    width: 15%;
+    width: 25%;
     border: 2px solid #404040;
     background-color: rgba(255, 255, 255, 1);
     padding: 10px;
@@ -166,7 +166,7 @@
 /* Ajustes de tamaño de panel y texto para pantallas más pequeñas */
 @media (max-width: 1440px) {
     #info-registro {
-        width: 25%; /* Ancho en pantallas un poco más pequeñas */
+        width: 30%; /* Ancho en pantallas un poco más pequeñas */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.9em; /* Reducir tamaño de fuente */
@@ -175,7 +175,7 @@
 
 @media (max-width: 1024px) {
     #info-registro {
-        width: 25%; /* Ancho en tabletas grandes */
+        width: 35%; /* Ancho en tabletas grandes */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.85em; /* Reducir tamaño de fuente */
