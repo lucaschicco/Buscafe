@@ -144,7 +144,7 @@
 #info-registro {
     position: absolute;
     top: 60px;
-    right: 110px;
+    right: 90px;
     width: 15%;
     border: 2px solid #404040;
     background-color: rgba(255, 255, 255, 1);
@@ -166,7 +166,7 @@
 /* Ajustes de tamaño de panel y texto para pantallas más pequeñas */
 @media (max-width: 1440px) {
     #info-registro {
-        width: 20%; /* Ancho en pantallas un poco más pequeñas */
+        width: 25%; /* Ancho en pantallas un poco más pequeñas */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.9em; /* Reducir tamaño de fuente */
@@ -184,8 +184,8 @@
 
 @media (max-width: 768px) {
     #info-registro {
-        width: 30%; /* Ancho en tabletas */
-        right: 5%;  /* Ajustar posición en dispositivos móviles */
+        width: 60%; /* Ancho en tabletas */
+        right: 3%;  /* Ajustar posición en dispositivos móviles */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.8em; /* Reducir tamaño de fuente */
@@ -194,8 +194,8 @@
 
 @media (max-width: 425px) {
     #info-registro {
-        width: 40%; /* Ancho en dispositivos móviles más pequeños */
-        right: 5%;  /* Ajustar posición en dispositivos móviles más pequeños */
+        width: 60%; /* Ancho en dispositivos móviles más pequeños */
+        right: 2%;  /* Ajustar posición en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.75em; /* Reducir tamaño de fuente */
@@ -204,8 +204,8 @@
 
 @media (max-width: 375px) {
     #info-registro {
-        width: 50%; /* Ancho completo en dispositivos móviles más pequeños */
-        right: 2.5%;  /* Ajustar posición en dispositivos móviles más pequeños */
+        width: 60%; /* Ancho completo en dispositivos móviles más pequeños */
+        right: 1%;  /* Ajustar posición en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.7em; /* Reducir tamaño de fuente */
