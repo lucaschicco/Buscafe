@@ -1,24 +1,20 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
 import requests
-import time
 import pandas as pd
 import openpyxl
 import os
 import dash
-import numpy as np
 from dash import dcc, html
-from dash.dependencies import Input, Output
-import plotly.express as px
+from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
+import dash_bootstrap_components as dbc
 
 url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
 
 response = requests.get(url)
 df2 = pd.read_excel(response.content)
-
 
 # Create a function to parse the opening hours
 def parse_hours(hours):
@@ -36,10 +32,10 @@ for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sab
 # Drop the original day columns
 df2.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
 
+external_stylesheets = ['https://github.com/lucaschicco/MiCafe/raw/main/assets/bWLwgP.css']
+
 # Crea la aplicación Dash
-app = dash.Dash(__name__,meta_tags=[
-        {"name": "viewport", "content": "width=device-width, initial-scale=1"}
-    ])
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # Asigna la aplicación Dash al objeto 'server'
 server = app.server
@@ -56,77 +52,47 @@ marcas = {**{valor: str(valor) for valor in valores_enteros}, **{valor: str(valo
 # Estilos de mapa
 map_styles = ['open-street-map', 'carto-positron', 'carto-darkmatter']
 
-# Estilos para elementos con fondo propio
-estilos_con_fondo = {
-    'background-color': 'rgba(255, 255, 255, 0.8)',
-    'padding': '10px',
-    'border-radius': '5px',
-    'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.1)',
-    'margin': '10px',
-    'z-index': '1000'
-}
-
-# Estilos específicos
-estilo_titulo = {
-    'text-align': 'center',
-    **estilos_con_fondo,
-    'position': 'absolute',
-    'top': '10px',
-    'left': '50%',
-    'transform': 'translateX(-50%)',
-    'border': '2px solid #000000'
-}
-
-estilo_panel_filtros = {
-    'position': 'absolute',
-    'top': '100px',
-    'left': '10px',
-    'z-index': '1000',
-    'width': '20%',  # Ajusta este valor según sea necesario
-    'background-color': 'rgba(255, 255, 255, 0.8)',
-    'border-radius': '12px',
-    'padding': '10px',
-    'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.1)',
-    'display': 'flex',
-    'flex-direction': 'column',
-    'gap': '20px'
-}
-# Añade este estilo específico para el título del panel de filtros
-estilo_titulo_panel_filtros = {
-    'font-weight': 'bold',
-    'text-decoration': 'underline',
-    'font-size': '24px',  # Ajusta el tamaño según tus necesidades
-    'color': 'black',
-    'text-align': 'center',
-    'margin-bottom': '10px'
-}
-
 estilo_info_registro = {
     'position': 'absolute',
     'top': '60px',
     'right': '110px',
     'width': '15%',
     'border': '2px solid #404040',
-    'background-color': 'rgba(255, 255, 255, 0.9)',
+    'background-color': 'rgba(255, 255, 255, 1)',
     'padding': '10px',
     'border-radius': '5px',
-    'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.1)',
+    'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.5)',
     'z-index': '1000',
     'display': 'none'  # Initially hidden
 }
+control_containers = {
+    'position': 'absolute',
+    'top': '100px',
+    'left': '10px',
+    'z-index': '1000',
+    'background-color': 'rgba(255, 255, 255, 1)',
+    'border-radius': '12px',
+    'padding': '10px',
+    'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.4)',
+    'display': 'flex',
+    'flex-direction': 'column',
+    'gap': '20px'
+}
 
 app.layout = html.Div([
-    html.H1("Mapa de Cafeterías", style=estilo_titulo),
+    dcc.Store(id='panel-visible', data=False),  # Almacenamiento del estado del panel de filtros
+    dcc.Store(id='info-visible', data=False),  # Almacenamiento del estado del panel de información
+    html.Button("Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
-        html.H2("Filtros", style=estilo_titulo_panel_filtros),  # Título del panel de filtros
         html.Label("Rating", style={'color': 'black', 'font-weight': 'bold'}),
         dcc.RangeSlider(
             id='rating-slider',
             min=df2['Rating'].min(),
             max=df2['Rating'].max(),
             step=0.1,
-            marks={str(rating): {'label': str(rating), 'style': {'color': 'black'}} for rating in marcas},
+            marks={str(rating): {'label': str(rating), 'style': {'color': 'black'}} for rating in range(int(df2['Rating'].min()), int(df2['Rating'].max()) + 1)},
             value=[df2['Rating'].min(), df2['Rating'].max()],
+            className='custom-slider'        
         ),
         html.Div(id='output-container-slider'),
         dcc.Dropdown(
@@ -150,6 +116,7 @@ app.layout = html.Div([
             multi=True,
             optionHeight=30,
             placeholder="Seleccione filtros...",
+            className='custom-dropdown',
             style={'color': 'black'}
         ),
         dcc.Dropdown(
@@ -167,6 +134,7 @@ app.layout = html.Div([
             multi=True,
             optionHeight=30,
             placeholder="Días de apertura...",
+            className='custom-dropdown',
             style={'color': 'black'}
         ),
         dcc.Dropdown(
@@ -175,33 +143,33 @@ app.layout = html.Div([
             value=[],
             multi=True,
             placeholder="Seleccione barrios...",
+            className='custom-dropdown',
             style={'color': 'black'}
         ),
         dcc.Input(
             id='search-input',
             type='text',
             placeholder='Buscar cafetería por nombre...',
+            className='custom-input',
             style={
                 'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
                 'margin-top': '10px'
             }
         ),
-        html.Button("Cambiar tipo de mapa", id='cambiar-estilo-mapa', n_clicks=0, style={
-            'text-align': 'center',
-            'background-color': '#D2B48C',
-            'border': '2px solid #000000',
-            'margin-top': '10px'
-        })
-    ], style=estilo_panel_filtros),
+        html.Button("Cambiar tipo de mapa", id='cambiar-estilo-mapa', n_clicks=0, className='custom-button')
+    ], id='filters-panel', className='controls-container'),  # Usa la clase CSS aquí
     dcc.Graph(id='mapa-cafeterias', className='map-container', style={
         'height': '100vh',
         'width': '100vw',
-        'position': 'absolute',
+        'position': 'relative',
         'top': '0',
         'left': '0',
         'z-index': '0'
     }),
-    html.Div(id='info-registro', style=estilo_info_registro)
+    html.Div(id='info-registro', children=[
+        html.Button('X', id='close-info-button', className='close-info-button', n_clicks=0),
+        html.Div(id='info-content')
+    ])
 ])
 
 # Variable global para almacenar el último nivel de zoom
@@ -212,17 +180,14 @@ estilo_inicial = 'carto-positron'
 
 @app.callback(
     Output('mapa-cafeterias', 'figure'),
-    Output('info-registro', 'style'),
-    Output('info-registro', 'children'),
     [Input('rating-slider', 'value'),
      Input('feature-filter', 'value'),
      Input('filtro-dias', 'value'),
      Input('filtro-barrios', 'value'),
      Input('search-input', 'value'),
-     Input('mapa-cafeterias', 'clickData'),
      Input('cambiar-estilo-mapa', 'n_clicks')]
 )
-def update_map(selected_range, selected_features, selected_days, selected_barrios, search_input, clickData, n_clicks):
+def update_map(selected_range, selected_features, selected_days, selected_barrios, search_input, n_clicks):
     global last_zoom
     global estilo_inicial
 
@@ -245,11 +210,65 @@ def update_map(selected_range, selected_features, selected_days, selected_barrio
     if selected_barrios:
         filtered_df = filtered_df[filtered_df['Barrio'].isin(selected_barrios)]
 
-    if clickData:
+    size = filtered_df['Rating'] * 3.5
+    size = size.where(size != 0, 16)
+    fig = go.Figure(go.Scattermapbox(
+        lat=filtered_df['Latitud'],
+        lon=filtered_df['Longitud'],
+        mode='markers',
+        marker=go.scattermapbox.Marker(
+            allowoverlap=True,
+            sizemin=1,
+            size=size,
+            color=filtered_df['Rating'],
+            colorscale='IceFire',
+            showscale=True,
+            colorbar=dict(title='Rating'),
+            cmin=1,
+            cmax=5,
+        ),
+        text=filtered_df.apply(lambda row: f"<b>{row['Nombre']}<br></b><br><b>Rating:</b> {row['Rating']}<br><b>Cantidad Reviews:</b> {row['Cantidad Reviews']}<br><b>Dirección:</b> {row['Dirección']}", axis=1),
+        hoverinfo='text'
+    ))
+
+    fig.update_layout(
+        mapbox=dict(
+            style=estilo,
+            zoom=last_zoom,
+            center=dict(lat=-34.620000, lon=-58.440000)
+        ),
+        margin={"r": 0, "t": 0, "l": 0, "b": 0},
+        uirevision=uirevision
+    )
+
+    return fig
+
+@app.callback(
+    Output('info-registro', 'style'),
+    Output('info-content', 'children'),
+    Output('info-visible', 'data'),
+    [Input('mapa-cafeterias', 'clickData'),
+     Input('close-info-button', 'n_clicks')],
+    [State('info-visible', 'data')]
+)
+def update_info_panel(clickData, close_n_clicks, info_visible):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        return estilo_info_registro.copy(), None, info_visible
+
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if button_id == 'close-info-button' and info_visible:
+        info_html = None
+        info_style = estilo_info_registro.copy()
+        info_style['display'] = 'none'
+        info_visible = False
+    elif button_id == 'mapa-cafeterias':
         selected_point = clickData['points'][0]
         lat = selected_point['lat']
         lon = selected_point['lon']
-        selected_record = filtered_df[(filtered_df['Latitud'] == lat) & (filtered_df['Longitud'] == lon)]
+        selected_record = df2[(df2['Latitud'] == lat) & (df2['Longitud'] == lon)]
 
         if not selected_record.empty:
             record = selected_record.iloc[0]
@@ -270,47 +289,38 @@ def update_map(selected_range, selected_features, selected_days, selected_barrio
             ]
             info_style = estilo_info_registro.copy()
             info_style['display'] = 'block'
+            info_visible = True
         else:
             info_html = None
             info_style = estilo_info_registro.copy()
             info_style['display'] = 'none'
+            info_visible = False
     else:
         info_html = None
         info_style = estilo_info_registro.copy()
         info_style['display'] = 'none'
+        info_visible = False
 
-    size = filtered_df['Rating'] * 3.5
-    size = size.where(size != 0, 16)
-    fig = go.Figure(go.Scattermapbox(
-        lat=filtered_df['Latitud'],
-        lon=filtered_df['Longitud'],
-        mode='markers',
-        marker=go.scattermapbox.Marker(
-            allowoverlap=True,
-            sizemin=1,
-            size=size,
-            color=filtered_df['Rating'],
-            colorscale='IceFire',
-            showscale=True,
-            colorbar=dict(title='Rating'),
-            cmin=1,
-            cmax=5,
-        ),
-        text=filtered_df.apply(lambda row: f"<b>{row['Nombre']}<br></b><br><b>Rating:</b> {row['Rating']}<br><b>Cantidad Reviews:</b> {row['Cantidad Reviews']}<br><b>Sitio Web:</b> {row['Sitio Web']}<br><b>Dirección:</b> {row['Dirección']}", axis=1),
-        hoverinfo='text'
-    ))
+    return info_style, info_html, info_visible
 
-    fig.update_layout(
-        mapbox=dict(
-            style=estilo,
-            zoom=last_zoom,
-            center=dict(lat=-34.620000, lon=-58.440000)
-        ),
-        margin={"r": 0, "t": 0, "l": 0, "b": 0},
-        uirevision=uirevision
-    )
+# Callback para mostrar/ocultar el panel de filtros
+@app.callback(
+    Output('filters-panel', 'style'),
+    Output('panel-visible', 'data'),
+    Input('toggle-button', 'n_clicks'),
+    State('panel-visible', 'data')
+)
+def toggle_filters(n_clicks, visible):
+    if visible is None:
+        visible = False
 
-    return fig, info_style, info_html
+    if n_clicks > 0:
+        visible = not visible
+
+    style = control_containers.copy()
+    style['display'] = 'flex' if visible else 'none'
+    
+    return style, visible
 
 # Ejecuta la aplicación Dash
 if __name__ == '__main__':
