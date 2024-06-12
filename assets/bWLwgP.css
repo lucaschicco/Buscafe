@@ -184,7 +184,7 @@
 
 @media (max-width: 768px) {
     #info-registro {
-        width: 60% !important; /* Ancho en tabletas */
+        width: 30% !important; /* Ancho en tabletas */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.8em; /* Reducir tamaño de fuente */
@@ -193,7 +193,7 @@
 
 @media (max-width: 425px) {
     #info-registro {
-        width: 60%; /* Ancho en dispositivos móviles más pequeños */
+        width: 30%; /* Ancho en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.75em; /* Reducir tamaño de fuente */
@@ -202,7 +202,7 @@
 
 @media (max-width: 375px) {
     #info-registro {
-        width: 70% !important; /* Ancho completo en dispositivos móviles más pequeños */
+        width: 30% !important; /* Ancho completo en dispositivos móviles más pequeños */
     }
     #info-registro h4, #info-registro p {
         font-size: 0.7em; /* Reducir tamaño de fuente */
