@@ -186,7 +186,7 @@
 
 @media (max-width: 768px) {
     #info-registro {
-        width: 30% !important; /* Ancho en tabletas */
+        width: 40% !important; /* Ancho en tabletas */
         right: 20px;
     }
     #info-registro h4, #info-registro p {
@@ -196,7 +196,7 @@
 
 @media (max-width: 425px) {
     #info-registro {
-        width: 30%; /* Ancho en dispositivos móviles más pequeños */
+        width: 45%; /* Ancho en dispositivos móviles más pequeños */
         right: 20px;
     }
     #info-registro h4, #info-registro p {
@@ -206,7 +206,7 @@
 
 @media (max-width: 375px) {
     #info-registro {
-        width: 30% !important; /* Ancho completo en dispositivos móviles más pequeños */
+        width: 50% !important; /* Ancho completo en dispositivos móviles más pequeños */
         right: 20px;
     }
     #info-registro h4, #info-registro p {
