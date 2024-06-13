@@ -86,6 +86,7 @@ app.layout = html.Div([
     html.Div([
         html.Label("Rating", style={'color': 'black', 'font-weight': 'bold'}),
         dcc.RangeSlider(
+            tooltip={"placement": "bottom", "always_visible": True},
             id='rating-slider',
             min=df2['Rating'].min(),
             max=df2['Rating'].max(),
