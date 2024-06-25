@@ -324,5 +324,6 @@ def toggle_filters(n_clicks, visible):
     return style, visible
 
 # Ejecuta la aplicación Dash
-if __name__ == '__main__':
-    app.run_server(debug=False)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8050))
+    app.run_server(host='0.0.0.0', port=port)
