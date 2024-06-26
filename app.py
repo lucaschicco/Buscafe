@@ -174,7 +174,7 @@ app.layout = html.Div([
 ])
 
 # Variable global para almacenar el último nivel de zoom
-last_zoom = 12
+last_zoom = 11
 uirevision = 'constant'
 # Variable para el estilo del mapa
 estilo_inicial = 'carto-positron'
