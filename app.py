@@ -224,7 +224,24 @@ def update_map(selected_range, selected_features, selected_days, selected_barrio
             color=filtered_df['Rating'],
             colorscale='IceFire',
             showscale=True,
-            colorbar=dict(title='Rating'),
+            colorbar=dict(title=dict(text='Rating', side='top', font=dict(size=12)) ,
+                titleside='right',  # Posición del título
+                tickmode='array',  # Modo de las marcas de graduación
+                tickvals=[1, 2, 3, 4, 5],  # Valores de las marcas de graduación
+                ticktext=['1', '2', '3', '4', '5'],  # Texto de las marcas de graduación
+                ticks='outside',  # Posición de las marcas de graduación
+                len=0.45,  # Longitud de la barra de color
+                thickness=15,  # Grosor de la barra de color
+                tickfont=dict(size=12),  # Tamaño de la fuente de las marcas de graduación
+                bgcolor='rgba(255,255,255,0.5)',  # Fondo de la barra de color (transparente)
+                borderwidth=1,  # Ancho del borde de la barra de color
+                bordercolor='rgba(0, 0, 0, 0)',  # Color del borde de la barra de color (transparente)
+                x=0.5,  # Posición en el eje x
+                y=0.1,  # Posición en el eje y
+                xanchor='center',  # Ancla en el lado izquierdo
+                yanchor='top',  # Ancla en el medio
+                orientation='h'
+            ),
             cmin=1,
             cmax=5,
         ),
