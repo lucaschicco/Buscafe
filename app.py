@@ -80,8 +80,9 @@ control_containers = {
 }
 
 app.layout = html.Div([
-    dcc.Store(id='panel-visible', data=False),  # Almacenamiento del estado del panel de filtros
-    dcc.Store(id='info-visible', data=False),  # Almacenamiento del estado del panel de información
+    dcc.Location(id='url', refresh=True),
+    dcc.Store(id='panel-visible', data=False),
+    dcc.Store(id='info-visible', data=False),
     html.Button("Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
         html.Label("Rating", style={'color': 'black', 'font-weight': 'bold'}),
@@ -93,7 +94,7 @@ app.layout = html.Div([
             step=0.1,
             marks={str(rating): {'label': str(rating), 'style': {'color': 'black'}} for rating in range(int(df2['Rating'].min()), int(df2['Rating'].max()) + 1)},
             value=[df2['Rating'].min(), df2['Rating'].max()],
-            className='custom-slider'        
+            className='custom-slider'
         ),
         html.Div(id='output-container-slider'),
         dcc.Dropdown(
@@ -140,25 +141,35 @@ app.layout = html.Div([
         ),
         dcc.Dropdown(
             id='filtro-barrios',
-            options=[{'label': barrio, 'value': barrio} for barrio in df2['Barrio'].unique()],
+            options=[{'label': nombre, 'value': nombre} for nombre in sorted(df2['Nombre'].unique())],
             value=[],
             multi=True,
             placeholder="Seleccione barrios...",
             className='custom-dropdown',
             style={'color': 'black'}
         ),
-        dcc.Input(
+        dcc.Dropdown(
             id='search-input',
-            type='text',
+            options=[{'label': nombre, 'value': nombre} for nombre in sorted(df2['Nombre'].unique())],
             placeholder='Buscar cafetería por nombre...',
-            className='custom-input',
+            className='custom-dropdown',
             style={
                 'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
                 'margin-top': '10px'
             }
         ),
-        html.Button("Cambiar tipo de mapa", id='cambiar-estilo-mapa', n_clicks=0, className='custom-button')
-    ], id='filters-panel', className='controls-container'),  # Usa la clase CSS aquí
+        dcc.Dropdown(
+            id='map-style-dropdown',
+            options=[
+                {'label': 'Modo Clásico', 'value': 'open-street-map'},
+                {'label': 'Modo Claro', 'value': 'carto-positron'},
+                {'label': 'Modo Oscuro', 'value': 'carto-darkmatter'}
+            ],
+            value='carto-positron',
+            className='custom-dropdown',
+            style={'color': 'black'}
+        )
+    ], id='filters-panel', className='controls-container'),
     dcc.Graph(id='mapa-cafeterias', className='map-container', style={
         'height': '100vh',
         'width': '100vw',
@@ -170,7 +181,17 @@ app.layout = html.Div([
     html.Div(id='info-registro', children=[
         html.Button('X', id='close-info-button', className='close-info-button', n_clicks=0),
         html.Div(id='info-content')
-    ])
+    ]),
+    html.Script('''
+        document.addEventListener("DOMContentLoaded", function() {
+            var filtersPanel = document.getElementById('filters-panel');
+            if (window.innerWidth <= 1024) {
+                filtersPanel.style.display = 'flex';
+            } else {
+                filtersPanel.style.display = 'none';
+            }
+        });
+    ''')
 ])
 
 # Variable global para almacenar el último nivel de zoom
@@ -186,20 +207,17 @@ estilo_inicial = 'carto-positron'
      Input('filtro-dias', 'value'),
      Input('filtro-barrios', 'value'),
      Input('search-input', 'value'),
-     Input('cambiar-estilo-mapa', 'n_clicks')]
+     Input('map-style-dropdown', 'value')]
 )
-def update_map(selected_range, selected_features, selected_days, selected_barrios, search_input, n_clicks):
+def update_map(selected_range, selected_features, selected_days, selected_barrios, search_input, estilo):
     global last_zoom
     global estilo_inicial
 
-    estilos = ['carto-positron', 'carto-darkmatter','open-street-map']
-    estilo = estilos[n_clicks % len(estilos)]
-    
     filtered_df = df2[(df2['Rating'] >= selected_range[0]) & (df2['Rating'] <= selected_range[1])]
-    
+
     if search_input and isinstance(search_input, str):
         filtered_df = filtered_df[filtered_df['Nombre'].str.contains(search_input, case=False)]
-    
+
     for feature in selected_features:
         filtered_df = filtered_df[filtered_df[feature] == True]
 
@@ -211,39 +229,37 @@ def update_map(selected_range, selected_features, selected_days, selected_barrio
     if selected_barrios:
         filtered_df = filtered_df[filtered_df['Barrio'].isin(selected_barrios)]
 
-    size = filtered_df['Rating'] * 3.5
-    size = size.where(size != 0, 16)
+    # Definir los colores para cada rango
+    colors = {
+        (0.0, 0.0): '#d73027',       # Rojo para rating 0.0
+        (0.1, 0.9): '#fc8d59',       # Naranja claro para rating 0.1 a 0.9
+        (1.0, 1.9): '#fee08b',       # Amarillo para rating 1.0 a 1.9
+        (2.0, 2.9): '#d9ef8b',       # Verde claro para rating 2.0 a 2.9
+        (3.0, 3.9): '#91cf60',       # Verde para rating 3.0 a 3.9
+        (4.0, 4.4): '#1a9850',       # Verde oscuro para rating 4.0 a 4.4
+        (4.5, 4.9): '#66bd63',       # Verde muy oscuro para rating 4.5 a 4.9
+        (5.0, 5.0): '#006837'        # Verde más oscuro para rating 5.0
+    }
+
+    # Crear una columna de colores en el DataFrame
+    def get_color(rating):
+        for (low, high), color in colors.items():
+            if low <= rating <= high:
+                return color
+        return '#ffffff'  # Blanco por defecto si no se encuentra el rating en los rangos
+
+    filtered_df['color'] = filtered_df['Rating'].apply(get_color)
+
     fig = go.Figure(go.Scattermapbox(
         lat=filtered_df['Latitud'],
         lon=filtered_df['Longitud'],
         mode='markers',
         marker=go.scattermapbox.Marker(
             allowoverlap=True,
-            sizemin=1,
-            size=size,
-            color=filtered_df['Rating'],
-            colorscale='IceFire',
-            showscale=True,
-            colorbar=dict(title=dict(text='Rating', side='top', font=dict(size=12)) ,
-                titleside='right',  # Posición del título
-                tickmode='array',  # Modo de las marcas de graduación
-                tickvals=[1, 2, 3, 4, 5],  # Valores de las marcas de graduación
-                ticktext=['1', '2', '3', '4', '5'],  # Texto de las marcas de graduación
-                ticks='outside',  # Posición de las marcas de graduación
-                len=0.45,  # Longitud de la barra de color
-                thickness=15,  # Grosor de la barra de color
-                tickfont=dict(size=12),  # Tamaño de la fuente de las marcas de graduación
-                bgcolor='rgba(255,255,255,0.5)',  # Fondo de la barra de color (transparente)
-                borderwidth=1,  # Ancho del borde de la barra de color
-                bordercolor='rgba(0, 0, 0, 0)',  # Color del borde de la barra de color (transparente)
-                x=0.5,  # Posición en el eje x
-                y=0.1,  # Posición en el eje y
-                xanchor='center',  # Ancla en el lado izquierdo
-                yanchor='top',  # Ancla en el medio
-                orientation='h'
-            ),
-            cmin=1,
-            cmax=5,
+            #sizemin=3.5,
+            size=8,
+            color=filtered_df['color'],
+            showscale=False
         ),
         text=filtered_df.apply(lambda row: f"<b>{row['Nombre']}<br></b><br><b>Rating:</b> {row['Rating']}<br><b>Cantidad Reviews:</b> {row['Cantidad Reviews']}<br><b>Dirección:</b> {row['Dirección']}", axis=1),
         hoverinfo='text'
