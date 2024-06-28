@@ -19,7 +19,11 @@
         width: 30%; /* Ancho en pantallas un poco más pequeñas */
     }
 }
-
+@media (min-width: 1025px) {
+    .controls-container {
+        display: flex !important; /* Mostrar siempre en dispositivos grandes */
+    }
+}
 @media (max-width: 1024px) {
     .controls-container {
         width: 40%; /* Ancho en tabletas grandes */
