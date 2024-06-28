@@ -256,7 +256,6 @@ def update_map(selected_range, selected_features, selected_days, selected_barrio
         mode='markers',
         marker=go.scattermapbox.Marker(
             allowoverlap=True,
-            #sizemin=3.5,
             size=8,
             color=filtered_df['color'],
             showscale=False
