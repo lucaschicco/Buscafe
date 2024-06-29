@@ -80,6 +80,7 @@ control_containers = {
 }
 
 app.layout = html.Div([
+    html.Link(rel='stylesheet', href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css'),
     dcc.Location(id='url', refresh=True),
     dcc.Store(id='panel-visible', data=False),
     dcc.Store(id='info-visible', data=False),
@@ -141,7 +142,7 @@ app.layout = html.Div([
         ),
         dcc.Dropdown(
             id='filtro-barrios',
-            options=[{'label': nombre, 'value': nombre} for nombre in sorted(df2['Nombre'].unique())],
+            options=[{'label': barrio, 'value': barrio} for barrio in df2['Barrio'].unique()],
             value=[],
             multi=True,
             placeholder="Seleccione barrios...",
@@ -166,8 +167,29 @@ app.layout = html.Div([
                 {'label': 'Modo Oscuro', 'value': 'carto-darkmatter'}
             ],
             value='carto-positron',
+            placeholder="Tipo de mapa",  # Aquí se agrega el placeholder
             className='custom-dropdown',
             style={'color': 'black'}
+        ),
+        html.A(
+            html.I(className="fas fa-envelope"),  # Ícono de sobre de Font Awesome
+            href="mailto:lchicco94@gmail.com",
+            className='contact-button-circle',
+            style={
+                'margin-top': '20px',
+                'display': 'flex',
+                'justify-content': 'center',
+                'align-items': 'center',
+                'width': '40px',
+                'height': '40px',
+                'border': '2px solid #000000',
+                'border-radius': '50%',
+                'background-color': 'rgba(255, 255, 255, 1)',
+                'color': 'black',
+                'text-decoration': 'none',
+                'margin-left': 'auto',
+                'margin-right': 'auto'
+            }
         )
     ], id='filters-panel', className='controls-container'),
     dcc.Graph(id='mapa-cafeterias', className='map-container', style={
@@ -213,6 +235,10 @@ def update_map(selected_range, selected_features, selected_days, selected_barrio
     global last_zoom
     global estilo_inicial
 
+    # Verificar si el valor del estilo es None, si es así, usar un valor por defecto
+    if not estilo:
+        estilo = 'carto-positron'
+
     filtered_df = df2[(df2['Rating'] >= selected_range[0]) & (df2['Rating'] <= selected_range[1])]
 
     if search_input and isinstance(search_input, str):
@@ -256,6 +282,7 @@ def update_map(selected_range, selected_features, selected_days, selected_barrio
         mode='markers',
         marker=go.scattermapbox.Marker(
             allowoverlap=True,
+            #sizemin=3.5,
             size=8,
             color=filtered_df['color'],
             showscale=False
