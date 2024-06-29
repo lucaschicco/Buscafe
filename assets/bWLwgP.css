@@ -9,14 +9,14 @@
     border-radius: 12px;
     padding: 10px;
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.4);
-    display: flex; /* Inicialmente oculto */
+    display: flex; /* Inicialmente visible en dispositivos grandes */
     flex-direction: column;
     gap: 20px;
 }
 
-@media (min-width: 1024px) {
+@media (max-width: 1024px) {
     .controls-container {
-        display: none !important; /* Mostrar siempre en dispositivos grandes */
+        display: none; /* Inicialmente oculto en dispositivos móviles */
     }
 }
 @media (max-width: 1440px) {
