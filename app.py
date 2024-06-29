@@ -82,7 +82,7 @@ control_containers = {
 app.layout = html.Div([
     html.Link(rel='stylesheet', href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css'),
     dcc.Location(id='url', refresh=True),
-    dcc.Store(id='panel-visible', data=False),
+    dcc.Store(id='panel-visible', data=True),  # Cambiar a True para que sea visible en dispositivos grandes
     dcc.Store(id='info-visible', data=False),
     html.Button("Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
@@ -207,10 +207,11 @@ app.layout = html.Div([
     html.Script('''
         document.addEventListener("DOMContentLoaded", function() {
             var filtersPanel = document.getElementById('filters-panel');
-            if (window.innerWidth <= 1024) {
-                filtersPanel.style.display = 'flex';
-            } else {
+            var windowWidth = window.innerWidth;
+            if (windowWidth <= 1024) {
                 filtersPanel.style.display = 'none';
+            } else {
+                filtersPanel.style.display = 'flex';
             }
         });
     ''')
