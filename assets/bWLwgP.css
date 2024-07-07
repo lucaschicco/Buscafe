@@ -400,3 +400,18 @@
 body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .Select-placeholder, .custom-dropdown .Select-value-label, .custom-dropdown .Select-menu, .custom-dropdown .Select-option, .custom-slider, .custom-button, .custom-toggle-button, #info-registro, .marker-tooltip, .contact-button-circle {
     font-family: 'Montserrat', sans-serif;
 }
+
+/* Ajustar el estilo del botón de contacto */
+.contact-button-circle {
+    border: 2px solid #fffff5 !important;
+    color: #194d33 !important;
+    background-color: #fffff5 !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    text-decoration: none;
+    margin: 10px auto; /* Ajusta el margen según sea necesario */
+}
