@@ -4,65 +4,158 @@
     top: 100px;
     left: 10px;
     z-index: 1000;
-    width: 20%; /* Ancho en monitores de computadora y notebooks */
-    background-color: rgba(255, 255, 255, 1);
+    width: 30%; /* Ancho aumentado */
+    height: auto; /* Altura del panel ajustada */
+    background-color: #104547 !important;
+    color: #fffff5 !important;
     border-radius: 12px;
-    padding: 10px;
+    padding: 20px; /* Aumentar el padding para más espacio */
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.4);
-    display: flex; /* Inicialmente visible en dispositivos grandes */
+    display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
-@media (max-width: 1024px) {
-    .controls-container {
-        display: none; /* Inicialmente oculto en dispositivos móviles */
-    }
-}
 @media (max-width: 1440px) {
     .controls-container {
-        width: 30%; /* Ancho en pantallas un poco más pequeñas */
+        width: 40%; /* Ancho en pantallas un poco más pequeñas */
     }
 }
 
 @media (max-width: 1024px) {
     .controls-container {
-        width: 40%; /* Ancho en tabletas grandes */
+        width: 50%; /* Ancho en tabletas grandes */
     }
 }
 
 @media (max-width: 768px) {
     .controls-container {
-        width: 60%; /* Ancho en tabletas */
-        left: 5%;  /* Centrando el panel en dispositivos móviles */
+        width: 70%; /* Ancho en tabletas */
+        left: 5%;  
     }
 }
 
 @media (max-width: 425px) {
     .controls-container {
         width: 85%; /* Ancho en dispositivos móviles más pequeños */
-        left: 5%;  /* Centrando el panel en dispositivos móviles más pequeños */
+        left: 5%;  
     }
 }
 
 @media (max-width: 375px) {
     .controls-container {
         width: 90%; /* Ancho completo en dispositivos móviles más pequeños */
-        left: 2.5%;  /* Centrando el panel en dispositivos móviles más pequeños */
+        left: 2.5%;  
     }
 }
 
 /* Ajustes de tamaño de fuente para dropdowns y inputs */
-.custom-dropdown .Select-control,
-.custom-input {
-    font-size: 0.8em !important; /* Tamaño del texto para pantallas grandes */
-    width: 100%; /* Ancho completo del contenedor */
+.custom-dropdown .Select-control {
+    width: 80% !important; /* Ajusta el ancho según lo necesites */
+    margin: auto; /* Centra los dropdowns */
+    color: #fffff5 !important;
+    background-color: #104547 !important; /* Fondo verde oscuro */
 }
 
 .custom-dropdown .Select-placeholder,
 .custom-dropdown .Select-value-label {
     font-size: 0.8em !important; /* Tamaño del texto para pantallas grandes */
+    color: #fffff5 !important;
 }
+
+.custom-dropdown .Select-menu-outer {
+    left: 50% !important; /* Posiciona el menú desplegable en el centro del contenedor */
+    transform: translateX(-50%) !important; /* Centra el menú desplegable */   
+    background-color: #104547 !important; /* Fondo verde oscuro */
+    color: #fffff5 !important;
+    margin: auto;
+    width: 80% !important; /* Asegúrate de que el menú del dropdown también se ajuste */
+    box-sizing: border-box; /* Incluye el padding y el borde en el ancho total */
+    overflow-x: hidden !important; /* Evitar el desbordamiento horizontal */
+}
+
+.custom-dropdown .Select-menu {
+    width: 100% !important; /* Asegúrate de que el menú del dropdown también se ajuste */
+}
+
+.custom-dropdown .Select-option {
+    background-color: #104547 !important; /* Fondo verde oscuro */
+    color: #fffff5 !important;
+    width: 80% !important;
+}
+
+.custom-dropdown .Select-option.is-selected,
+.custom-dropdown .Select-option.is-focused {
+    background-color: #145a3d !important; /* Fondo verde más oscuro al seleccionar o enfocar */
+    color: #fffff5 !important;
+}
+
+
+
+
+
+
+/* Ajustes de color para otros elementos en el panel de filtros */
+.controls-container .custom-slider .rc-slider-mark-text {
+    color: #fffff5 !important;
+}
+
+.custom-slider {
+    width: 90%; /* Ajusta el ancho del RangeSlider */
+    margin: 0 auto; /* Centra el RangeSlider */
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.custom-slider .rc-slider-track {
+    background-color: #dac69a !important; /* Cambia el color de la pista del RangeSlider */
+}
+
+.custom-slider .rc-slider-handle {
+    border-color: #dac69a !important; /* Cambia el color del controlador del RangeSlider */
+}
+
+.custom-slider .rc-slider-dot {
+    border-color: #dac69a !important; /* Cambia el color de los puntos del RangeSlider */
+}
+
+/* Estilos para el recuadro de colores */
+.color-legend {
+    display: flex;
+    width: 80%;
+    margin: 10px auto 0; /* Ajusta el margen según sea necesario */
+    height: 10px; /* Altura del recuadro */
+}
+
+.color-legend div {
+    height: 100%;
+}
+
+.color-legend .color-1 { 
+    background-color: #ff0000; /* Color rojo para 0 a 0.9 */
+    flex: 1; 
+}
+.color-legend .color-2 { 
+    background-color: #800080; /* Color violeta para 1 a 1.9 */
+    flex: 1; 
+}
+.color-legend .color-3 { 
+    background-color: #00ced1; /* Color celeste para 2 a 2.9 */
+    flex: 1; 
+}
+.color-legend .color-4 { 
+    background-color: #f5deb3; /* Color beige para 3 a 3.9 */
+    flex: 1; 
+}
+.color-legend .color-5 { 
+    background-color: #008000; /* Color verde para 4 a 5 */
+    flex: 1; 
+}
+
+
+
+
+
 
 @media (min-width: 1441px) {
     .custom-dropdown .Select-control,
@@ -81,6 +174,7 @@
         font-size: 1em !important; /* Tamaño del texto para pantallas un poco más pequeñas */
     }
 }
+
 @media (max-width: 1024px) {
     .custom-dropdown .Select-control,
     .custom-dropdown .Select-placeholder,
@@ -114,12 +208,13 @@
     justify-content: center;
     align-items: center;
     font-size: 1em; /* Tamaño de fuente inicial */
-    width: 100%; /* Ancho completo del contenedor */
+    width: 80%; /* Ancho completo del contenedor */
     margin-top: 10px;
     padding: 10px 20px; /* Ajusta el relleno según sea necesario */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: #fffff5 !important;
 }
 
 @media (max-width: 768px) {
@@ -137,14 +232,16 @@
     width: auto; /* Permitir que el ancho del botón se ajuste al contenido */
     margin-top: 10px;
     padding: 8px 16px; /* Ajusta el relleno según sea necesario */
-    background-color: rgba(255, 255, 255, 1); /* Fondo transparente */
-    border: 2px solid #000000; /* Borde negro */
+    background-color: #fffff5 !important; /* Fondo blanco */
+    border: 2px solid #000000 !important; /* Borde negro */
     border-radius: 5px; /* Bordes redondeados */
     position: absolute;
     top: 10px;
     left: 10px;
     z-index: 1000;
+    color: #194d33 !important;
 }
+
 /* Estilo general para el panel de información */
 #info-registro {
     position: absolute;
@@ -228,4 +325,78 @@
     border: none;
     font-size: 1.2em;
     cursor: pointer;
+}
+
+/* Ajustar el estilo del botón de contacto */
+.contact-button-circle {
+    border: 2px solid #fffff5 !important;
+    color: #194d33 !important;
+    background-color: #fffff5 !important;
+}
+
+/* Estilo para el Tooltip del marcador del mapa */
+.marker-tooltip {
+    background: #64b6ac !important;
+    color: #fffff5;
+    border: 2px solid #fffff5 !important;  /* Añadir borde con color */
+    padding: 10px !important;  /* Incrementar padding para mayor tamaño */
+    border-radius: 5px !important;
+    cursor: pointer;
+    box-shadow: none !important;
+    width: auto !important;
+    height: auto !important;
+    font-size: 14px !important;
+}
+
+/* Estilo específico para el nombre en el tooltip */
+.marker-tooltip .nombre {
+    font-weight: bold;
+    color: #2b2b2b;
+    font-size: 16px !important;  /* Tamaño de letra más grande para el nombre */
+    margin-bottom: 2px !important;  /* Margen inferior para separar del siguiente contenido */
+}
+
+/* Ajustar el margen entre elementos del tooltip */
+.marker-tooltip p {
+    margin-bottom: 2px !important;  /* Reducir el margen entre elementos */
+}
+
+/* Estilo específico para las palabras "Reviews" y "Dirección" en negrita */
+.marker-tooltip .bold-text {
+    font-weight: bold !important;
+}
+
+/* Estilo para las estrellas de rating en dorado */
+.marker-tooltip .stars {
+    color: #ffd700;  /* Color dorado */
+    font-size: 14px !important;  /* Aumentar tamaño de fuente */
+}
+
+.marker-tooltip div {
+    margin-bottom: 2px !important;
+    font-size: 14px !important;  /* Aumentar tamaño de fuente */
+}
+
+.marker-tooltip div:last-child {
+    margin-bottom: 0;
+}
+
+.tooltip-header:hover + .tooltip-extra-info {
+    display: block !important;  /* Mostrar información adicional al hacer hover */
+}
+
+/* Hacer que el tooltip no se muestre después de hacer clic */
+.marker-tooltip.clicked {
+    display: none !important;
+}
+
+/* Ocultar el tooltip en dispositivos móviles */
+@media (max-width: 768px) {
+    .marker-tooltip {
+        display: none !important;
+    }
+}
+
+body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .Select-placeholder, .custom-dropdown .Select-value-label, .custom-dropdown .Select-menu, .custom-dropdown .Select-option, .custom-slider, .custom-button, .custom-toggle-button, #info-registro, .marker-tooltip, .contact-button-circle {
+    font-family: 'Montserrat', sans-serif;
 }
