@@ -57,7 +57,7 @@ estilo_info_registro = {
 
 app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
-    dcc.Store(id='panel-visible', data=True),
+    dcc.Store(id='panel-visible', data=False),
     dcc.Store(id='info-visible', data=False),
     html.Button("Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
@@ -354,6 +354,7 @@ def toggle_filters(n_clicks, visible):
         'display': 'flex' if visible else 'none',
         'flex-direction': 'column',
         'gap': '20px',
+        'width':'22%',
         'max-height': '80vh',  # Ajustar altura máxima del panel
         'overflow-y': 'auto'  # Habilitar scroll si el contenido es demasiado largo
     }
