@@ -4,16 +4,18 @@
     top: 100px;
     left: 10px;
     z-index: 1000;
-    width: 30%; /* Ancho aumentado */
-    height: auto; /* Altura del panel ajustada */
+    width: 25%; /* Ancho por defecto en pantallas grandes */
+    height: auto !important; /* Altura del panel ajustada */
     background-color: #104547 !important;
     color: #fffff5 !important;
     border-radius: 12px;
-    padding: 20px; /* Aumentar el padding para más espacio */
+    padding: 10px; /* Aumentar el padding para más espacio */
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.4);
     display: flex;
+    gap: 8px;
     flex-direction: column;
-    gap: 20px;
+    max-height: 80vh;  # Ajustar altura máxima del panel
+    overflow-y: auto;
 }
 
 @media (max-width: 1440px) {
@@ -30,14 +32,21 @@
 
 @media (max-width: 768px) {
     .controls-container {
-        width: 70%; /* Ancho en tabletas */
+        width: 90%; /* Ancho en tabletas */
+        left: 5%;  
+    }
+}
+
+@media (max-width: 430px) {
+    .controls-container {
+        width: 90% !important; /* Ancho en dispositivos móviles más pequeños */
         left: 5%;  
     }
 }
 
 @media (max-width: 425px) {
     .controls-container {
-        width: 85%; /* Ancho en dispositivos móviles más pequeños */
+        width: 90% !important; /* Ancho en dispositivos móviles más pequeños */
         left: 5%;  
     }
 }
@@ -45,7 +54,7 @@
 @media (max-width: 375px) {
     .controls-container {
         width: 90%; /* Ancho completo en dispositivos móviles más pequeños */
-        left: 2.5%;  
+        left: 5%;  
     }
 }
 
@@ -91,10 +100,6 @@
 }
 
 
-
-
-
-
 /* Ajustes de color para otros elementos en el panel de filtros */
 .controls-container .custom-slider .rc-slider-mark-text {
     color: #fffff5 !important;
@@ -119,40 +124,80 @@
     border-color: #dac69a !important; /* Cambia el color de los puntos del RangeSlider */
 }
 
-/* Estilos para el recuadro de colores */
+
+
+
+/* Ajustes de visibilidad y estilo para el recuadro de colores */
 .color-legend {
-    display: flex;
+    display: flex !important; /* Fuerza el display a flex */
     width: 80%;
-    margin: 10px auto 0; /* Ajusta el margen según sea necesario */
+    min-height: 10px !important;
+    margin: 10px auto; /* Ajusta el margen según sea necesario */
     height: 10px; /* Altura del recuadro */
+    visibility: visible !important; /* Fuerza la visibilidad */
+    position: relative; /* Asegúrate de que tenga una posición relativa */
+    z-index: 1001 !important; /* Asegúrate de que esté sobre otros elementos */
+    min-width: 200px;
+    max-width: 80%;
+    background-color: transparent !important; /* Asegúrate de que no tenga fondo que interfiera */
 }
 
 .color-legend div {
     height: 100%;
+    flex: 1;
 }
 
 .color-legend .color-1 { 
-    background-color: #ff0000; /* Color rojo para 0 a 0.9 */
-    flex: 1; 
+    background-color: #ff0000 !important; /* Color rojo para 0 a 0.9 */
 }
 .color-legend .color-2 { 
-    background-color: #800080; /* Color violeta para 1 a 1.9 */
-    flex: 1; 
+    background-color: #800080 !important; /* Color violeta para 1 a 1.9 */
 }
 .color-legend .color-3 { 
-    background-color: #00ced1; /* Color celeste para 2 a 2.9 */
-    flex: 1; 
+    background-color: #00ced1 !important; /* Color celeste para 2 a 2.9 */
 }
 .color-legend .color-4 { 
-    background-color: #f5deb3; /* Color beige para 3 a 3.9 */
-    flex: 1; 
+    background-color: #f5deb3 !important; /* Color beige para 3 a 3.9 */
 }
 .color-legend .color-5 { 
-    background-color: #008000; /* Color verde para 4 a 5 */
-    flex: 1; 
+    background-color: #008000 !important; /* Color verde para 4 a 5 */
 }
 
+/* Asegúrate de que sea visible en dispositivos móviles */
+@media (max-width: 768px) {
+    .color-legend {
+        width: 80% !important; /* Ajusta el ancho según sea necesario */
+        margin: 10px auto; /* Centra el recuadro de colores */
+    }
+}
 
+@media (max-width: 430px) {
+    .color-legend {
+        width: 80% !important; /* Ajusta el ancho según sea necesario */
+        margin: 10px auto; /* Centra el recuadro de colores */
+    }
+}
+
+@media (max-width: 425px) {
+    .color-legend {
+        width: 80% !important; /* Ajusta el ancho según sea necesario */
+        margin: 10px auto; /* Centra el recuadro de colores */
+    }
+}
+
+@media (max-width: 375px) {
+    .color-legend {
+        width: 80% !important; /* Ajusta el ancho según sea necesario */
+        margin: 10px auto; /* Centra el recuadro de colores */
+    }
+}
+
+@media (max-width: 300px) {
+    .color-legend {
+        width: 80% !important; /* Ajusta el ancho según sea necesario */
+        margin: 10px auto; /* Centra el recuadro de colores */
+    }
+}
 
 
 
@@ -210,7 +255,7 @@
     font-size: 1em; /* Tamaño de fuente inicial */
     width: 80%; /* Ancho completo del contenedor */
     margin-top: 10px;
-    padding: 10px 20px; /* Ajusta el relleno según sea necesario */
+    padding: 7px 20px; /* Ajusta el relleno según sea necesario */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
