@@ -343,7 +343,8 @@ def toggle_filters(n_clicks, visible):
         visible = not visible
 
     style = {  # Ajustar altura máxima del panel
-        'overflow-y': 'auto'  # Habilitar scroll si el contenido es demasiado largo
+        'overflow-y': 'auto',
+        'display': 'flex' if visible else 'none',# Habilitar scroll si el contenido es demasiado largo
     }
 
     return style, visible
