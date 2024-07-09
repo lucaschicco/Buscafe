@@ -48,7 +48,7 @@ estilo_info_registro = {
     'width': '15%',
     'border': '2px solid #404040',
     'background-color': 'rgba(255, 255, 255, 1)',
-    'padding': '10px',
+    'padding': '0px',
     'border-radius': '5px',
     'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.5)',
     'z-index': '1000',
@@ -120,7 +120,7 @@ app.layout = html.Div(id="root", children=[
             className='custom-dropdown',
             style={
                 'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
-                'margin-top': '10px'
+                'margin-top': '3px'
             }
         ),
         dcc.Dropdown(
@@ -214,7 +214,7 @@ app.layout = html.Div(id="root", children=[
     html.Div(id='info-registro', children=[
         html.Button('X', id='close-info-button', className='close-info-button', n_clicks=0),
         html.Div(id='info-content')
-    ], style=estilo_info_registro)
+    ],)
 ])
 
 
@@ -342,25 +342,12 @@ def toggle_filters(n_clicks, visible):
     if n_clicks > 0:
         visible = not visible
 
-    style = {
-        'position': 'absolute',
-        'top': '100px',
-        'left': '10px',
-        'z-index': '1000',
-        'background-color': 'rgba(255, 255, 255, 1)',
-        'border-radius': '12px',
-        'padding': '10px',
-        'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.4)',
-        'display': 'flex' if visible else 'none',
-        'flex-direction': 'column',
-        'gap': '20px',
-        'width':'22%',
-        'max-height': '80vh',  # Ajustar altura máxima del panel
+    style = {  # Ajustar altura máxima del panel
         'overflow-y': 'auto'  # Habilitar scroll si el contenido es demasiado largo
     }
-    
-    return style, visible
 
+    return style, visible
+    
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
     app.run_server(debug=False)
