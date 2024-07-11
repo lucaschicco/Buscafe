@@ -10,6 +10,7 @@ from dash import dcc, html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
+from flask_caching import Cache
 
 # Crear la aplicación Dash
 external_stylesheets = [dbc.themes.BOOTSTRAP, 
