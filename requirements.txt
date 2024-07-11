@@ -7,3 +7,4 @@ flask==2.2.5
 gunicorn
 openpyxl==3.0.10
 dash-leaflet==1.0.15
+Flask-Caching==2.2.0
