@@ -4,7 +4,7 @@
     top: 100px;
     left: 10px;
     z-index: 1000;
-    width: 25%; /* Ancho por defecto en pantallas grandes */
+    width: 22%; /* Ancho por defecto en pantallas grandes */
     height: auto !important; /* Altura del panel ajustada */
     background-color: #104547 !important;
     color: #fffff5 !important;
@@ -459,3 +459,24 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     text-decoration: none;
     margin: 10px auto; /* Ajusta el margen según sea necesario */
 }
+
+
+/* assets/styles.css */
+.location-button {
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    z-index: 1000;
+}
+
+.location-button .fas {
+    font-size: 20px;
+}
+
+
