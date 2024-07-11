@@ -11,10 +11,32 @@ from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
-# Cargar los datos
-url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
-response = requests.get(url)
-df2 = pd.read_excel(response.content)
+# Crear la aplicación Dash
+external_stylesheets = [dbc.themes.BOOTSTRAP, 
+                        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+                       'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
+
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+# Asignar la aplicación Dash al objeto 'server'
+server = app.server
+# Configuración del caché
+cache = Cache(app.server, config={
+    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
+    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
+    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
+})
+
+# Función para cargar los datos con caché
+@cache.memoize()
+def load_data():
+    url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
+    response = requests.get(url)
+    df = pd.read_excel(response.content)
+    return df
+
+df2 = load_data()
 
 # Crear una función para analizar los horarios de apertura
 def parse_hours(hours):
@@ -32,14 +54,7 @@ for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sab
 # Eliminar las columnas originales de los días
 df2.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
 
-# Crear la aplicación Dash
-external_stylesheets = [dbc.themes.BOOTSTRAP, 
-                        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-                       'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
-# Asignar la aplicación Dash al objeto 'server'
-server = app.server
 
 estilo_info_registro = {
     'position': 'absolute',
@@ -59,7 +74,10 @@ app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
     dcc.Store(id='panel-visible', data=False),
     dcc.Store(id='info-visible', data=False),
+    dcc.Store(id='current-location-store'),
+    dcc.Store(id='filtered-data'),
     html.Button("Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
+     html.Button(html.I(className="fas fa-location-arrow"), id='location-button', className='location-button', n_clicks=0),
     html.Div([
         html.Div([
             html.Img(src='/assets/buscafes.png', style={'width': '80%', 'height': 'auto', 'margin-bottom': '0px', 'margin-top': '10px'}),
@@ -207,7 +225,8 @@ app.layout = html.Div(id="root", children=[
             style={'width': '100%', 'height': '100vh'},
             children=[
                 dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
-                dl.GeoJSON(id='layer')
+                dl.GeoJSON(id='layer'),
+                dl.LayerGroup(id='current-location')
             ]
         )
     ], style={'position': 'relative', 'height': '100vh'}),
@@ -216,7 +235,6 @@ app.layout = html.Div(id="root", children=[
         html.Div(id='info-content')
     ],)
 ])
-
 
 def format_hours(row):
     days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
@@ -234,45 +252,42 @@ def format_hours(row):
 
 def get_marker_icon(rating):
     if 0 <= rating <= 0.9:
-        return "assets/markrojo.png"
+        return "assets/markrojo.svg"
     elif 1 <= rating <= 1.9:
-        return "assets/markvioleta.png"
+        return "assets/markvioleta.svg"
     elif 2 <= rating <= 2.9:
-        return "assets/markceleste.png"
+        return "assets/markceleste.svg"
     elif 3 <= rating <= 3.9:
-        return "assets/markbeige.png"
+        return "assets/markbeige.svg"
     elif 4 <= rating <= 5:
-        return "assets/markverde.png"
-    return "assets/markrojo.png"  # Default icon if no condition is met
+        return "assets/markverde.svg"
+    return "assets/markrojo.svg"  # Default icon if no condition is met
 
-# Modificar la función update_map para incluir la información en el popup
+
 @app.callback(
-    Output('layer', 'children'),
-    [
-        Input('rating-slider', 'value'),
-        Input('feature-filter', 'value'),
-        Input('filtro-dias', 'value'),
-        Input('filtro-barrios', 'value'),
-        Input('search-input', 'value')
-    ]
+    Output('filtered-data', 'data'),
+    [Input('rating-slider', 'value'), Input('feature-filter', 'value'), Input('filtro-dias', 'value'), Input('filtro-barrios', 'value'), Input('search-input', 'value')]
 )
-def update_map(selected_range, selected_features, selected_days, selected_barrios, search_input):
-    filtered_df = df2[(df2['Rating'] >= selected_range[0]) & (df2['Rating'] <= selected_range[1])]
-
+def filter_data(rating_range, selected_features, selected_days, selected_barrios, search_input):
+    filtered_df = df2[(df2['Rating'] >= rating_range[0]) & (df2['Rating'] <= rating_range[1])]
     if search_input and isinstance(search_input, str):
         filtered_df = filtered_df[filtered_df['Nombre'].str.contains(search_input, case=False)]
-
     for feature in selected_features:
         filtered_df = filtered_df[filtered_df[feature] == True]
-
     for day in selected_days:
         open_column = f'{day}_open'
         close_column = f'{day}_close'
         filtered_df = filtered_df[(~filtered_df[open_column].isna()) & (~filtered_df[close_column].isna())]
-
     if selected_barrios:
         filtered_df = filtered_df[filtered_df['Barrio'].isin(selected_barrios)]
+    return filtered_df.to_dict('records')
 
+@app.callback(
+    Output('layer', 'children'),
+    Input('filtered-data', 'data')
+)
+def update_map(filtered_data):
+    filtered_df = pd.DataFrame(filtered_data)
     def generate_stars(rating):
         full_star = '★'
         empty_star = '☆'
@@ -312,10 +327,7 @@ def update_map(selected_range, selected_features, selected_days, selected_barrio
             ]
         ) for _, row in filtered_df.iterrows()
     ]
-    
     return markers
-
-
 
 @app.callback(
     Output('base-layer', 'url'),
@@ -344,7 +356,7 @@ def toggle_filters(n_clicks, visible):
 
     style = {  # Ajustar altura máxima del panel
         'overflow-y': 'auto',
-        'display': 'flex' if visible else 'none',# Habilitar scroll si el contenido es demasiado largo
+        'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
     }
 
     return style, visible
