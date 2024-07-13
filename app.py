@@ -289,45 +289,27 @@ def filter_data(rating_range, selected_features, selected_days, selected_barrios
 )
 def update_map(filtered_data):
     filtered_df = pd.DataFrame(filtered_data)
+    
     def generate_stars(rating):
         full_star = '★'
         empty_star = '☆'
         return full_star * int(rating) + empty_star * (5 - int(rating))
-
-    markers = [
-        dl.Marker(
+    
+    markers = []
+    for _, row in filtered_df.iterrows():
+        
+        
+        marker = dl.Marker(
             position=[row['Latitud'], row['Longitud']],
             icon={
                 "iconUrl": get_marker_icon(row['Rating']),
                 "iconSize": [20, 20],
                 "iconAnchor": [10, 20],
             },
-            children=[
-                dl.Tooltip(
-                    html.Div([
-                        html.P(row['Nombre'], className='nombre'),  # Clase CSS 'nombre' añadida aquí
-                        html.P(generate_stars(row['Rating']), className='stars'),  # Clase CSS 'stars' añadida aquí
-                        html.P([html.Span("Reviews: ", className='bold-text'), row['Cantidad Reviews']]),
-                        html.P([html.Span("Dirección: ", className='bold-text'), row['Dirección']])
-                    ]),
-                    className='marker-tooltip'
-                ),
-                dl.Popup(
-                    html.Div(
-                        children=[
-                            html.H4(html.U(row['Nombre']), style={'font-family': 'Montserrat', 'font-size': '16px', 'font-weight': 'bold'}),
-                            html.P([html.Strong("Rating: "), str(row['Rating'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                            html.P([html.Strong("Cantidad Reviews: "), str(row['Cantidad Reviews'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                            html.P([html.Strong("Sitio Web: "), html.A(row['Sitio Web'], href=row['Sitio Web'], target="_blank")], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                            html.P([html.Strong("Dirección: "), str(row['Dirección'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                            *format_hours(row)  # Aquí se añade el resultado de format_hours
-                        ],
-                        className='marker-popup'
-                    )
-                )
-            ]
-        ) for _, row in filtered_df.iterrows()
-    ]
+            
+        )
+        markers.append(marker)
+    
     return markers
 
 @app.callback(
