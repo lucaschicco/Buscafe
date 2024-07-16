@@ -15,7 +15,7 @@ from flask_caching import Cache
 # Crear la aplicación Dash
 external_stylesheets = [dbc.themes.BOOTSTRAP, 
                         'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-                        'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
+                       'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # Asignar la aplicación Dash al objeto 'server'
 server = app.server
@@ -25,7 +25,6 @@ cache = Cache(app.server, config={
     'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
     'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
 })
-
 # Función para cargar los datos con caché
 @cache.memoize()
 def load_data():
@@ -33,9 +32,7 @@ def load_data():
     response = requests.get(url)
     df = pd.read_excel(response.content)
     return df
-
 df2 = load_data()
-
 # Crear una función para analizar los horarios de apertura
 def parse_hours(hours):
     if pd.isna(hours):
@@ -44,27 +41,12 @@ def parse_hours(hours):
     open_time = open_time.strip()
     close_time = close_time.strip()
     return pd.to_datetime(open_time, format='%H:%M').strftime('%H:%M'), pd.to_datetime(close_time, format='%H:%M').strftime('%H:%M')
-
 # Aplicar la función a cada columna de día
 for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']:
     df2[[f'{day}_open', f'{day}_close']] = df2[day].apply(lambda x: pd.Series(parse_hours(x)))
-
 # Eliminar las columnas originales de los días
 df2.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
 
-estilo_info_registro = {
-    'position': 'absolute',
-    'top': '60px',
-    'right': '110px',
-    'width': '15%',
-    'border': '2px solid #404040',
-    'background-color': 'rgba(255, 255, 255, 1)',
-    'padding': '0px',
-    'border-radius': '5px',
-    'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.5)',
-    'z-index': '1000',
-    'display': 'none'  # Initially hidden
-}
 
 app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
@@ -221,7 +203,7 @@ app.layout = html.Div(id="root", children=[
             children=[
                 dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
                 dl.LocateControl(locateOptions={'enableHighAccuracy': True}, position='bottomright', showPopup=False),
-                dl.LayerGroup(id='markers-layer'),
+                dl.GeoJSON(id='layer'),
                 dl.LayerGroup(id='current-location')
             ]
         )
@@ -245,7 +227,6 @@ def format_hours(row):
     if all(hour.endswith('None - None') for hour in hours):
         return html.P("Horarios: Sin datos", style={'font-family': 'Montserrat', 'font-size': '14px'})
     return [html.U(html.Strong("Horarios:", style={'font-family': 'Montserrat', 'font-size': '14px'}))] + [html.P(hour.replace('None - None','No abre'), style={'font-family': 'Montserrat', 'font-size': '14px'}) for hour in hours]
-
 def get_marker_icon(rating):
     if 0 <= rating <= 0.9:
         return "assets/markrojo.svg"
@@ -258,66 +239,11 @@ def get_marker_icon(rating):
     elif 4 <= rating <= 5:
         return "assets/markverde.svg"
     return "assets/markrojo.svg"  # Default icon if no condition is met
-
-def create_markers(filtered_df):
-    def generate_stars(rating):
-        full_star = '★'
-        empty_star = '☆'
-        return full_star * int(rating) + empty_star * (5 - int(rating))
-    
-    markers = []
-    for _, row in filtered_df.iterrows():
-        tooltip_content = html.Div([
-            html.P(row['Nombre'], className='nombre'),  
-            html.P(generate_stars(row['Rating']), className='stars'),  
-            html.P([html.Span("Reviews: ", className='bold-text'), row['Cantidad Reviews']]),
-            html.P([html.Span("Dirección: ", className='bold-text'), row['Dirección']])
-        ],
-            className='marker-tooltip'
-                                  )
-        
-        popup_content = html.Div(
-            children=[
-                html.H4(html.U(row['Nombre']), style={'font-family': 'Montserrat', 'font-size': '16px', 'font-weight': 'bold'}),
-                html.P([html.Strong("Rating: "), str(row['Rating'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                html.P([html.Strong("Cantidad Reviews: "), str(row['Cantidad Reviews'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                html.P([html.Strong("Sitio Web: "), html.A(row['Sitio Web'], href=row['Sitio Web'], target="_blank")], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                html.P([html.Strong("Dirección: "), str(row['Dirección'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                *format_hours(row)  
-            ],
-            className='marker-popup'
-        )
-        
-        marker = dl.Marker(
-            position=[row['Latitud'], row['Longitud']],
-            icon={
-                "iconUrl": get_marker_icon(row['Rating']),
-                "iconSize": [20, 20],
-                "iconAnchor": [10, 20],
-            },
-            children=[
-                dl.Tooltip(tooltip_content),
-                dl.Popup(popup_content)
-            ]
-        )
-        markers.append(marker)
-    return markers
-
 @app.callback(
-    [Output('filtered-data', 'data'),
-     Output('filters-panel', 'style'),
-     Output('panel-visible', 'data')],
-    [Input('rating-slider', 'value'),
-     Input('feature-filter', 'value'),
-     Input('filtro-dias', 'value'),
-     Input('filtro-barrios', 'value'),
-     Input('search-input', 'value'),
-     Input('toggle-button', 'n_clicks')],
-    [State('panel-visible', 'data')]
+    Output('filtered-data', 'data'),
+    [Input('rating-slider', 'value'), Input('feature-filter', 'value'), Input('filtro-dias', 'value'), Input('filtro-barrios', 'value'), Input('search-input', 'value')]
 )
-@cache.memoize()
-def filter_data(rating_range, selected_features, selected_days, selected_barrios, search_input, n_clicks, visible):
-    # Filtrar los datos
+def filter_data(rating_range, selected_features, selected_days, selected_barrios, search_input):
     filtered_df = df2[(df2['Rating'] >= rating_range[0]) & (df2['Rating'] <= rating_range[1])]
     if search_input and isinstance(search_input, str):
         filtered_df = filtered_df[filtered_df['Nombre'].str.contains(search_input, case=False)]
@@ -329,31 +255,52 @@ def filter_data(rating_range, selected_features, selected_days, selected_barrios
         filtered_df = filtered_df[(~filtered_df[open_column].isna()) & (~filtered_df[close_column].isna())]
     if selected_barrios:
         filtered_df = filtered_df[filtered_df['Barrio'].isin(selected_barrios)]
-
-    # Manejar la visibilidad del panel
-    if visible is None:
-        visible = False
-    # Solo cambiar la visibilidad si se hace clic en el botón de toggle
-    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-    if 'toggle-button' in changed_id:
-        visible = not visible
-    
-    style = {  # Ajustar altura máxima del panel
-        'overflow-y': 'auto',
-        'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
-    }
-
-    return filtered_df.to_dict('records'), style, visible
-
+    return filtered_df.to_dict('records')
 @app.callback(
-    Output('markers-layer', 'children'),
+    Output('layer', 'children'),
     Input('filtered-data', 'data')
 )
 def update_map(filtered_data):
     filtered_df = pd.DataFrame(filtered_data)
-    markers = create_markers(filtered_df)
+    def generate_stars(rating):
+        full_star = '★'
+        empty_star = '☆'
+        return full_star * int(rating) + empty_star * (5 - int(rating))
+    markers = [
+        dl.Marker(
+            position=[row['Latitud'], row['Longitud']],
+            icon={
+                "iconUrl": get_marker_icon(row['Rating']),
+                "iconSize": [20, 20],
+                "iconAnchor": [10, 20],
+            },
+            children=[
+                dl.Tooltip(
+                    html.Div([
+                        html.P(row['Nombre'], className='nombre'),  # Clase CSS 'nombre' añadida aquí
+                        html.P(generate_stars(row['Rating']), className='stars'),  # Clase CSS 'stars' añadida aquí
+                        html.P([html.Span("Reviews: ", className='bold-text'), row['Cantidad Reviews']]),
+                        html.P([html.Span("Dirección: ", className='bold-text'), row['Dirección']])
+                    ]),
+                    className='marker-tooltip'
+                ),
+                dl.Popup(
+                    html.Div(
+                        children=[
+                            html.H4(html.U(row['Nombre']), style={'font-family': 'Montserrat', 'font-size': '16px', 'font-weight': 'bold'}),
+                            html.P([html.Strong("Rating: "), str(row['Rating'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
+                            html.P([html.Strong("Cantidad Reviews: "), str(row['Cantidad Reviews'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
+                            html.P([html.Strong("Sitio Web: "), html.A(row['Sitio Web'], href=row['Sitio Web'], target="_blank")], style={'font-family': 'Montserrat', 'font-size': '14px'}),
+                            html.P([html.Strong("Dirección: "), str(row['Dirección'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
+                            *format_hours(row)  # Aquí se añade el resultado de format_hours
+                        ],
+                        className='marker-popup'
+                    )
+                )
+            ]
+        ) for _, row in filtered_df.iterrows()
+    ]
     return markers
-
 @app.callback(
     Output('base-layer', 'url'),
     Input('map-style-dropdown', 'value')
@@ -365,6 +312,22 @@ def update_map_style(style):
         'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     }
     return style_urls.get(style, 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+@app.callback(
+    Output('filters-panel', 'style'),
+    Output('panel-visible', 'data'),
+    Input('toggle-button', 'n_clicks'),
+    State('panel-visible', 'data')
+)
+def toggle_filters(n_clicks, visible):
+    if visible is None:
+        visible = False
+    if n_clicks > 0:
+        visible = not visible
+    style = {  # Ajustar altura máxima del panel
+        'overflow-y': 'auto',
+        'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
+    }
+    return style, visible
     
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
