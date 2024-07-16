@@ -27,7 +27,9 @@ cache = Cache(app.server, config={
     'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
 })
 
-df2 = pd.read_excel('C:/Users/Lucas/Documents/base_todos_barrios_vf.xlsx')
+url="https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
+response = requests.get(url)
+df2 = pd.read_excel(response.content)
 
 app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
