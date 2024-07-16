@@ -57,6 +57,12 @@
     }
 }
 
+.leaflet-tooltip {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
 /* Ajustes de tamaño de fuente para dropdowns y inputs */
 .custom-dropdown .Select-control {
     width: 80% !important; /* Ajusta el ancho según lo necesites */
