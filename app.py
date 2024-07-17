@@ -4,19 +4,17 @@
 import requests
 import pandas as pd
 import openpyxl
-import os
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 from flask_caching import Cache
-import polars as pl
 
 # Crear la aplicación Dash
 external_stylesheets = [dbc.themes.BOOTSTRAP, 
                         'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-                        'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
+                       'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # Asignar la aplicación Dash al objeto 'server'
 server = app.server
@@ -26,10 +24,32 @@ cache = Cache(app.server, config={
     'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
     'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
 })
+# Función para cargar los datos con caché
 
-url="https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
-response = requests.get(url)
-df2 = pd.read_excel(response.content)
+@cache.memoize()
+def load_data():
+    url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
+    response = requests.get(url)
+    df = pd.read_excel(response.content)
+    return df
+df2 = load_data()
+
+# Crear una función para analizar los horarios de apertura
+def parse_hours(hours):
+    if pd.isna(hours):
+        return None, None
+    open_time, close_time = hours.split('-')
+    open_time = open_time.strip()
+    close_time = close_time.strip()
+    return pd.to_datetime(open_time, format='%H:%M').strftime('%H:%M'), pd.to_datetime(close_time, format='%H:%M').strftime('%H:%M')
+    
+# Aplicar la función a cada columna de día
+for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']:
+    df2[[f'{day}_open', f'{day}_close']] = df2[day].apply(lambda x: pd.Series(parse_hours(x)))
+    
+# Eliminar las columnas originales de los días
+df2.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
+
 
 app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
@@ -226,6 +246,7 @@ def get_marker_icon(rating):
     Output('filtered-data', 'data'),
     [Input('rating-slider', 'value'), Input('feature-filter', 'value'), Input('filtro-dias', 'value'), Input('filtro-barrios', 'value'), Input('search-input', 'value')]
 )
+@cache.memoize()
 def filter_data(rating_range, selected_features, selected_days, selected_barrios, search_input):
     filtered_df = df2[(df2['Rating'] >= rating_range[0]) & (df2['Rating'] <= rating_range[1])]
     if search_input and isinstance(search_input, str):
@@ -239,19 +260,17 @@ def filter_data(rating_range, selected_features, selected_days, selected_barrios
     if selected_barrios:
         filtered_df = filtered_df[filtered_df['Barrio'].isin(selected_barrios)]
     return filtered_df.to_dict('records')
-    
 @app.callback(
     Output('layer', 'children'),
     Input('filtered-data', 'data')
 )
+@cache.memoize()
 def update_map(filtered_data):
-    filtered_df = pl.DataFrame(filtered_data)
-    
+    filtered_df = pd.DataFrame(filtered_data)
     def generate_stars(rating):
         full_star = '★'
         empty_star = '☆'
         return full_star * int(rating) + empty_star * (5 - int(rating))
-    
     markers = [
         dl.Marker(
             position=[row['Latitud'], row['Longitud']],
@@ -284,10 +303,9 @@ def update_map(filtered_data):
                     )
                 )
             ]
-        ) for row in filtered_df.iter_rows(named=True)
+        ) for _, row in filtered_df.iterrows()
     ]
     return markers
-    
 @app.callback(
     Output('base-layer', 'url'),
     Input('map-style-dropdown', 'value')
@@ -315,6 +333,7 @@ def toggle_filters(n_clicks, visible):
         'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
     }
     return style, visible
+    
     
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
