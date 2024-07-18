@@ -276,7 +276,7 @@ def update_map(filtered_data):
             position=[row['Latitud'], row['Longitud']],
             icon={
                 "iconUrl": get_marker_icon(row['Rating']),
-                "iconSize": [20, 20],
+                "iconSize": [5, 5],
                 "iconAnchor": [10, 20],
             },
             children=[
