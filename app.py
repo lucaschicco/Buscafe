@@ -20,7 +20,8 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 # Configuración del caché
 cache = Cache(app.server, config={
-    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
+    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis,
+    'CACHE_DIR': 'cache-directory',
     'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
 })
 # Función para cargar los datos con caché
