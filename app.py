@@ -21,7 +21,6 @@ server = app.server
 # Configuración del caché
 cache = Cache(app.server, config={
     'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
-    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
     'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
 })
 # Función para cargar los datos con caché
@@ -242,6 +241,60 @@ def get_marker_icon(rating):
     elif 4 <= rating <= 5:
         return "assets/markverde.svg"
     return "assets/markrojo.svg"  # Default icon if no condition is met
+
+# Función para generar datos GeoJSON
+@cache.memoize()
+def generate_geojson(dataframe):
+    features = []
+    for i, row in dataframe.iterrows():
+        properties = {col: row[col] for col in dataframe.columns if col not in ['Latitud', 'Longitud']}
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [row['Longitud'], row['Latitud']]
+            },
+            "properties": properties
+        }
+        features.append(feature)
+    return {
+        "type": "FeatureCollection",
+        "features": features
+    }
+
+# Función para generar un marcador a partir de un GeoJSON feature
+@cache.memoize()
+def generate_marker(feature):
+    properties = feature['properties']
+    tooltip = dl.Tooltip([
+        html.P(properties['Nombre'], className='nombre'),
+        html.P(properties['Rating'], className='stars'),
+        html.P([html.Span("Reviews: ", className='bold-text'), properties['Cantidad Reviews']]),
+        html.P([html.Span("Dirección: ", className='bold-text'), properties['Dirección']])
+    ], className='marker-tooltip')
+
+    popup = dl.Popup([
+        html.H4(html.U(properties['Nombre']), style={'font-family': 'Montserrat', 'font-size': '16px', 'font-weight': 'bold'}),
+        html.P([html.Strong("Rating: "), str(properties['Rating'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
+        html.P([html.Strong("Cantidad Reviews: "), str(properties['Cantidad Reviews'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
+        html.P([html.Strong("Sitio Web: "), html.A(properties['Sitio Web'], href=properties['Sitio Web'], target="_blank")], style={'font-family': 'Montserrat', 'font-size': '14px'}),
+        html.P([html.Strong("Dirección: "), str(properties['Dirección'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
+        *format_hours(properties)
+    ])
+
+    return dl.Marker(
+        position=[feature['geometry']['coordinates'][1], feature['geometry']['coordinates'][0]],
+        icon={
+            'iconUrl': get_marker_icon(properties['Rating']),
+            'iconSize': [15, 20],
+            #'iconAnchor': [2, 5],
+        },
+        children=[tooltip, popup]
+    )
+
+
+
+# Actualiza la función filter_data para retornar GeoJSON
 @app.callback(
     Output('filtered-data', 'data'),
     [Input('rating-slider', 'value'), Input('feature-filter', 'value'), Input('filtro-dias', 'value'), Input('filtro-barrios', 'value'), Input('search-input', 'value')]
@@ -259,53 +312,20 @@ def filter_data(rating_range, selected_features, selected_days, selected_barrios
         filtered_df = filtered_df[(~filtered_df[open_column].isna()) & (~filtered_df[close_column].isna())]
     if selected_barrios:
         filtered_df = filtered_df[filtered_df['Barrio'].isin(selected_barrios)]
-    return filtered_df.to_dict('records')
+    
+    geojson_data = generate_geojson(filtered_df)
+    return geojson_data
+
+# Actualiza la función update_map para usar el GeoJSON
 @app.callback(
     Output('layer', 'children'),
     Input('filtered-data', 'data')
 )
 @cache.memoize()
-def update_map(filtered_data):
-    filtered_df = pd.DataFrame(filtered_data)
-    def generate_stars(rating):
-        full_star = '★'
-        empty_star = '☆'
-        return full_star * int(rating) + empty_star * (5 - int(rating))
-    markers = [
-        dl.Marker(
-            position=[row['Latitud'], row['Longitud']],
-            icon={
-                "iconUrl": get_marker_icon(row['Rating']),
-                "iconSize": [5, 5],
-                "iconAnchor": [10, 20],
-            },
-            children=[
-                dl.Tooltip(
-                    html.Div([
-                        html.P(row['Nombre'], className='nombre'),  # Clase CSS 'nombre' añadida aquí
-                        html.P(generate_stars(row['Rating']), className='stars'),  # Clase CSS 'stars' añadida aquí
-                        html.P([html.Span("Reviews: ", className='bold-text'), row['Cantidad Reviews']]),
-                        html.P([html.Span("Dirección: ", className='bold-text'), row['Dirección']])
-                    ]),
-                    className='marker-tooltip'
-                ),
-                dl.Popup(
-                    html.Div(
-                        children=[
-                            html.H4(html.U(row['Nombre']), style={'font-family': 'Montserrat', 'font-size': '16px', 'font-weight': 'bold'}),
-                            html.P([html.Strong("Rating: "), str(row['Rating'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                            html.P([html.Strong("Cantidad Reviews: "), str(row['Cantidad Reviews'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                            html.P([html.Strong("Sitio Web: "), html.A(row['Sitio Web'], href=row['Sitio Web'], target="_blank")], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                            html.P([html.Strong("Dirección: "), str(row['Dirección'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                            *format_hours(row)  # Aquí se añade el resultado de format_hours
-                        ],
-                        className='marker-popup'
-                    )
-                )
-            ]
-        ) for _, row in filtered_df.iterrows()
-    ]
+def update_map(geojson_data):
+    markers = [generate_marker(feature) for feature in geojson_data["features"]]
     return markers
+  
 @app.callback(
     Output('base-layer', 'url'),
     Input('map-style-dropdown', 'value')
