@@ -245,7 +245,7 @@ def format_hours(row):
     if all(hour.endswith('None - None') for hour in hours):
         return html.P("Horarios: Sin datos", style={'font-family': 'Montserrat', 'font-size': '14px'})
     return [html.U(html.Strong("Horarios:", style={'font-family': 'Montserrat', 'font-size': '14px'}))] + [html.P(hour.replace('None - None','No abre'), style={'font-family': 'Montserrat', 'font-size': '14px'}) for hour in hours]
-
+@cache.memoize()
 def get_marker_icon(rating):
     if 0 <= rating <= 0.9:
         return "assets/markrojo.svg"
@@ -258,7 +258,7 @@ def get_marker_icon(rating):
     elif 4 <= rating <= 5:
         return "assets/markverde.svg"
     return "assets/markrojo.svg"  # Default icon if no condition is met
-
+@cache.memoize()
 def create_markers(filtered_df):
     def generate_stars(rating):
         full_star = '★'
@@ -349,6 +349,7 @@ def filter_data(rating_range, selected_features, selected_days, selected_barrios
     Output('markers-layer', 'children'),
     Input('filtered-data', 'data')
 )
+@cache.memoize()
 def update_map(filtered_data):
     filtered_df = pd.DataFrame(filtered_data)
     markers = create_markers(filtered_df)
