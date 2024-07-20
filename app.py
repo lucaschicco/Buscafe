@@ -11,6 +11,7 @@ from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 from flask_caching import Cache
+import gzip
 
 # Crear la aplicación Dash
 external_stylesheets = [dbc.themes.BOOTSTRAP, 
@@ -26,45 +27,19 @@ cache = Cache(app.server, config={
     'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
 })
 
+# URL del archivo JSON hosteado en un servidor o CDN
+json_url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markers.json'
+
 # Función para cargar los datos con caché
 @cache.memoize()
 def load_data():
-    url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
-    response = requests.get(url)
-    df = pd.read_excel(response.content)
-    return df
+    response = requests.get(json_url)
+    compressed_content = response.content
+    decompressed_content = gzip.decompress(compressed_content)
+    data = json.loads(decompressed_content.decode('utf-8'))
+    return pd.DataFrame(data)
 
 df2 = load_data()
-
-# Crear una función para analizar los horarios de apertura
-def parse_hours(hours):
-    if pd.isna(hours):
-        return None, None
-    open_time, close_time = hours.split('-')
-    open_time = open_time.strip()
-    close_time = close_time.strip()
-    return pd.to_datetime(open_time, format='%H:%M').strftime('%H:%M'), pd.to_datetime(close_time, format='%H:%M').strftime('%H:%M')
-
-# Aplicar la función a cada columna de día
-for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']:
-    df2[[f'{day}_open', f'{day}_close']] = df2[day].apply(lambda x: pd.Series(parse_hours(x)))
-
-# Eliminar las columnas originales de los días
-df2.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
-
-estilo_info_registro = {
-    'position': 'absolute',
-    'top': '60px',
-    'right': '110px',
-    'width': '15%',
-    'border': '2px solid #404040',
-    'background-color': 'rgba(255, 255, 255, 1)',
-    'padding': '0px',
-    'border-radius': '5px',
-    'box-shadow': '0px 0px 10px rgba(0, 0, 0, 0.5)',
-    'z-index': '1000',
-    'display': 'none'  # Initially hidden
-}
 
 app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
@@ -245,6 +220,7 @@ def format_hours(row):
     if all(hour.endswith('None - None') for hour in hours):
         return html.P("Horarios: Sin datos", style={'font-family': 'Montserrat', 'font-size': '14px'})
     return [html.U(html.Strong("Horarios:", style={'font-family': 'Montserrat', 'font-size': '14px'}))] + [html.P(hour.replace('None - None','No abre'), style={'font-family': 'Montserrat', 'font-size': '14px'}) for hour in hours]
+
 @cache.memoize()
 def get_marker_icon(rating):
     if 0 <= rating <= 0.9:
@@ -258,6 +234,7 @@ def get_marker_icon(rating):
     elif 4 <= rating <= 5:
         return "assets/markverde.svg"
     return "assets/markrojo.svg"  # Default icon if no condition is met
+
 @cache.memoize()
 def create_markers(filtered_df):
     def generate_stars(rating):
@@ -366,6 +343,7 @@ def update_map_style(style):
         'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     }
     return style_urls.get(style, 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+
     
     
 # Ejecuta la aplicación Dash
