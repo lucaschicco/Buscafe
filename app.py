@@ -12,6 +12,7 @@ import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 from flask_caching import Cache
 import gzip
+import json
 
 # Crear la aplicación Dash
 external_stylesheets = [dbc.themes.BOOTSTRAP, 
