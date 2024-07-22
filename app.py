@@ -222,19 +222,21 @@ def format_hours(row):
         return html.P("Horarios: Sin datos", style={'font-family': 'Montserrat', 'font-size': '14px'})
     return [html.U(html.Strong("Horarios:", style={'font-family': 'Montserrat', 'font-size': '14px'}))] + [html.P(hour.replace('None - None','No abre'), style={'font-family': 'Montserrat', 'font-size': '14px'}) for hour in hours]
 
+# Modificar la función get_marker_icon para que use URLs de Azure
 @cache.memoize()
 def get_marker_icon(rating):
+    base_url = "https://jsonbuscafe.blob.core.windows.net/contbuscafe/"
     if 0 <= rating <= 0.9:
-        return "assets/markrojo.svg"
+        return base_url + "markrojo.svg"
     elif 1 <= rating <= 1.9:
-        return "assets/markvioleta.svg"
+        return base_url + "markvioleta.svg"
     elif 2 <= rating <= 2.9:
-        return "assets/markceleste.svg"
+        return base_url + "markceleste.svg"
     elif 3 <= rating <= 3.9:
-        return "assets/markbeige.svg"
+        return base_url + "markbeige.svg"
     elif 4 <= rating <= 5:
-        return "assets/markverde.svg"
-    return "assets/markrojo.svg"  # Default icon if no condition is met
+        return base_url + "markverde.svg"
+    return base_url + "markrojo.svg"  # Default icon if no condition is met
 
 @cache.memoize()
 def create_markers(filtered_df):
@@ -344,7 +346,6 @@ def update_map_style(style):
         'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     }
     return style_urls.get(style, 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-
     
     
 # Ejecuta la aplicación Dash
