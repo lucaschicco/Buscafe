@@ -17,8 +17,13 @@ from dash_extensions.javascript import assign
 import dash_leaflet.express as dlx
 
 # Leer el archivo Excel
-file_path = 'C:/Users/Lucas/Downloads/base_todos_barrios_vf.xlsx'
-df = pd.read_excel(file_path)
+@cache.memoize()
+def load_data():
+    url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
+    response = requests.get(url)
+    df = pd.read_excel(response.content)
+    return df
+df = load_data()
 df.Barrio.fillna('sin datos', inplace=True)
 
 # Crear las opciones del dropdown
@@ -282,6 +287,7 @@ app.layout = html.Div(id="root", children=[
      Input('rating-slider', 'value'),
      Input('map-style-dropdown', 'value')]
 )
+@cache.memoize()
 def update_map(features, days, barrios, search, rating, map_style):
     filtered_df = df.copy()
     
@@ -331,6 +337,7 @@ def update_map(features, days, barrios, search, rating, map_style):
     Output('base-layer', 'url'),
     Input('map-style-dropdown', 'value')
 )
+@cache.memoize()
 def update_map_style(map_style):
     style_urls = {
         'open-street-map': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
