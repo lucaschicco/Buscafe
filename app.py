@@ -65,6 +65,21 @@ for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sab
 # Eliminar las columnas originales de los días
 df.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
 
+# Función para determinar la URL del ícono basado en el rating
+def get_icon_url(rating):
+    base_url = "https://jsonbuscafe.blob.core.windows.net/contbuscafe/"
+    if 0 <= rating <= 0.9:
+        return base_url + "markrojo.svg"
+    elif 1 <= rating <= 1.9:
+        return base_url + "markvioleta.svg"
+    elif 2 <= rating <= 2.9:
+        return base_url + "markceleste.svg"
+    elif 3 <= rating <= 3.9:
+        return base_url + "markbeige.svg"
+    elif 4 <= rating <= 5:
+        return base_url + "markverde.svg"
+    return base_url + "markrojo.svg"
+
 def format_hours(row):
     days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
     hours = []
