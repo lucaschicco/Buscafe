@@ -13,34 +13,84 @@ import dash_leaflet as dl
 from flask_caching import Cache
 import gzip
 import json
+from dash_extensions.javascript import assign
+import dash_leaflet.express as dlx
+
+# Leer el archivo Excel
+file_path = 'C:/Users/Lucas/Downloads/base_todos_barrios_vf.xlsx'
+df = pd.read_excel(file_path)
+df.Barrio.fillna('sin datos', inplace=True)
+
+# Crear las opciones del dropdown
+barrios = df['Barrio'].unique()
+dd_options = [dict(value=barrio, label=barrio) for barrio in barrios]
+dd_defaults = [o["value"] for o in dd_options]
+
+## Función para generar estrellas basadas en el rating
+def generate_stars(rating):
+    stars = int(rating)
+    return '★' * stars + '☆' * (5 - stars)
+
+# Crear una función para analizar los horarios de apertura
+def parse_hours(hours):
+    if pd.isna(hours):
+        return None, None
+    open_time, close_time = hours.split('-')
+    open_time = open_time.strip()
+    close_time = close_time.strip()
+    return pd.to_datetime(open_time, format='%H:%M').strftime('%H:%M'), pd.to_datetime(close_time, format='%H:%M').strftime('%H:%M')
+
+# Aplicar la función a cada columna de día
+for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']:
+    df[[f'{day}_open', f'{day}_close']] = df[day].apply(lambda x: pd.Series(parse_hours(x)))
+
+# Eliminar las columnas originales de los días
+df.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
+
+def format_hours(row):
+    days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
+    hours = []
+    for day in days:
+        open_time = row[f'{day}_open']
+        close_time = row[f'{day}_close']
+        if open_time == 'None' and close_time == 'None':
+            hours.append(f"{day}: No abre")
+        else:
+            hours.append(f"{day}: {open_time} - {close_time}")
+    if all(hour.endswith('None - None') for hour in hours):
+        return "Horarios: Sin datos"
+    return ["<strong>Horarios:</strong>"] + [hour.replace('None - None','No abre') for hour in hours]
+
+# Convertir los datos a GeoJSON
+geojson_data = dlx.dicts_to_geojson([{
+    "name": row["Barrio"],
+    "lat": row["Latitud"],
+    "lon": row["Longitud"],
+    "tooltip": f"""
+        <p class='nombre'>{row['Nombre']}</p>
+        <p class='stars'>{generate_stars(row['Rating'])}</p>
+        <p><span class='bold-text'>Reviews: </span>{row['Cantidad Reviews']}</p>
+        <p><span class='bold-text'>Dirección: </span>{row['Dirección']}</p>
+    """,
+    "popup": f"""
+        <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
+        <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
+        <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
+        <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong><a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a></p>
+        <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{row['Dirección']}</p>
+        <div style='font-family: Montserrat; font-size: 14px;'>{' '.join(format_hours(row))}</div>
+    """,
+    "icon_url": get_icon_url(row["Rating"])
+} for _, row in df.iterrows()])
 
 # Crear la aplicación Dash
 external_stylesheets = [dbc.themes.BOOTSTRAP, 
                         'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-                        'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
+                       'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-# Asignar la aplicación Dash al objeto 'server'
-server = app.server
-# Configuración del caché
-cache = Cache(app.server, config={
-    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
-    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
-    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
-})
+# Crear una función JavaScript para filtrar según el barrio
+geojson_filter = assign("function(feature, context){return context.hideout.includes(feature.properties.name);}")
 
-# URL del archivo JSON hosteado en un servidor o CDN
-json_url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markers.json'
-
-# Función para cargar los datos con caché
-@cache.memoize()
-def load_data():
-    response = requests.get(json_url)
-    compressed_content = response.content
-    decompressed_content = gzip.decompress(compressed_content)
-    data = json.loads(decompressed_content.decode('utf-8'))
-    return pd.DataFrame(data)
-
-df2 = load_data()
 
 app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
@@ -96,7 +146,7 @@ app.layout = html.Div(id="root", children=[
         ),
         dcc.Dropdown(
             id='filtro-barrios',
-            options=[{'label': barrio, 'value': barrio} for barrio in df2['Barrio'].unique()],
+            options=[{'label': barrio, 'value': barrio} for barrio in df['Barrio'].unique()],
             value=[],
             multi=True,
             placeholder="Barrios...",
@@ -104,7 +154,7 @@ app.layout = html.Div(id="root", children=[
         ),
         dcc.Dropdown(
             id='search-input',
-            options=[{'label': nombre, 'value': nombre} for nombre in sorted(df2['Nombre'].unique())],
+            options=[{'label': nombre, 'value': nombre} for nombre in sorted(df['Nombre'].unique())],
             placeholder='Buscar cafetería por nombre...',
             className='custom-dropdown',
             style={
@@ -127,12 +177,12 @@ app.layout = html.Div(id="root", children=[
         dcc.RangeSlider(
             tooltip={"placement": "bottom", "always_visible": True},
             id='rating-slider',
-            min=df2['Rating'].min(),
-            max=df2['Rating'].max(),
+            min=df['Rating'].min(),
+            max=df['Rating'].max(),
             step=0.1,
-            marks={str(rating): {'label': str(rating), 'style': {'color': '#fffff5'}} for rating in range(int(df2['Rating'].min()), int(df2['Rating'].max()) + 1)},
-            value=[df2['Rating'].min(), df2['Rating'].max()],
-            className='custom-slider'
+            marks={str(rating): {'label': str(rating), 'style': {'color': '#fffff5'}} for rating in range(int(df['Rating'].min()), int(df['Rating'].max()) + 1)},
+            value=[df['Rating'].min(), df['Rating'].max()],
+            className='custom-slider'     
         ),
         html.Div(className='color-legend', children=[
             html.Div(className='color-1'),
@@ -198,7 +248,21 @@ app.layout = html.Div(id="root", children=[
                 dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
                 dl.LocateControl(locateOptions={'enableHighAccuracy': True}, position='bottomright', showPopup=False),
                 dl.LayerGroup(id='markers-layer'),
-                dl.LayerGroup(id='current-location')
+                dl.LayerGroup(id='current-location'),
+                dl.GeoJSON(data=geojson_data, filter=geojson_filter, hideout=dd_defaults, id="geojson", zoomToBounds=True,
+                           options=dict(pointToLayer=assign(
+                                """function(feature, latlng){
+                                       return L.marker(latlng, {
+                                           icon: L.icon({
+                                               iconUrl: feature.properties.icon_url,
+                                               iconSize: [15, 23],
+                                               iconAnchor: [12, 23],
+                                               popupAnchor: [1, -34],
+                                               shadowSize: [41, 41]
+                                           })
+                                       }).bindTooltip(feature.properties.tooltip, {direction: "top", offset: L.point(0, -20), opacity: 0.9, className: 'marker-tooltip'})
+                                         .bindPopup(feature.properties.popup);
+                                }""")))
             ]
         )
     ], style={'position': 'relative', 'height': '100vh'}),
@@ -208,144 +272,89 @@ app.layout = html.Div(id="root", children=[
     ],)
 ])
 
-def format_hours(row):
-    days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
-    hours = []
-    for day in days:
-        open_time = row[f'{day}_open']
-        close_time = row[f'{day}_close']
-        if open_time == 'None' and close_time == 'None':
-            hours.append(f"{day}: No abre")
-        else:
-            hours.append(f"{day}: {open_time} - {close_time}")
-    if all(hour.endswith('None - None') for hour in hours):
-        return html.P("Horarios: Sin datos", style={'font-family': 'Montserrat', 'font-size': '14px'})
-    return [html.U(html.Strong("Horarios:", style={'font-family': 'Montserrat', 'font-size': '14px'}))] + [html.P(hour.replace('None - None','No abre'), style={'font-family': 'Montserrat', 'font-size': '14px'}) for hour in hours]
-
-# Modificar la función get_marker_icon para que use URLs de Azure
-@cache.memoize()
-def get_marker_icon(rating):
-    base_url = "https://jsonbuscafe.blob.core.windows.net/contbuscafe/"
-    if 0 <= rating <= 0.9:
-        return base_url + "markrojo.svg"
-    elif 1 <= rating <= 1.9:
-        return base_url + "markvioleta.svg"
-    elif 2 <= rating <= 2.9:
-        return base_url + "markceleste.svg"
-    elif 3 <= rating <= 3.9:
-        return base_url + "markbeige.svg"
-    elif 4 <= rating <= 5:
-        return base_url + "markverde.svg"
-    return base_url + "markrojo.svg"  # Default icon if no condition is met
-
-@cache.memoize()
-def create_markers(filtered_df):
-    def generate_stars(rating):
-        full_star = '★'
-        empty_star = '☆'
-        return full_star * int(rating) + empty_star * (5 - int(rating))
-    
-    markers = []
-    for _, row in filtered_df.iterrows():
-        tooltip_content = html.Div([
-            html.P(row['Nombre'], className='nombre'),  
-            html.P(generate_stars(row['Rating']), className='stars'),  
-            html.P([html.Span("Reviews: ", className='bold-text'), row['Cantidad Reviews']]),
-            html.P([html.Span("Dirección: ", className='bold-text'), row['Dirección']])
-        ],
-            className='marker-tooltip'
-                                  )
-        
-        popup_content = html.Div(
-            children=[
-                html.H4(html.U(row['Nombre']), style={'font-family': 'Montserrat', 'font-size': '16px', 'font-weight': 'bold'}),
-                html.P([html.Strong("Rating: "), str(row['Rating'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                html.P([html.Strong("Cantidad Reviews: "), str(row['Cantidad Reviews'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                html.P([html.Strong("Sitio Web: "), html.A(row['Sitio Web'], href=row['Sitio Web'], target="_blank")], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                html.P([html.Strong("Dirección: "), str(row['Dirección'])], style={'font-family': 'Montserrat', 'font-size': '14px'}),
-                *format_hours(row)  
-            ],
-            className='marker-popup'
-        )
-        
-        marker = dl.Marker(
-            position=[row['Latitud'], row['Longitud']],
-            icon={
-                "iconUrl": get_marker_icon(row['Rating']),
-                "iconSize": [20, 20],
-                "iconAnchor": [10, 20],
-            },
-            children=[
-                dl.Tooltip(tooltip_content),
-                dl.Popup(popup_content)
-            ]
-        )
-        markers.append(marker)
-    return markers
-
+# Callback para actualizar la capa del mapa según los filtros
 @app.callback(
-    [Output('filtered-data', 'data'),
-     Output('filters-panel', 'style'),
-     Output('panel-visible', 'data')],
-    [Input('rating-slider', 'value'),
-     Input('feature-filter', 'value'),
+    Output('geojson', 'data'),
+    [Input('feature-filter', 'value'),
      Input('filtro-dias', 'value'),
      Input('filtro-barrios', 'value'),
      Input('search-input', 'value'),
-     Input('toggle-button', 'n_clicks')],
-    [State('panel-visible', 'data')]
+     Input('rating-slider', 'value'),
+     Input('map-style-dropdown', 'value')]
 )
-@cache.memoize()
-def filter_data(rating_range, selected_features, selected_days, selected_barrios, search_input, n_clicks, visible):
-    # Filtrar los datos
-    filtered_df = df2[(df2['Rating'] >= rating_range[0]) & (df2['Rating'] <= rating_range[1])]
-    if search_input and isinstance(search_input, str):
-        filtered_df = filtered_df[filtered_df['Nombre'].str.contains(search_input, case=False)]
-    for feature in selected_features:
-        filtered_df = filtered_df[filtered_df[feature] == True]
-    for day in selected_days:
-        open_column = f'{day}_open'
-        close_column = f'{day}_close'
-        filtered_df = filtered_df[(~filtered_df[open_column].isna()) & (~filtered_df[close_column].isna())]
-    if selected_barrios:
-        filtered_df = filtered_df[filtered_df['Barrio'].isin(selected_barrios)]
-
-    # Manejar la visibilidad del panel
-    if visible is None:
-        visible = False
-    # Solo cambiar la visibilidad si se hace clic en el botón de toggle
-    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-    if 'toggle-button' in changed_id:
-        visible = not visible
+def update_map(features, days, barrios, search, rating, map_style):
+    filtered_df = df.copy()
     
-    style = {  # Ajustar altura máxima del panel
-        'overflow-y': 'auto',
-        'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
-    }
+    # Aplicar los filtros
+    if features:
+        for feature in features:
+            filtered_df = filtered_df[filtered_df[feature] == True]
+    
+    if days:
+        day_filters = [f"{day}_open" for day in days]
+        filtered_df = filtered_df.dropna(subset=day_filters, how='all')
 
-    return filtered_df.to_dict('records'), style, visible
+    if barrios:
+        filtered_df = filtered_df[filtered_df['Barrio'].isin(barrios)]
+    
+    if search:
+        filtered_df = filtered_df[filtered_df['Nombre'].str.contains(search, case=False)]
 
-@app.callback(
-    Output('markers-layer', 'children'),
-    Input('filtered-data', 'data')
-)
-@cache.memoize()
-def update_map(filtered_data):
-    filtered_df = pd.DataFrame(filtered_data)
-    markers = create_markers(filtered_df)
-    return markers
+    if rating:
+        filtered_df = filtered_df[(filtered_df['Rating'] >= rating[0]) & (filtered_df['Rating'] <= rating[1])]
+
+    # Convertir los datos filtrados a GeoJSON
+    geojson_data = dlx.dicts_to_geojson([{
+        "name": row["Barrio"],
+        "lat": row["Latitud"],
+        "lon": row["Longitud"],
+        "tooltip": f"""
+            <p class='nombre'>{row['Nombre']}</p>
+            <p class='stars'>{generate_stars(row['Rating'])}</p>
+            <p><span class='bold-text'>Reviews: </span>{row['Cantidad Reviews']}</p>
+            <p><span class='bold-text'>Dirección: </span>{row['Dirección']}</p>
+        """,
+        "popup": f"""
+            <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong><a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a></p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{row['Dirección']}</p>
+            <div style='font-family: Montserrat; font-size: 14px;'>{' '.join(format_hours(row))}</div>
+        """,
+        "icon_url": get_icon_url(row["Rating"])
+    } for _, row in filtered_df.iterrows()])
+
+    return geojson_data
 
 @app.callback(
     Output('base-layer', 'url'),
     Input('map-style-dropdown', 'value')
 )
-def update_map_style(style):
+def update_map_style(map_style):
     style_urls = {
         'open-street-map': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         'carto-positron': 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
         'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     }
-    return style_urls.get(style, 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    return style_urls[map_style]
+
+@app.callback(
+    Output('filters-panel', 'style'),
+    Output('panel-visible', 'data'),
+    Input('toggle-button', 'n_clicks'),
+    State('panel-visible', 'data')
+)
+def toggle_filters(n_clicks, visible):
+    if visible is None:
+        visible = False
+    if n_clicks > 0:
+        visible = not visible
+    style = {  # Ajustar altura máxima del panel
+        'overflow-y': 'auto',
+        'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
+    }
+    return style, visible
     
     
 # Ejecuta la aplicación Dash
