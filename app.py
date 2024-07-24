@@ -16,6 +16,13 @@ import json
 from dash_extensions.javascript import assign
 import dash_leaflet.express as dlx
 
+external_stylesheets = [dbc.themes.BOOTSTRAP, 
+                        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+                       'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+# Asignar la aplicación Dash al objeto 'server'
+server = app.server
+
 cache = Cache(app.server, config={
     'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
     'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
@@ -94,11 +101,6 @@ geojson_data = dlx.dicts_to_geojson([{
     "icon_url": get_icon_url(row["Rating"])
 } for _, row in df.iterrows()])
 
-# Crear la aplicación Dash
-external_stylesheets = [dbc.themes.BOOTSTRAP, 
-                        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-                       'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # Crear una función JavaScript para filtrar según el barrio
 geojson_filter = assign("function(feature, context){return context.hideout.includes(feature.properties.name);}")
 
