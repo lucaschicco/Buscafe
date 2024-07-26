@@ -96,9 +96,9 @@ geojson_data = dlx.dicts_to_geojson([{
         <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
         <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
         <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
-        <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong><a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a></p>
-        <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{row['Dirección']}</p>
-        <div style='font-family: Montserrat; font-size: 14px;'>{' '.join(format_hours(row))}</div>
+        <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
+        <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
+        <div style='font-family: Montserrat; font-size: 14px;'>{'<br>'.join(format_hours(row))}</div>
     """,
     "icon_url": get_icon_url(row["Rating"])
 } for _, row in df.iterrows()])
@@ -334,7 +334,7 @@ def update_map(features, days, barrios, search, rating, map_style):
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
-             <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
             <div style='font-family: Montserrat; font-size: 14px;'>{'<br>'.join(format_hours(row))}</div>
         """,
         "icon_url": get_icon_url(row["Rating"])
