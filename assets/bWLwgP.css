@@ -19,13 +19,13 @@
 
 @media (max-width: 1440px) {
     .controls-container {
-        width: 40%; /* Ancho en pantallas un poco más pequeñas */
+        width: 30%; /* Ancho en pantallas un poco más pequeñas */
     }
 }
 
 @media (max-width: 1024px) {
     .controls-container {
-        width: 50%; /* Ancho en tabletas grandes */
+        width: 30%; /* Ancho en tabletas grandes */
     }
 }
 
@@ -62,6 +62,7 @@
     background: transparent !important;
     box-shadow: none !important;
 }
+
 
 /* Ajustes de tamaño de fuente para dropdowns y inputs */
 .custom-dropdown .Select-control {
@@ -111,10 +112,10 @@
 }
 
 .custom-slider {
-    width: 90%; /* Ajusta el ancho del RangeSlider */
+    width: 90% !important; /* Ajusta el ancho del RangeSlider */
     margin: 0 auto; /* Centra el RangeSlider */
     margin-top: 0px;
-    margin-bottom: 0px;
+    margin-bottom: 0px !important;
 }
 
 .custom-slider .rc-slider-track {
@@ -144,7 +145,12 @@
     z-index: 1001 !important; /* Asegúrate de que esté sobre otros elementos */
     min-width: 200px;
     max-width: 80%;
+    margin-bottom: 0px !important;
     background-color: transparent !important; /* Asegúrate de que no tenga fondo que interfiera */
+}
+
+.leaflet-control-attribution {
+    display: none !important;
 }
 
 .color-legend div {
@@ -484,6 +490,7 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 .location-button .fas {
     font-size: 20px;
 }
+
 
 
 
