@@ -32,11 +32,12 @@ cache = Cache(app.server, config={
 # Leer el archivo Excel
 @cache.memoize()
 def load_data():
-    url = "https://raw.githubusercontent.com/lucaschicco/MiCafe/main/base_todos_barrios_vf.xlsx"
+    url = "https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf2.xlsx"
     response = requests.get(url)
     df = pd.read_excel(response.content)
     return df
-df = load_data()
+df = load_data() 
+
 df.Barrio.fillna('sin datos', inplace=True)
 
 # Crear las opciones del dropdown
@@ -49,21 +50,6 @@ def generate_stars(rating):
     stars = int(rating)
     return '★' * stars + '☆' * (5 - stars)
 
-# Crear una función para analizar los horarios de apertura
-def parse_hours(hours):
-    if pd.isna(hours):
-        return None, None
-    open_time, close_time = hours.split('-')
-    open_time = open_time.strip()
-    close_time = close_time.strip()
-    return pd.to_datetime(open_time, format='%H:%M').strftime('%H:%M'), pd.to_datetime(close_time, format='%H:%M').strftime('%H:%M')
-
-# Aplicar la función a cada columna de día
-for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']:
-    df[[f'{day}_open', f'{day}_close']] = df[day].apply(lambda x: pd.Series(parse_hours(x)))
-
-# Eliminar las columnas originales de los días
-df.drop(columns=['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'], inplace=True)
 
 # Función para determinar la URL del ícono basado en el rating
 def get_icon_url(rating):
@@ -86,13 +72,14 @@ def format_hours(row):
     for day in days:
         open_time = row[f'{day}_open']
         close_time = row[f'{day}_close']
-        if open_time == 'None' and close_time == 'None':
+        if pd.isna(open_time) and pd.isna(close_time):
             hours.append(f"{day}: No abre")
         else:
-            hours.append(f"{day}: {open_time} - {close_time}")
-    if all(hour.endswith('None - None') for hour in hours):
+            hours.append(f"{day}: {open_time if not pd.isna(open_time) else 'No abre'} - {close_time if not pd.isna(close_time) else 'No abre'}")
+    if all(hour.endswith('No abre') for hour in hours):
         return "Horarios: Sin datos"
-    return ["<strong>Horarios:</strong>"] + [hour.replace('None - None','No abre') for hour in hours]
+    return ["<strong>Horarios:</strong>"] + [hour for hour in hours]
+
 
 # Convertir los datos a GeoJSON
 geojson_data = dlx.dicts_to_geojson([{
@@ -118,7 +105,6 @@ geojson_data = dlx.dicts_to_geojson([{
 
 # Crear una función JavaScript para filtrar según el barrio
 geojson_filter = assign("function(feature, context){return context.hideout.includes(feature.properties.name);}")
-
 
 app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
@@ -277,7 +263,7 @@ app.layout = html.Div(id="root", children=[
                 dl.LocateControl(locateOptions={'enableHighAccuracy': True}, position='bottomright', showPopup=False),
                 dl.LayerGroup(id='markers-layer'),
                 dl.LayerGroup(id='current-location'),
-                dl.GeoJSON(data=geojson_data, filter=geojson_filter, hideout=dd_defaults, id="geojson", zoomToBounds=True,
+                dl.GeoJSON(data=geojson_data, filter=geojson_filter, hideout=dd_defaults, id="geojson", zoomToBounds=False,
                            options=dict(pointToLayer=assign(
                                 """function(feature, latlng){
                                        return L.marker(latlng, {
@@ -310,7 +296,7 @@ app.layout = html.Div(id="root", children=[
      Input('rating-slider', 'value'),
      Input('map-style-dropdown', 'value')]
 )
-@cache.memoize()
+@cache.memoize()    
 def update_map(features, days, barrios, search, rating, map_style):
     filtered_df = df.copy()
     
@@ -347,9 +333,9 @@ def update_map(features, days, barrios, search, rating, map_style):
             <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong><a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a></p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{row['Dirección']}</p>
-            <div style='font-family: Montserrat; font-size: 14px;'>{' '.join(format_hours(row))}</div>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
+             <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
+            <div style='font-family: Montserrat; font-size: 14px;'>{'<br>'.join(format_hours(row))}</div>
         """,
         "icon_url": get_icon_url(row["Rating"])
     } for _, row in filtered_df.iterrows()])
@@ -374,7 +360,7 @@ def update_map_style(map_style):
     Output('panel-visible', 'data'),
     Input('toggle-button', 'n_clicks'),
     State('panel-visible', 'data')
-)
+) 
 def toggle_filters(n_clicks, visible):
     if visible is None:
         visible = False
@@ -384,8 +370,7 @@ def toggle_filters(n_clicks, visible):
         'overflow-y': 'auto',
         'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
     }
-    return style, visible
-    
+    return style, visible    
     
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
