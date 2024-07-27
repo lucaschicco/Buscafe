@@ -23,11 +23,11 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # Asignar la aplicación Dash al objeto 'server'
 server = app.server
 
-#cache = Cache(app.server, config={
-#    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
-#    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
-#    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
-#})
+cache = Cache(app.server, config={
+    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
+    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
+    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
+})
 
 # Leer el archivo Excel
 @cache.memoize()
