@@ -30,7 +30,7 @@ server = app.server
 #})
 
 # Leer el archivo Excel
-#@cache.memoize()
+@cache.memoize()
 def load_data():
     url = "https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf2.xlsx"
     response = requests.get(url)
@@ -77,7 +77,7 @@ def format_hours(row):
         else:
             hours.append(f"{day}: {open_time if not pd.isna(open_time) else 'No abre'} - {close_time if not pd.isna(close_time) else 'No abre'}")
     if all(hour.endswith('No abre') for hour in hours):
-        return "Horarios: Sin datos"
+        return None
     return ["<strong>Horarios:</strong>"] + [hour for hour in hours]
 
 
@@ -98,7 +98,7 @@ geojson_data = dlx.dicts_to_geojson([{
         <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
         <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
         <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
-        <div style='font-family: Montserrat; font-size: 14px;'>{'<br>'.join(format_hours(row))}</div>
+        {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
     """,
     "icon_url": get_icon_url(row["Rating"])
 } for _, row in df.iterrows()])
@@ -296,7 +296,7 @@ app.layout = html.Div(id="root", children=[
      Input('rating-slider', 'value'),
      Input('map-style-dropdown', 'value')]
 )
-#@cache.memoize()    
+@cache.memoize()    
 def update_map(features, days, barrios, search, rating, map_style):
     filtered_df = df.copy()
     
@@ -335,7 +335,7 @@ def update_map(features, days, barrios, search, rating, map_style):
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
-            <div style='font-family: Montserrat; font-size: 14px;'>{'<br>'.join(format_hours(row))}</div>
+            {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
         """,
         "icon_url": get_icon_url(row["Rating"])
     } for _, row in filtered_df.iterrows()])
@@ -346,7 +346,7 @@ def update_map(features, days, barrios, search, rating, map_style):
     Output('base-layer', 'url'),
     Input('map-style-dropdown', 'value')
 )
-#@cache.memoize()
+@cache.memoize()
 def update_map_style(map_style):
     style_urls = {
         'open-street-map': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
