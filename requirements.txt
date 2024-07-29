@@ -9,4 +9,4 @@ openpyxl
 dash-leaflet
 Flask-Caching
 dash-extensions
-setuptools==70.0.0
+setuptools==58.0.0
