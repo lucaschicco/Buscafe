@@ -330,7 +330,7 @@ def update_map(bounds, zoom, features, days, barrios, search, rating):
 
     # Reducir la cantidad de registros según el nivel de zoom
     if zoom < 15:
-        filtered_df = filtered_df.sample(frac=0.5)
+        filtered_df = filtered_df.sample(frac=0.3)
 
     # Convertir los datos filtrados a GeoJSON
     geojson_data = dlx.dicts_to_geojson([{
