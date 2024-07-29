@@ -258,12 +258,13 @@ app.layout = html.Div(id="root", children=[
             zoom=13,
             zoomControl=False,
             style={'width': '100%', 'height': '100vh'},
+            id='map',
             children=[
                 dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
                 dl.LocateControl(locateOptions={'enableHighAccuracy': True}, position='bottomright', showPopup=False),
                 dl.LayerGroup(id='markers-layer'),
                 dl.LayerGroup(id='current-location'),
-                dl.GeoJSON(data=geojson_data, filter=geojson_filter, hideout=dd_defaults, id="geojson", zoomToBounds=False,
+                dl.GeoJSON(id='geojson', data=geojson_data, filter=geojson_filter, hideout=dd_defaults, zoomToBounds=False,
                            options=dict(pointToLayer=assign(
                                 """function(feature, latlng){
                                        return L.marker(latlng, {
@@ -289,34 +290,47 @@ app.layout = html.Div(id="root", children=[
 # Callback para actualizar la capa del mapa según los filtros
 @app.callback(
     Output('geojson', 'data'),
-    [Input('feature-filter', 'value'),
+    [Input('map', 'bounds'),
+     Input('map', 'zoom'),
+     Input('feature-filter', 'value'),
      Input('filtro-dias', 'value'),
      Input('filtro-barrios', 'value'),
      Input('search-input', 'value'),
-     Input('rating-slider', 'value'),
-     Input('map-style-dropdown', 'value')]
+     Input('rating-slider', 'value')]
 )
-@cache.memoize()    
-def update_map(features, days, barrios, search, rating, map_style):
+def update_map(bounds, zoom, features, days, barrios, search, rating):
     filtered_df = df.copy()
-    
+
     # Aplicar los filtros
     if features:
         for feature in features:
             filtered_df = filtered_df[filtered_df[feature] == True]
-    
+
     if days:
         day_filters = [f"{day}_open" for day in days]
         filtered_df = filtered_df.dropna(subset=day_filters, how='all')
 
     if barrios:
         filtered_df = filtered_df[filtered_df['Barrio'].isin(barrios)]
-    
+
     if search:
         filtered_df = filtered_df[filtered_df['Nombre'].str.contains(search, case=False)]
 
     if rating:
         filtered_df = filtered_df[(filtered_df['Rating'] >= rating[0]) & (filtered_df['Rating'] <= rating[1])]
+
+    # Filtrar los datos según los límites visibles del mapa
+    if bounds:
+        south_west = bounds[0]
+        north_east = bounds[1]
+        filtered_df = filtered_df[
+            (filtered_df['Latitud'] >= south_west[0]) & (filtered_df['Latitud'] <= north_east[0]) &
+            (filtered_df['Longitud'] >= south_west[1]) & (filtered_df['Longitud'] <= north_east[1])
+        ]
+
+    # Reducir la cantidad de registros según el nivel de zoom
+    if zoom < 15:
+        filtered_df = filtered_df.sample(frac=0.5)
 
     # Convertir los datos filtrados a GeoJSON
     geojson_data = dlx.dicts_to_geojson([{
@@ -334,7 +348,7 @@ def update_map(features, days, barrios, search, rating, map_style):
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
             <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
+             <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
             {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
         """,
         "icon_url": get_icon_url(row["Rating"])
