@@ -269,7 +269,8 @@ app.layout = html.Div(id="root", children=[
             id='map',
             children=[
                 dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
-                dl.LocateControl(locateOptions={'enableHighAccuracy': True}, position='bottomright', showPopup=False),
+                dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': True}, position='topright', showPopup=False),
+                dl.ZoomControl(position='topright'),
                 dl.GeoJSON(id='geojson', data=geojson_data, cluster=True,superClusterOptions={"radius": 30, "maxZoom": 13}, zoomToBounds=False, options=dict(pointToLayer=assign(
                     """function(feature, latlng){
                            return L.marker(latlng, {
