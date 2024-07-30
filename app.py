@@ -112,13 +112,12 @@ app.layout = html.Div(id="root", children=[
     dcc.Store(id='info-visible', data=False),
     dcc.Store(id='current-location-store'),
     dcc.Store(id='filtered-data'),
-    dcc.Store(id='sampled-data', data=[]),
     html.Button("Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
         html.Div([
-            html.Img(src='/assets/buscafes.png', style={'width': '80%', 'height': 'auto', 'marginBottom': '0px', 'marginTop': '10px'}),
-            html.Hr(style={'borderTop': '2px solid #fffff5', 'width': '80%', 'margin': '10px auto'})  # Línea blanca superior
-        ], style={'display': 'flex', 'alignItems': 'center', 'flexDirection': 'column'}),
+            html.Img(src='/assets/buscafes.png', style={'width': '80%', 'height': 'auto', 'margin-bottom': '0px', 'margin-top': '10px'}),
+            html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': '10px auto'})  # Línea blanca superior
+        ], style={'display': 'flex', 'align-items': 'center', 'flex-direction': 'column'}),
         dcc.Dropdown(
             id='feature-filter',
             options=[
@@ -173,8 +172,8 @@ app.layout = html.Div(id="root", children=[
             placeholder='Buscar cafetería por nombre...',
             className='custom-dropdown',
             style={
-                'boxShadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
-                'marginTop': '3px'
+                'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
+                'margin-top': '3px'
             }
         ),
         dcc.Dropdown(
@@ -188,7 +187,7 @@ app.layout = html.Div(id="root", children=[
             placeholder="Tipo de mapa",
             className='custom-dropdown'
         ),
-        html.Label("RATING", style={'color': '#fffff5', 'fontWeight': 'bold', 'marginTop': '5px','marginBottom': '5px', 'width': '80%', 'marginLeft': 'auto', 'marginRight': 'auto'}),
+        html.Label("RATING", style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px','margin-bottom': '5px', 'width': '80%', 'margin-left': 'auto', 'margin-right': 'auto'}),
         dcc.RangeSlider(
             tooltip={"placement": "bottom", "always_visible": True},
             id='rating-slider',
@@ -207,27 +206,27 @@ app.layout = html.Div(id="root", children=[
             html.Div(className='color-5')
         ]),
         html.Div(id='output-container-slider'),
-        html.Hr(style={'borderTop': '2px solid #fffff5', 'width': '80%', 'margin': 'auto'}),  # Línea blanca inferior
+        html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': 'auto'}),  # Línea blanca inferior
         html.Div([
             html.A(
                 html.I(className="fas fa-envelope"),
                 href="mailto:buscafes.ai@gmail.com",
                 className='contact-button-circle',
                 style={
-                    'marginTop': '0px',
-                    'marginBottom': '10px',
+                    'margin-top': '0px',
+                    'margin-bottom': '10px',
                     'display': 'flex',
-                    'justifyContent': 'center',
-                    'alignItems': 'center',
+                    'justify-content': 'center',
+                    'align-items': 'center',
                     'width': '40px',
                     'height': '40px',
                     'border': '2px solid #fffff5',
-                    'borderRadius': '50%',
-                    'backgroundColor': 'rgba(255, 255, 255, 1)',
+                    'border-radius': '50%',
+                    'background-color': 'rgba(255, 255, 255, 1)',
                     'color': '#194d33',
-                    'textDecoration': 'none',
-                    'marginLeft': 'auto',
-                    'marginRight': '10px'
+                    'text-decoration': 'none',
+                    'margin-left': 'auto',
+                    'margin-right': '10px'
                 }
             ),
             html.A(
@@ -235,23 +234,23 @@ app.layout = html.Div(id="root", children=[
                 href="https://www.instagram.com/lucas.chicco",
                 className='contact-button-circle',
                 style={
-                    'marginTop': '0px',
-                    'marginBottom': '10px',
+                    'margin-top': '0px',
+                    'margin-bottom': '10px',
                     'display': 'flex',
-                    'justifyContent': 'center',
-                    'alignItems': 'center',
+                    'justify-content': 'center',
+                    'align-items': 'center',
                     'width': '40px',
                     'height': '40px',
                     'border': '2px solid #fffff5',
-                    'borderRadius': '50%',
-                    'backgroundColor': 'rgba(255, 255, 255, 1)',
+                    'border-radius': '50%',
+                    'background-color': 'rgba(255, 255, 255, 1)',
                     'color': '#194d33',
-                    'textDecoration': 'none',
-                    'marginLeft': '10px',
-                    'marginRight': 'auto'
+                    'text-decoration': 'none',
+                    'margin-left': '10px',
+                    'margin-right': 'auto'
                 }
             )
-        ], style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center'}),
+        ], style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}),
     ], id='filters-panel', className='controls-container'),
     html.Div([
         dl.Map(
@@ -290,19 +289,19 @@ app.layout = html.Div(id="root", children=[
 
 # Callback para actualizar la capa del mapa según los filtros
 @app.callback(
-    [Output('geojson', 'data'), Output('sampled-data', 'data')],
+    Output('geojson', 'data'),
     [Input('map', 'bounds'),
      Input('map', 'zoom'),
      Input('feature-filter', 'value'),
      Input('filtro-dias', 'value'),
      Input('filtro-barrios', 'value'),
      Input('search-input', 'value'),
-     Input('rating-slider', 'value')],
-    [State('sampled-data', 'data')]
+     Input('rating-slider', 'value')]
 )
-def update_map(bounds, zoom, features, days, barrios, search, rating, sampled_data):
+def update_map(bounds, zoom, features, days, barrios, search, rating):
     filtered_df = df.copy()
 
+    # Aplicar los filtros
     if features:
         for feature in features:
             filtered_df = filtered_df[filtered_df[feature] == True]
@@ -320,6 +319,7 @@ def update_map(bounds, zoom, features, days, barrios, search, rating, sampled_da
     if rating:
         filtered_df = filtered_df[(filtered_df['Rating'] >= rating[0]) & (filtered_df['Rating'] <= rating[1])]
 
+    # Filtrar los datos según los límites visibles del mapa
     if bounds:
         south_west = bounds[0]
         north_east = bounds[1]
@@ -328,15 +328,11 @@ def update_map(bounds, zoom, features, days, barrios, search, rating, sampled_da
             (filtered_df['Longitud'] >= south_west[1]) & (filtered_df['Longitud'] <= north_east[1])
         ]
 
+    # Reducir la cantidad de registros según el nivel de zoom
     if zoom < 15:
-        if not sampled_data:
-            sampled_df = filtered_df.sample(frac=0.3)
-            sampled_data = sampled_df.to_dict('records')
-        else:
-            sampled_df = pd.DataFrame(sampled_data)
-    else:
-        sampled_df = filtered_df
+        filtered_df = filtered_df.sample(frac=0.3)
 
+    # Convertir los datos filtrados a GeoJSON
     geojson_data = dlx.dicts_to_geojson([{
         "name": row["Barrio"],
         "lat": row["Latitud"],
@@ -356,9 +352,9 @@ def update_map(bounds, zoom, features, days, barrios, search, rating, sampled_da
             {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
         """,
         "icon_url": get_icon_url(row["Rating"])
-    } for _, row in sampled_df.iterrows()])
+    } for _, row in filtered_df.iterrows()])
 
-    return geojson_data, sampled_data
+    return geojson_data
 
 @app.callback(
     Output('base-layer', 'url'),
@@ -388,7 +384,7 @@ def toggle_filters(n_clicks, visible):
         'overflow-y': 'auto',
         'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
     }
-    return style, visible    
+    return style, visible      
     
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
