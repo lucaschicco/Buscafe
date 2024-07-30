@@ -27,18 +27,18 @@ external_stylesheets = [
 external_scripts = [
     'https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js'
 ]
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
 # Asignar la aplicación Dash al objeto 'server'
 server = app.server
 
-cache = Cache(app.server, config={
-    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
-    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
-    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
-})
+#cache = Cache(app.server, config={
+#    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
+#    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
+#    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
+#})
 
 # Leer el archivo Excel
-@cache.memoize()
+#@cache.memoize()
 def load_data():
     url = "https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf2.xlsx"
     response = requests.get(url)
@@ -302,6 +302,7 @@ app.layout = html.Div(id="root", children=[
      Input('search-input', 'value'),
      Input('rating-slider', 'value')]
 )
+#@cache.memoize()
 def update_map(features, days, barrios, search, rating):
     filtered_df = df.copy()
 
@@ -351,7 +352,7 @@ def update_map(features, days, barrios, search, rating):
     Output('base-layer', 'url'),
     Input('map-style-dropdown', 'value')
 )
-@cache.memoize()
+#@cache.memoize()
 def update_map_style(map_style):
     style_urls = {
         'open-street-map': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
