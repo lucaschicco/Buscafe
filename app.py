@@ -16,9 +16,17 @@ import json
 from dash_extensions.javascript import assign
 import dash_leaflet.express as dlx
 
-external_stylesheets = [dbc.themes.BOOTSTRAP, 
-                        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-                       'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap']
+external_stylesheets = [
+    dbc.themes.BOOTSTRAP,
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+    'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap',
+    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css',
+    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css'
+]
+
+external_scripts = [
+    'https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js'
+]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # Asignar la aplicación Dash al objeto 'server'
 server = app.server
@@ -111,7 +119,7 @@ app.layout = html.Div(id="root", children=[
     dcc.Store(id='panel-visible', data=False),
     dcc.Store(id='info-visible', data=False),
     dcc.Store(id='current-location-store'),
-    dcc.Store(id='filtered-data'),
+    dcc.Store(id='filtered-data', data=df.to_dict('records')),
     html.Button("Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
         html.Div([
@@ -262,22 +270,20 @@ app.layout = html.Div(id="root", children=[
             children=[
                 dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
                 dl.LocateControl(locateOptions={'enableHighAccuracy': True}, position='bottomright', showPopup=False),
-                dl.LayerGroup(id='markers-layer'),
-                dl.LayerGroup(id='current-location'),
-                dl.GeoJSON(id='geojson', data=geojson_data, filter=geojson_filter, hideout=dd_defaults, zoomToBounds=False,
-                           options=dict(pointToLayer=assign(
-                                """function(feature, latlng){
-                                       return L.marker(latlng, {
-                                           icon: L.icon({
-                                               iconUrl: feature.properties.icon_url,
-                                               iconSize: [15, 23],
-                                               iconAnchor: [12, 23],
-                                               popupAnchor: [1, -34],
-                                               shadowSize: [41, 41]
-                                           })
-                                       }).bindTooltip(feature.properties.tooltip, {direction: "top", offset: L.point(0, -20), opacity: 0.9, className: 'marker-tooltip'})
-                                         .bindPopup(feature.properties.popup);
-                                }""")))
+                dl.GeoJSON(id='geojson', data=geojson_data, cluster=True,superClusterOptions={"radius": 30, "maxZoom": 13}, zoomToBounds=False, options=dict(pointToLayer=assign(
+                    """function(feature, latlng){
+                           return L.marker(latlng, {
+                               icon: L.icon({
+                                   iconUrl: feature.properties.icon_url,
+                                   iconSize: [15, 23],
+                                   iconAnchor: [12, 23],
+                                   popupAnchor: [1, -34],
+                                   shadowSize: [41, 41]
+                               })
+                           }).bindTooltip(feature.properties.tooltip, {direction: "top", offset: L.point(0, -20), opacity: 0.9, className: 'marker-tooltip'})
+                             .bindPopup(feature.properties.popup);
+                    }"""
+                )))
             ]
         )
     ], style={'position': 'relative', 'height': '100vh'}),
@@ -290,15 +296,13 @@ app.layout = html.Div(id="root", children=[
 # Callback para actualizar la capa del mapa según los filtros
 @app.callback(
     Output('geojson', 'data'),
-    [Input('map', 'bounds'),
-     Input('map', 'zoom'),
-     Input('feature-filter', 'value'),
+    [     Input('feature-filter', 'value'),
      Input('filtro-dias', 'value'),
      Input('filtro-barrios', 'value'),
      Input('search-input', 'value'),
      Input('rating-slider', 'value')]
 )
-def update_map(bounds, zoom, features, days, barrios, search, rating):
+def update_map(features, days, barrios, search, rating):
     filtered_df = df.copy()
 
     # Aplicar los filtros
@@ -318,19 +322,6 @@ def update_map(bounds, zoom, features, days, barrios, search, rating):
 
     if rating:
         filtered_df = filtered_df[(filtered_df['Rating'] >= rating[0]) & (filtered_df['Rating'] <= rating[1])]
-
-    # Filtrar los datos según los límites visibles del mapa
-    if bounds:
-        south_west = bounds[0]
-        north_east = bounds[1]
-        filtered_df = filtered_df[
-            (filtered_df['Latitud'] >= south_west[0]) & (filtered_df['Latitud'] <= north_east[0]) &
-            (filtered_df['Longitud'] >= south_west[1]) & (filtered_df['Longitud'] <= north_east[1])
-        ]
-
-    # Reducir la cantidad de registros según el nivel de zoom
-    if zoom < 15:
-        filtered_df = filtered_df.sample(frac=0.3)
 
     # Convertir los datos filtrados a GeoJSON
     geojson_data = dlx.dicts_to_geojson([{
