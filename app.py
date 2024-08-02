@@ -275,25 +275,18 @@ app.layout = html.Div(id="root", children=[
                     dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': True}, position='topright', showPopup=False),
                     dl.ZoomControl(position='topright'),
                     dl.GeoJSON(id='geojson', data=geojson_data, cluster=False, superClusterOptions={"radius": 30, "maxZoom": 13}, zoomToBounds=False, options=dict(pointToLayer=assign(
-                        """function(feature, latlng) {
-                            var isMobile = window.innerWidth <= 768;
-                            var tooltipOptions = isMobile ? {} : {direction: "top", offset: L.point(0, -20), opacity: 0.9, className: 'marker-tooltip'};
-                            var marker = L.marker(latlng, {
-                                icon: L.icon({
-                                    iconUrl: feature.properties.icon_url,
-                                    iconSize: [15, 23],
-                                    iconAnchor: [12, 23],
-                                    popupAnchor: [1, -34],
-                                    shadowSize: [41, 41]
-                                })
-                            }).bindPopup(feature.properties.popup);
-                            
-                            if (!isMobile) {
-                                marker.bindTooltip(feature.properties.tooltip, tooltipOptions);
-                            }
-                            
-                            return marker;
-                        }"""
+                        """function(feature, latlng){
+                           return L.marker(latlng, {
+                               icon: L.icon({
+                                   iconUrl: feature.properties.icon_url,
+                                   iconSize: [15, 23],
+                                   iconAnchor: [12, 23],
+                                   popupAnchor: [1, -34],
+                                   shadowSize: [41, 41]
+                               })
+                           }).bindTooltip(feature.properties.tooltip, {direction: "top", offset: L.point(0, -20), opacity: 0.9, className: 'marker-tooltip'})
+                             .bindPopup(feature.properties.popup);
+                    }"""
                     )))
                 ]
             )
