@@ -120,7 +120,7 @@ app.layout = html.Div(id="root", children=[
     dcc.Store(id='info-visible', data=False),
     dcc.Store(id='current-location-store'),
     dcc.Store(id='filtered-data', data=df.to_dict('records')),
-    html.Button("Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
+    html.Button("Mostrar/Ocultar Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
         html.Div([
             html.Img(src='/assets/buscafes.png', style={'width': '80%', 'height': 'auto', 'margin-bottom': '0px', 'margin-top': '10px'}),
@@ -260,34 +260,47 @@ app.layout = html.Div(id="root", children=[
             )
         ], style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}),
     ], id='filters-panel', className='controls-container'),
-    html.Div([
-        dl.Map(
-            center=[-34.620000, -58.440000],
-            zoom=13,
-            zoomControl=False,
-            style={'width': '100%', 'height': '100vh'},
-            id='map',
-            children=[
-                dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
-                dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': True}, position='topright', showPopup=False),
-                dl.ZoomControl(position='topright'),
-                dl.GeoJSON(id='geojson', data=geojson_data, cluster=False,superClusterOptions={"radius": 30, "maxZoom": 13}, zoomToBounds=False, options=dict(pointToLayer=assign(
-                    """function(feature, latlng){
-                           return L.marker(latlng, {
-                               icon: L.icon({
-                                   iconUrl: feature.properties.icon_url,
-                                   iconSize: [15, 23],
-                                   iconAnchor: [12, 23],
-                                   popupAnchor: [1, -34],
-                                   shadowSize: [41, 41]
-                               })
-                           }).bindTooltip(feature.properties.tooltip, {direction: "top", offset: L.point(0, -20), opacity: 0.9, className: 'marker-tooltip'})
-                             .bindPopup(feature.properties.popup);
-                    }"""
-                )))
-            ]
-        )
-    ], style={'position': 'relative', 'height': '100vh'}),
+    dcc.Loading(
+        id="loading-spinner",
+        type="default",
+        children=[
+            dl.Map(
+                center=[-34.620000, -58.440000],
+                zoom=13,
+                zoomControl=False,
+                style={'width': '100%', 'height': '100vh'},
+                id='map',
+                children=[
+                    dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
+                    dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': True}, position='topright', showPopup=False),
+                    dl.ZoomControl(position='topright'),
+                    dl.GeoJSON(id='geojson', data=geojson_data, cluster=False, superClusterOptions={"radius": 30, "maxZoom": 13}, zoomToBounds=False, options=dict(pointToLayer=assign(
+                        """function(feature, latlng) {
+                            var isMobile = window.innerWidth <= 768;
+                            var tooltipOptions = isMobile ? {} : {direction: "top", offset: L.point(0, -20), opacity: 0.9, className: 'marker-tooltip'};
+                            var marker = L.marker(latlng, {
+                                icon: L.icon({
+                                    iconUrl: feature.properties.icon_url,
+                                    iconSize: [15, 23],
+                                    iconAnchor: [12, 23],
+                                    popupAnchor: [1, -34],
+                                    shadowSize: [41, 41]
+                                })
+                            }).bindPopup(feature.properties.popup);
+                            
+                            if (!isMobile) {
+                                marker.bindTooltip(feature.properties.tooltip, tooltipOptions);
+                            }
+                            
+                            return marker;
+                        }"""
+                    )))
+                ]
+            )
+        ],
+        custom_spinner=html.Div(["Cargando Cafeterías...", dbc.Spinner(color="primary")], className="custom-spinner"),
+        fullscreen=True,
+    ),
     html.Div(id='info-registro', children=[
         html.Button('X', id='close-info-button', className='close-info-button', n_clicks=0),
         html.Div(id='info-content')
