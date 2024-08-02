@@ -70,6 +70,7 @@
     margin: auto; /* Centra los dropdowns */
     color: #fffff5 !important;
     background-color: #104547 !important; /* Fondo verde oscuro */
+    z-index: 1001 !important;
 }
 
 .custom-dropdown .Select-placeholder,
@@ -87,6 +88,7 @@
     width: 80% !important; /* Asegúrate de que el menú del dropdown también se ajuste */
     box-sizing: border-box; /* Incluye el padding y el borde en el ancho total */
     overflow-x: hidden !important; /* Evitar el desbordamiento horizontal */
+    z-index: 1000 !important;
 }
 
 .custom-dropdown .Select-menu {
@@ -142,7 +144,7 @@
     height: 10px; /* Altura del recuadro */
     visibility: visible !important; /* Fuerza la visibilidad */
     position: relative; /* Asegúrate de que tenga una posición relativa */
-    z-index: 1001 !important; /* Asegúrate de que esté sobre otros elementos */
+    z-index: 1 !important; /* Asegúrate de que esté sobre otros elementos */
     min-width: 200px;
     max-width: 80%;
     margin-bottom: 0px !important;
@@ -284,15 +286,16 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 75%; /* Tamaño de fuente más pequeño relativo al tamaño de la pantalla */
+    font-size: 80%; /* Tamaño de fuente más pequeño relativo al tamaño de la pantalla */
     width: auto; /* Permitir que el ancho del botón se ajuste al contenido */
     margin-top: 10px;
     padding: 8px 16px; /* Ajusta el relleno según sea necesario */
     background-color: #fffff5 !important; /* Fondo blanco */
     border: 2px solid #000000 !important; /* Borde negro */
     border-radius: 5px; /* Bordes redondeados */
-    position: absolute;
-    top: 20px;
+    position: fixed !important;
+    font-weight: bold !important;
+    top: 10px;
     left: 10px;
     z-index: 1000;
     color: #194d33 !important;
@@ -473,7 +476,7 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 }
 
 
-/* assets/styles.css */
+
 .location-button {
     background-color: #007bff;
     border: none;
@@ -481,8 +484,8 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     padding: 10px;
     border-radius: 50%;
     cursor: pointer;
-    position: fixed;
-    bottom: 100px;
+    position: absolute !important;
+    bottom: 500px !important;
     right: 10px;
     z-index: 1000;
 }
@@ -490,3 +493,18 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 .location-button .fas {
     font-size: 20px;
 }
+
+
+.custom-spinner {
+    z-index: 9999 !important; /* Asegúrate de que el spinner esté al frente */
+    position: fixed; /* Asegúrate de que cubra toda la pantalla */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.9); /* Fondo semitransparente */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
