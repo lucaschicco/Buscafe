@@ -6,7 +6,7 @@ import pandas as pd
 import openpyxl
 import os
 import dash
-from dash import dcc, html
+from dash import dcc, html, Patch
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
@@ -303,7 +303,7 @@ app.layout = html.Div(id="root", children=[
 # Callback para actualizar la capa del mapa según los filtros
 @app.callback(
     Output('geojson', 'data'),
-    [     Input('feature-filter', 'value'),
+    [Input('feature-filter', 'value'),
      Input('filtro-dias', 'value'),
      Input('filtro-barrios', 'value'),
      Input('search-input', 'value'),
@@ -331,29 +331,34 @@ def update_map(features, days, barrios, search, rating):
     if rating:
         filtered_df = filtered_df[(filtered_df['Rating'] >= rating[0]) & (filtered_df['Rating'] <= rating[1])]
 
-    # Convertir los datos filtrados a GeoJSON
-    geojson_data = dlx.dicts_to_geojson([{
-        "name": row["Barrio"],
-        "lat": row["Latitud"],
-        "lon": row["Longitud"],
-        "tooltip": f"""
-            <p class='nombre'>{row['Nombre']}</p>
-            <p class='stars'>{generate_stars(row['Rating'])}</p>
-            <p><span class='bold-text'>Reviews: </span>{row['Cantidad Reviews']}</p>
-            <p><span class='bold-text'>Dirección: </span>{row['Dirección']}</p>
-        """,
-        "popup": f"""
-            <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
-             <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
-            {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
-        """,
-        "icon_url": get_icon_url(row["Rating"])
-    } for _, row in filtered_df.iterrows()])
+    # Crear el Patch
+    geojson_patch = Patch()
 
-    return geojson_data
+    # Convertir los datos filtrados a GeoJSON
+    for _, row in filtered_df.iterrows():
+        feature = {
+            "name": row["Barrio"],
+            "lat": row["Latitud"],
+            "lon": row["Longitud"],
+            "tooltip": f"""
+                <p class='nombre'>{row['Nombre']}</p>
+                <p class='stars'>{generate_stars(row['Rating'])}</p>
+                <p><span class='bold-text'>Reviews: </span>{row['Cantidad Reviews']}</p>
+                <p><span class='bold-text'>Dirección: </span>{row['Dirección']}</p>
+            """,
+            "popup": f"""
+                <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
+                <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
+                <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
+                <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
+                <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
+                {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
+            """,
+            "icon_url": get_icon_url(row["Rating"])
+        }
+        geojson_patch.append({"op": "add", "path": "/features/-", "value": feature})
+
+    return geojson_patch
 
 @app.callback(
     Output('base-layer', 'url'),
