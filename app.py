@@ -268,7 +268,7 @@ app.layout = html.Div(id="root", children=[
                 center=[-34.620000, -58.440000],
                 zoom=13,
                 zoomControl=False,
-                style={'width': '100%', 'height': '100vh'},
+                style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
                 id='map',
                 children=[
                     dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
