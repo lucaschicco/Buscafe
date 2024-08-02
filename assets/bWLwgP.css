@@ -88,7 +88,7 @@
     width: 80% !important; /* Asegúrate de que el menú del dropdown también se ajuste */
     box-sizing: border-box; /* Incluye el padding y el borde en el ancho total */
     overflow-x: hidden !important; /* Evitar el desbordamiento horizontal */
-    z-index: 1000 !important;
+    z-index: 1500 !important; /* Asegura que las opciones estén por encima del panel de filtros */
 }
 
 .custom-dropdown .Select-menu {
@@ -297,9 +297,10 @@
     font-weight: bold !important;
     top: 10px;
     left: 10px;
-    z-index: 1000;
+    z-index: 2000; /* Asegura que el botón esté por encima del panel de filtros */
     color: #194d33 !important;
 }
+
 
 /* Estilo general para el panel de información */
 #info-registro {
@@ -507,4 +508,3 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     justify-content: center;
     align-items: center;
 }
-
