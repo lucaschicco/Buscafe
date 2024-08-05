@@ -53,11 +53,13 @@ barrios = df['Barrio'].unique()
 dd_options = [dict(value=barrio, label=barrio) for barrio in barrios]
 dd_defaults = [o["value"] for o in dd_options]
 
+# Generar una muestra del 30% de los registros
+initial_sample = df.sample(frac=0.3, random_state=42)
+
 ## Función para generar estrellas basadas en el rating
 def generate_stars(rating):
     stars = int(rating)
     return '★' * stars + '☆' * (5 - stars)
-
 
 # Función para determinar la URL del ícono basado en el rating
 def get_icon_url(rating):
@@ -88,31 +90,30 @@ def format_hours(row):
         return None
     return ["<strong>Horarios:</strong>"] + [hour for hour in hours]
 
+def create_geojson(df):
+    geojson_data = dlx.dicts_to_geojson([{
+        "name": row["Barrio"],
+        "lat": row["Latitud"],
+        "lon": row["Longitud"],
+        "tooltip": f"""
+            <p class='nombre'>{row['Nombre']}</p>
+            <p class='stars'>{generate_stars(row['Rating'])}</p>
+            <p><span class='bold-text'>Reviews: </span>{row['Cantidad Reviews']}</p>
+            <p><span class='bold-text'>Dirección: </span>{row['Dirección']}</p>
+        """,
+        "popup": f"""
+            <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
+            {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
+        """,
+        "icon_url": get_icon_url(row["Rating"])
+    } for _, row in df.iterrows()])
+    return geojson_data
 
-# Convertir los datos a GeoJSON
-geojson_data = dlx.dicts_to_geojson([{
-    "name": row["Barrio"],
-    "lat": row["Latitud"],
-    "lon": row["Longitud"],
-    "tooltip": f"""
-        <p class='nombre'>{row['Nombre']}</p>
-        <p class='stars'>{generate_stars(row['Rating'])}</p>
-        <p><span class='bold-text'>Reviews: </span>{row['Cantidad Reviews']}</p>
-        <p><span class='bold-text'>Dirección: </span>{row['Dirección']}</p>
-    """,
-    "popup": f"""
-        <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
-        <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
-        <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
-        <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
-        <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
-        {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
-    """,
-    "icon_url": get_icon_url(row["Rating"])
-} for _, row in df.iterrows()])
-
-# Crear una función JavaScript para filtrar según el barrio
-geojson_filter = assign("function(feature, context){return context.hideout.includes(feature.properties.name);}")
+geojson_data = create_geojson(initial_sample)
 
 app.layout = html.Div(id="root", children=[
     dcc.Location(id='url', refresh=True),
@@ -172,6 +173,7 @@ app.layout = html.Div(id="root", children=[
             value=[],
             multi=True,
             placeholder="Barrios...",
+
             className='custom-dropdown'
         ),
         dcc.Dropdown(
@@ -204,7 +206,7 @@ app.layout = html.Div(id="root", children=[
             step=0.1,
             marks={str(rating): {'label': str(rating), 'style': {'color': '#fffff5'}} for rating in range(int(df['Rating'].min()), int(df['Rating'].max()) + 1)},
             value=[df['Rating'].min(), df['Rating'].max()],
-            className='custom-slider'     
+            className='custom-slider'
         ),
         html.Div(className='color-legend', children=[
             html.Div(className='color-1'),
@@ -300,20 +302,19 @@ app.layout = html.Div(id="root", children=[
     ],)
 ])
 
-# Callback para actualizar la capa del mapa según los filtros
 @app.callback(
     Output('geojson', 'data'),
     [Input('feature-filter', 'value'),
      Input('filtro-dias', 'value'),
      Input('filtro-barrios', 'value'),
      Input('search-input', 'value'),
-     Input('rating-slider', 'value')]
+     Input('rating-slider', 'value'),
+     Input('map', 'zoom')],
+    State('map', 'bounds')
 )
-#@cache.memoize()
-def update_map(features, days, barrios, search, rating):
+def update_map(features, days, barrios, search, rating, zoom, bounds):
     filtered_df = df.copy()
 
-    # Aplicar los filtros
     if features:
         for feature in features:
             filtered_df = filtered_df[filtered_df[feature] == True]
@@ -331,34 +332,17 @@ def update_map(features, days, barrios, search, rating):
     if rating:
         filtered_df = filtered_df[(filtered_df['Rating'] >= rating[0]) & (filtered_df['Rating'] <= rating[1])]
 
-    # Crear el Patch
-    geojson_patch = Patch()
+    if bounds and zoom < 15:
+        filtered_df = filtered_df[
+            (filtered_df['Latitud'] >= bounds[0][0]) & (filtered_df['Latitud'] <= bounds[1][0]) &
+            (filtered_df['Longitud'] >= bounds[0][1]) & (filtered_df['Longitud'] <= bounds[1][1])
+        ]
 
-    # Convertir los datos filtrados a GeoJSON
-    for _, row in filtered_df.iterrows():
-        feature = {
-            "name": row["Barrio"],
-            "lat": row["Latitud"],
-            "lon": row["Longitud"],
-            "tooltip": f"""
-                <p class='nombre'>{row['Nombre']}</p>
-                <p class='stars'>{generate_stars(row['Rating'])}</p>
-                <p><span class='bold-text'>Reviews: </span>{row['Cantidad Reviews']}</p>
-                <p><span class='bold-text'>Dirección: </span>{row['Dirección']}</p>
-            """,
-            "popup": f"""
-                <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
-                <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
-                <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
-                <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
-                <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
-                {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
-            """,
-            "icon_url": get_icon_url(row["Rating"])
-        }
-        geojson_patch.append({"op": "add", "path": "/features/-", "value": feature})
+    if zoom < 15:
+        filtered_df = filtered_df.sample(frac=0.3, random_state=42)
 
-    return geojson_patch
+    geojson_data = create_geojson(filtered_df)
+    return geojson_data
 
 @app.callback(
     Output('base-layer', 'url'),
