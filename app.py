@@ -341,8 +341,10 @@ def update_map(features, days, barrios, search, rating, zoom, bounds):
     if zoom < 15:
         filtered_df = filtered_df.sample(frac=0.3, random_state=42)
 
-    geojson_data = create_geojson(filtered_df)
-    return geojson_data
+    geojson_patch = Patch()
+    geojson_patch["features"] = create_geojson(filtered_df)["features"]
+    
+    return geojson_patch
 
 @app.callback(
     Output('base-layer', 'url'),
