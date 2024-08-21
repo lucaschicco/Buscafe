@@ -17,6 +17,10 @@
     overflow-y: auto;
 }
 
+.controls-container > * {
+    margin-bottom: 15px; /* Añadir espacio entre los filtros */
+}
+
 @media (max-width: 1440px) {
     .controls-container {
         width: 30%; /* Ancho en pantallas un poco más pequeñas */
@@ -406,6 +410,23 @@
     width: auto !important;
     height: auto !important;
     font-size: 14px !important;
+    min-width: 150px !important;  /* Ancho mínimo del tooltip */
+    word-wrap: break-word !important;
+}
+
+.leaflet-tooltip {
+    background: #64b6ac !important;  /* Color de fondo del recuadro */
+    color: #fffff5 !important;  /* Color del texto */
+    border-radius: 5px !important;  /* Bordes redondeados */
+    padding: 10px !important;  /* Espacio interno del recuadro */
+    cursor: pointer !important;  /* Cambiar el cursor al pasar sobre el tooltip */
+    box-shadow: none !important;  /* Eliminar la sombra alrededor del recuadro */
+    border: 2px solid #fffff5 !important;  /* Borde del recuadro */
+    width: auto !important;
+    height: auto !important;
+    font-size: 14px !important;  /* Tamaño de la fuente */
+    min-width: 150px !important;  /* Ancho mínimo del tooltip */
+    word-wrap: break-word !important;  /* Asegura que el texto se ajuste al recuadro */
 }
 
 /* Estilo específico para el nombre en el tooltip */
