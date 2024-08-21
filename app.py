@@ -16,6 +16,151 @@ import json
 from dash_extensions.javascript import assign
 import dash_leaflet.express as dlx
 
+#cache = Cache(app.server, config={
+#    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
+#    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
+#    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
+#})
+
+# Cargar datos
+file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf2.xlsx'
+data = pd.read_excel(file_path)
+
+# Preprocesar datos
+data = data.dropna(subset=['Latitud', 'Longitud'])
+data['Dirección'] = data['Dirección'].fillna('Desconocido')
+data['Barrio'] = data['Barrio'].apply(lambda x: x.split(',')[0] if isinstance(x, str) else 'Desconocido')
+data = data.replace({pd.NA: ''})
+data.fillna(0, inplace=True)
+
+def get_marker_icon_url(rating):
+    if rating >= 0 and rating <= 0.9:
+        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markrojo.svg'
+    elif rating >= 1 and rating <= 1.9:
+        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markvioleta.svg'
+    elif rating >= 2 and rating <= 2.9:
+        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markceleste.svg'
+    elif rating >= 3 and rating <= 3.9:
+        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markbeige.svg'
+    elif rating >= 4 and rating <= 5:
+        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markverde.svg'
+    else:
+        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markdefault.svg'  # Marker por defecto
+
+
+# Función para generar el geojson
+def format_hours(row):
+    days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
+    hours = []
+
+    # Verificar si todos los días están vacíos
+    if all(pd.isna(row[f'{day}_open']) and pd.isna(row[f'{day}_close']) for day in days):
+        return "<strong>Horarios:</strong> Sin datos"
+    
+    # Construir la lista de horarios por día
+    for day in days:
+        open_time = row[f'{day}_open']
+        close_time = row[f'{day}_close']
+        
+        if pd.isna(open_time) and pd.isna(close_time):
+            hours.append(f"{day}: No abre")
+        else:
+            hours.append(f"{day}: {open_time if not pd.isna(open_time) else 'No abre'} - {close_time if not pd.isna(close_time) else 'No abre'}")
+    
+    return "<strong>Horarios:</strong><br>" + "<br>".join(hours)
+
+# Asegurarse de que las celdas vacías sean detectadas correctamente
+day_columns = ['Domingo_open', 'Domingo_close', 'Lunes_open', 'Lunes_close', 'Martes_open', 'Martes_close', 
+               'Miercoles_open', 'Miercoles_close', 'Jueves_open', 'Jueves_close', 'Viernes_open', 
+               'Viernes_close', 'Sabado_open', 'Sabado_close']
+
+# Aplicar None a las columnas de días si están vacías utilizando DataFrame.apply
+data[day_columns] = data[day_columns].apply(lambda x: x.map(lambda y: None if pd.isna(y) or y == '' else y))
+
+# Crear una nueva columna 'Horarios' en el dataframe
+data['Horarios'] = data.apply(format_hours, axis=1)
+
+# Función para generar el geojson
+def df_to_geojson(df):
+    geojson = {'type': 'FeatureCollection', 'features': []}
+    for _, row in df.iterrows():
+        nombre = row['Nombre'] if pd.notna(row['Nombre']) else "Sin datos"
+        rating = row['Rating'] if pd.notna(row['Rating']) else "Sin datos"
+        reviews = row['Cantidad Reviews'] if pd.notna(row['Cantidad Reviews']) else "Sin datos"
+        
+        sitio_web = f'<a href="{row["Sitio Web"]}" target="_blank">{row["Sitio Web"]}</a>' if row['Sitio Web']!='' else "Sin datos"
+        direccion = row['Dirección'] if pd.notna(row['Dirección']) else "Sin datos"
+        horarios = row['Horarios']  # Usar la columna 'Horarios' ya creada
+        
+        # Construir el contenido del popup con estilos aplicados
+        popup_content = f"""
+            <p style='font-family: Montserrat; font-size: 16px; text-decoration: underline;'><strong>{nombre}</strong></p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating:</strong> {rating}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Reviews:</strong> {reviews}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web:</strong> {sitio_web}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección:</strong> {direccion}</p>
+            <p style='font-family: Montserrat; font-size: 14px;'>{horarios}</p>
+            """
+        
+        tooltip_content = f"""
+            <p class='nombre'>{nombre}</p>
+            <p><span class='bold-text'>Reviews: </span>{reviews}</p>
+            <p><span class='bold-text'>Dirección: </span>{direccion}</p>
+            """
+
+        # Obtener el URL del ícono del marcador
+        icon_url = get_marker_icon_url(rating)
+
+        feature = {
+            'type': 'Feature',
+            'geometry': {'type': 'Point', 'coordinates': [row['Longitud'], row['Latitud']]},
+            'properties': {
+                'Nombre': nombre,
+                'Rating': rating,
+                'Cantidad Reviews': reviews,
+                'Sitio Web': sitio_web,
+                'Dirección': direccion,
+                'iconUrl': icon_url,  # Añadir el URL del ícono del marcador
+                'popupContent': popup_content,
+                'tooltipContent': tooltip_content,
+                # Agregar todas las propiedades adicionales necesarias para los filtros
+                'Delivery': row['Delivery'],
+                'Comer en lugar': row['Comer en lugar'],
+                'Almuerzo': row['Almuerzo'],
+                'Cena': row['Cena'],
+                'Brunch': row['Brunch'],
+                'Vino': row['Vino'],
+                'Espacio afuera': row['Espacio afuera'],
+                'Sirve postre': row['Sirve postre'],
+                'Musica en vivo': row['Musica en vivo'],
+                'Desayuno': row['Desayuno'],
+                'Reservable': row['Reservable'],
+                'Tiene takeaway': row['Tiene takeaway'],
+                'Barrio': row['Barrio'],
+                'Domingo_open': row['Domingo_open'],
+                'Domingo_close': row['Domingo_close'],
+                'Lunes_open': row['Lunes_open'],
+                'Lunes_close': row['Lunes_close'],
+                'Martes_open': row['Martes_open'],
+                'Martes_close': row['Martes_close'],
+                'Miercoles_open': row['Miercoles_open'],
+                'Miercoles_close': row['Miercoles_close'],
+                'Jueves_open': row['Jueves_open'],
+                'Jueves_close': row['Jueves_close'],
+                'Viernes_open': row['Viernes_open'],
+                'Viernes_close': row['Viernes_close'],
+                'Sabado_open': row['Sabado_open'],
+                'Sabado_close': row['Sabado_close']
+            }
+        }
+        geojson['features'].append(feature)
+    return geojson
+
+
+geojson_data = df_to_geojson(data)
+
+# Crear la aplicación Dash
+external_scripts = ['https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js']
 external_stylesheets = [
     dbc.themes.BOOTSTRAP,
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
@@ -23,104 +168,12 @@ external_stylesheets = [
     'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css',
     'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css'
 ]
-
-external_scripts = [
-    'https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js'
-]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
-# Asignar la aplicación Dash al objeto 'server'
-server = app.server
 
-#cache = Cache(app.server, config={
-#    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
-#    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
-#    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
-#})
-
-# Leer el archivo Excel
-#@cache.memoize()
-def load_data():
-    url = "https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf2.xlsx"
-    response = requests.get(url)
-    df = pd.read_excel(response.content)
-    return df
-df = load_data() 
-
-df.Barrio.fillna('sin datos', inplace=True)
-
-# Crear las opciones del dropdown
-barrios = df['Barrio'].unique()
-dd_options = [dict(value=barrio, label=barrio) for barrio in barrios]
-dd_defaults = [o["value"] for o in dd_options]
-
-# Generar una muestra del 30% de los registros
-initial_sample = df.sample(frac=0.3, random_state=42)
-
-## Función para generar estrellas basadas en el rating
-def generate_stars(rating):
-    stars = int(rating)
-    return '★' * stars + '☆' * (5 - stars)
-
-# Función para determinar la URL del ícono basado en el rating
-def get_icon_url(rating):
-    base_url = "https://jsonbuscafe.blob.core.windows.net/contbuscafe/"
-    if 0 <= rating <= 0.9:
-        return base_url + "markrojo.svg"
-    elif 1 <= rating <= 1.9:
-        return base_url + "markvioleta.svg"
-    elif 2 <= rating <= 2.9:
-        return base_url + "markceleste.svg"
-    elif 3 <= rating <= 3.9:
-        return base_url + "markbeige.svg"
-    elif 4 <= rating <= 5:
-        return base_url + "markverde.svg"
-    return base_url + "markrojo.svg"
-
-def format_hours(row):
-    days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
-    hours = []
-    for day in days:
-        open_time = row[f'{day}_open']
-        close_time = row[f'{day}_close']
-        if pd.isna(open_time) and pd.isna(close_time):
-            hours.append(f"{day}: No abre")
-        else:
-            hours.append(f"{day}: {open_time if not pd.isna(open_time) else 'No abre'} - {close_time if not pd.isna(close_time) else 'No abre'}")
-    if all(hour.endswith('No abre') for hour in hours):
-        return None
-    return ["<strong>Horarios:</strong>"] + [hour for hour in hours]
-
-def create_geojson(df):
-    geojson_data = dlx.dicts_to_geojson([{
-        "name": row["Barrio"],
-        "lat": row["Latitud"],
-        "lon": row["Longitud"],
-        "tooltip": f"""
-            <p class='nombre'>{row['Nombre']}</p>
-            <p class='stars'>{generate_stars(row['Rating'])}</p>
-            <p><span class='bold-text'>Reviews: </span>{row['Cantidad Reviews']}</p>
-            <p><span class='bold-text'>Dirección: </span>{row['Dirección']}</p>
-        """,
-        "popup": f"""
-            <h4 style='font-family: Montserrat; font-size: 16px; font-weight: bold;'><u>{row['Nombre']}</u></h4>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating: </strong>{row['Rating']}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Cantidad Reviews: </strong>{row['Cantidad Reviews']}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web: </strong>{f"<a href='{row['Sitio Web']}' target='_blank'>{row['Sitio Web']}</a>" if pd.notna(row['Sitio Web']) else 'Sin datos'}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección: </strong>{'Sin datos' if pd.isna(row['Dirección']) else row['Dirección']}</p>
-            {'<div style="font-family: Montserrat; font-size: 14px;">' + '<br>'.join(format_hours(row)) + '</div>' if format_hours(row) else ''}
-        """,
-        "icon_url": get_icon_url(row["Rating"])
-    } for _, row in df.iterrows()])
-    return geojson_data
-
-geojson_data = create_geojson(initial_sample)
-
-app.layout = html.Div(id="root", children=[
-    dcc.Location(id='url', refresh=True),
-    dcc.Store(id='panel-visible', data=False),
+# Layout de la aplicación
+app.layout = html.Div([
+    dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
     dcc.Store(id='info-visible', data=False),
-    dcc.Store(id='current-location-store'),
-    dcc.Store(id='filtered-data', data=df.to_dict('records')),
     html.Button("Mostrar/Ocultar Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
         html.Div([
@@ -128,21 +181,28 @@ app.layout = html.Div(id="root", children=[
             html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': '10px auto'})  # Línea blanca superior
         ], style={'display': 'flex', 'align-items': 'center', 'flex-direction': 'column'}),
         dcc.Dropdown(
+            id='barrio-dropdown',
+            options=[{'label': barrio, 'value': barrio} for barrio in data['Barrio'].unique()],
+            value=None,
+            placeholder="Selecciona un barrio",
+            className='custom-dropdown',
+            multi=True  # Permite selección múltiple
+        ),
+        dcc.Dropdown(
             id='feature-filter',
             options=[
                 {'label': 'Tiene Delivery', 'value': 'Delivery'},
-                {'label': 'Tiene Takeaway', 'value': 'Tiene takeaway'},
                 {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
-                {'label': 'Desayuno', 'value': 'Desayuno'},
                 {'label': 'Almuerzo', 'value': 'Almuerzo'},
                 {'label': 'Cena', 'value': 'Cena'},
                 {'label': 'Brunch', 'value': 'Brunch'},
                 {'label': 'Vino', 'value': 'Vino'},
                 {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
-                {'label': 'Accesible para silla de ruedas', 'value': 'Accesible para silla de ruedas'},
                 {'label': 'Sirve postre', 'value': 'Sirve postre'},
-                {'label': 'Musica en vivo', 'value': 'Musica en vivo'},    
-                {'label': 'Reservable', 'value': 'Reservable'}
+                {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
+                {'label': 'Desayuno', 'value': 'Desayuno'},
+                {'label': 'Reservable', 'value': 'Reservable'},
+                {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'}
             ],
             value=[],
             multi=True,
@@ -151,40 +211,44 @@ app.layout = html.Div(id="root", children=[
             className='custom-dropdown'
         ),
         dcc.Dropdown(
-            id='filtro-dias',
-            options=[
-                {'label': 'Domingo', 'value': 'Domingo'},
-                {'label': 'Lunes', 'value': 'Lunes'},
-                {'label': 'Martes', 'value': 'Martes'},
-                {'label': 'Miercoles', 'value': 'Miercoles'},
-                {'label': 'Jueves', 'value': 'Jueves'},
-                {'label': 'Viernes', 'value': 'Viernes'},
-                {'label': 'Sabado', 'value': 'Sabado'},
-            ],
+            id='dias-apertura-filter',
+            options=[{'label': day, 'value': day} for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']],
             value=[],
             multi=True,
             optionHeight=30,
-            placeholder="Días de apertura...",
+            placeholder="Filtrá por Días de Apertura...",
             className='custom-dropdown'
         ),
         dcc.Dropdown(
-            id='filtro-barrios',
-            options=[{'label': barrio, 'value': barrio} for barrio in df['Barrio'].unique()],
+            id='nombre-filter',
+            options=[{'label': nombre, 'value': nombre} for nombre in sorted(data['Nombre'].unique())],
             value=[],
             multi=True,
-            placeholder="Barrios...",
-
-            className='custom-dropdown'
-        ),
-        dcc.Dropdown(
-            id='search-input',
-            options=[{'label': nombre, 'value': nombre} for nombre in sorted(df['Nombre'].unique())],
-            placeholder='Buscar cafetería por nombre...',
+            placeholder="Busca por Nombre...",
             className='custom-dropdown',
             style={
-                'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
-                'margin-top': '3px'
-            }
+                    'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
+                    'margin-top': '3px'
+                }
+        ),
+        html.Label("RATING", style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px','margin-bottom': '5px', 'width': '80%', 'margin-left': 'auto', 'margin-right': 'auto'}),
+        dcc.RangeSlider(
+            id='rating-slider',
+            min=data['Rating'].min(),
+            max=data['Rating'].max(),
+            step=0.1,
+            marks={str(rating): {'label': str(rating)} for rating in range(int(data['Rating'].min()), int(data['Rating'].max()) + 1)},
+            value=[data['Rating'].min(), data['Rating'].max()],
+            tooltip={"placement": "bottom", "always_visible": True},
+            className='custom-slider'
+        ),
+        html.Div(className='color-legend', children=[
+            html.Div(className='color-1'),
+            html.Div(className='color-2'),
+            html.Div(className='color-3'),
+            html.Div(className='color-4'),
+            html.Div(className='color-5')
+        ]
         ),
         dcc.Dropdown(
             id='map-style-dropdown',
@@ -194,27 +258,10 @@ app.layout = html.Div(id="root", children=[
                 {'label': 'Modo Oscuro', 'value': 'carto-darkmatter'}
             ],
             value='carto-positron',
-            placeholder="Tipo de mapa",
-            className='custom-dropdown'
+            placeholder="Estilo de mapa",
+            className='custom-dropdown',
+            style={'margin-top': '15px'},
         ),
-        html.Label("RATING", style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px','margin-bottom': '5px', 'width': '80%', 'margin-left': 'auto', 'margin-right': 'auto'}),
-        dcc.RangeSlider(
-            tooltip={"placement": "bottom", "always_visible": True},
-            id='rating-slider',
-            min=df['Rating'].min(),
-            max=df['Rating'].max(),
-            step=0.1,
-            marks={str(rating): {'label': str(rating), 'style': {'color': '#fffff5'}} for rating in range(int(df['Rating'].min()), int(df['Rating'].max()) + 1)},
-            value=[df['Rating'].min(), df['Rating'].max()],
-            className='custom-slider'
-        ),
-        html.Div(className='color-legend', children=[
-            html.Div(className='color-1'),
-            html.Div(className='color-2'),
-            html.Div(className='color-3'),
-            html.Div(className='color-4'),
-            html.Div(className='color-5')
-        ]),
         html.Div(id='output-container-slider'),
         html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': 'auto'}),  # Línea blanca inferior
         html.Div([
@@ -223,8 +270,8 @@ app.layout = html.Div(id="root", children=[
                 href="mailto:buscafes.ai@gmail.com",
                 className='contact-button-circle',
                 style={
-                    'margin-top': '0px',
-                    'margin-bottom': '10px',
+                    'margin-top': '15px',
+                    'margin-bottom': '0px',
                     'display': 'flex',
                     'justify-content': 'center',
                     'align-items': 'center',
@@ -244,8 +291,8 @@ app.layout = html.Div(id="root", children=[
                 href="https://www.instagram.com/lucas.chicco",
                 className='contact-button-circle',
                 style={
-                    'margin-top': '0px',
-                    'margin-bottom': '10px',
+                    'margin-top': '15px',
+                    'margin-bottom': '0px',
                     'display': 'flex',
                     'justify-content': 'center',
                     'align-items': 'center',
@@ -261,121 +308,132 @@ app.layout = html.Div(id="root", children=[
                 }
             )
         ], style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}),
-    ], id='filters-panel', className='controls-container'),
-    dcc.Loading(
-        id="loading-spinner",
-        type="default",
+    ],id='filters-panel', className='controls-container'),
+    dl.Map(
+        id='map',
+        style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
+        center=[-34.6, -58.4], 
+        zoomControl=False,
+        zoom=12, 
         children=[
-            dl.Map(
-                center=[-34.620000, -58.440000],
-                zoom=13,
-                zoomControl=False,
-                style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
-                id='map',
-                children=[
-                    dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
-                    dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': True}, position='topright', showPopup=False),
-                    dl.ZoomControl(position='topright'),
-                    dl.GeoJSON(id='geojson', data=geojson_data, cluster=False, superClusterOptions={"radius": 30, "maxZoom": 13}, zoomToBounds=False, options=dict(pointToLayer=assign(
-                        """function(feature, latlng){
-                           return L.marker(latlng, {
-                               icon: L.icon({
-                                   iconUrl: feature.properties.icon_url,
-                                   iconSize: [15, 23],
-                                   iconAnchor: [12, 23],
-                                   popupAnchor: [1, -34],
-                                   shadowSize: [41, 41]
-                               })
-                           }).bindTooltip(feature.properties.tooltip, {direction: "top", offset: L.point(0, -20), opacity: 0.9, className: 'marker-tooltip'})
-                             .bindPopup(feature.properties.popup);
-                    }"""
-                    )))
-                ]
+            dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
+            dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': True}, position='topright', showPopup=False),
+            dl.ZoomControl(position='topright'),
+            dl.GeoJSON(
+                id="geojson-layer",
+                options=dict(
+                    pointToLayer=assign("""
+                    function(feature, latlng){
+                        let iconUrl = feature.properties.iconUrl;  // Usa el URL del ícono definido en Python
+                        
+                        return L.marker(latlng, {
+                            icon: L.icon({
+                                iconUrl: iconUrl,
+                                iconSize: [18, 27],
+                                iconAnchor: [12, 23],
+                                popupAnchor: [1, -34],
+                                shadowSize: [0, 0]
+                            })
+                        }).bindPopup(feature.properties.popupContent)
+                          .bindTooltip(feature.properties.tooltipContent, {
+                              className: 'marker-tooltip'
+                          });
+                    }
+                    """)
+                ),
+                zoomToBoundsOnClick=True,
             )
-        ],
-        custom_spinner=html.Div(["Cargando Cafeterías...", dbc.Spinner(color="primary")], className="custom-spinner"),
-        fullscreen=True,
-    ),
-    html.Div(id='info-registro', children=[
-        html.Button('X', id='close-info-button', className='close-info-button', n_clicks=0),
-        html.Div(id='info-content')
-    ],)
+        ]
+    )
 ])
 
-@app.callback(
-    Output('geojson', 'data'),
-    [Input('feature-filter', 'value'),
-     Input('filtro-dias', 'value'),
-     Input('filtro-barrios', 'value'),
-     Input('search-input', 'value'),
-     Input('rating-slider', 'value'),
-     Input('map', 'zoom')],
-    State('map', 'bounds')
+app.clientside_callback(
+    """
+    function(barriosSeleccionados, featureFilter, ratingRange, diasApertura, nombreFilter, geojsonData) {
+        if (!geojsonData) {
+            return geojsonData;
+        }
+
+        var filteredFeatures = geojsonData.features;
+
+        // Filtrar por barrios
+        if (barriosSeleccionados && barriosSeleccionados.length > 0) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return barriosSeleccionados.includes(feature.properties.Barrio);
+            });
+        }
+
+        // Filtrar por características
+        if (featureFilter && featureFilter.length > 0) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return featureFilter.every(function(filter) {
+                    return feature.properties[filter] === 1.0;
+                });
+            });
+        }
+
+        // Filtrar por Rating
+        if (ratingRange && ratingRange.length === 2) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                var rating = feature.properties.Rating;
+                return rating >= ratingRange[0] && rating <= ratingRange[1];
+            });
+        }
+
+        // Filtrar por días de apertura
+        if (diasApertura && diasApertura.length > 0) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return diasApertura.every(function(day) {
+                    return feature.properties[day + '_open'] && feature.properties[day + '_close'];  // Asegúrate de que ambos valores existen y no están vacíos
+                });
+            });
+        }
+
+        // Filtrar por nombre
+        if (nombreFilter && nombreFilter.length > 0) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return nombreFilter.includes(feature.properties.Nombre);
+            });
+        }
+
+        // Devolver el GeoJSON filtrado
+        return {type: 'FeatureCollection', features: filteredFeatures};
+    }
+    """,
+    Output('geojson-layer', 'data'),
+    Input('barrio-dropdown', 'value'),
+    Input('feature-filter', 'value'),
+    Input('rating-slider', 'value'),
+    Input('dias-apertura-filter', 'value'),
+    Input('nombre-filter', 'value'),
+    State('clientside-store-data', 'data')
 )
-def update_map(features, days, barrios, search, rating, zoom, bounds):
-    filtered_df = df.copy()
 
-    if features:
-        for feature in features:
-            filtered_df = filtered_df[filtered_df[feature] == True]
+@app.callback(
+    Output('filters-panel', 'style'),
+    Input('toggle-button', 'n_clicks'),
+    State('filters-panel', 'style')
+)
+def toggle_filters_panel(n_clicks, current_style):
+    if n_clicks % 2 == 1:  # Si el número de clicks es impar, muestra los filtros
+        return {'display': 'block'}
+    else:  # Si es par, oculta los filtros
+        return {'display': 'none'}
 
-    if days:
-        day_filters = [f"{day}_open" for day in days]
-        filtered_df = filtered_df.dropna(subset=day_filters, how='all')
-
-    if barrios:
-        filtered_df = filtered_df[filtered_df['Barrio'].isin(barrios)]
-
-    if search:
-        filtered_df = filtered_df[filtered_df['Nombre'].str.contains(search, case=False)]
-
-    if rating:
-        filtered_df = filtered_df[(filtered_df['Rating'] >= rating[0]) & (filtered_df['Rating'] <= rating[1])]
-
-    if bounds and zoom < 15:
-        filtered_df = filtered_df[
-            (filtered_df['Latitud'] >= bounds[0][0]) & (filtered_df['Latitud'] <= bounds[1][0]) &
-            (filtered_df['Longitud'] >= bounds[0][1]) & (filtered_df['Longitud'] <= bounds[1][1])
-        ]
-
-    if zoom < 15:
-        filtered_df = filtered_df.sample(frac=0.3, random_state=42)
-
-    geojson_patch = Patch()
-    geojson_patch["features"] = create_geojson(filtered_df)["features"]
-    
-    return geojson_patch
 
 @app.callback(
     Output('base-layer', 'url'),
     Input('map-style-dropdown', 'value')
 )
-#@cache.memoize()
 def update_map_style(map_style):
     style_urls = {
         'open-street-map': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         'carto-positron': 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
         'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     }
-    return style_urls[map_style]
+    # Si map_style es None, usar 'carto-positron' como estilo por defecto
+    return style_urls.get(map_style, style_urls['carto-positron'])
 
-@app.callback(
-    Output('filters-panel', 'style'),
-    Output('panel-visible', 'data'),
-    Input('toggle-button', 'n_clicks'),
-    State('panel-visible', 'data')
-) 
-def toggle_filters(n_clicks, visible):
-    if visible is None:
-        visible = False
-    if n_clicks > 0:
-        visible = not visible
-    style = {  # Ajustar altura máxima del panel
-        'overflow-y': 'auto',
-        'display': 'flex' if visible else 'none',  # Habilitar scroll si el contenido es demasiado largo
-    }
-    return style, visible      
-    
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
     app.run_server(debug=False)
