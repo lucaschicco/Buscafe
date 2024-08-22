@@ -169,7 +169,7 @@ external_stylesheets = [
     'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css'
 ]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
-
+server = app.server
 # Layout de la aplicación
 app.layout = html.Div([
     dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
