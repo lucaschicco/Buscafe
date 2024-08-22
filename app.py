@@ -16,6 +16,18 @@ import json
 from dash_extensions.javascript import assign
 import dash_leaflet.express as dlx
 
+# Crear la aplicación Dash
+external_scripts = ['https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js']
+external_stylesheets = [
+    dbc.themes.BOOTSTRAP,
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+    'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap',
+    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css',
+    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css'
+]
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
+server = app.server
+
 #cache = Cache(app.server, config={
 #    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
 #    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
@@ -159,17 +171,7 @@ def df_to_geojson(df):
 
 geojson_data = df_to_geojson(data)
 
-# Crear la aplicación Dash
-external_scripts = ['https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js']
-external_stylesheets = [
-    dbc.themes.BOOTSTRAP,
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap',
-    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css',
-    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css'
-]
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
-server = app.server
+
 # Layout de la aplicación
 app.layout = html.Div([
     dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
