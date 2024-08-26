@@ -1,21 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import requests
-import pandas as pd
-import openpyxl
-import os
-import dash
-from dash import dcc, html, Patch
-from dash.dependencies import Input, Output, State
-import dash_bootstrap_components as dbc
-import dash_leaflet as dl
-from flask_caching import Cache
-import gzip
-import json
-from dash_extensions.javascript import assign
-import dash_leaflet.express as dlx
-
 # Crear la aplicación Dash
 external_scripts = ['https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js']
 external_stylesheets = [
@@ -25,8 +10,12 @@ external_stylesheets = [
     'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css',
     'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css'
 ]
+
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
-server = app.server
+server = app.server  # Esto expone el servidor de Flask
+
+# Habilitar la compresión
+Compress(server)
 
 #cache = Cache(app.server, config={
 #    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
@@ -116,7 +105,7 @@ def df_to_geojson(df):
         
         tooltip_content = f"""
             <p class='nombre'>{nombre}</p>
-            <p><span class='bold-text'>Reviews: </span>{reviews}</p>
+            <p><span class='bold-text'>Rating: </span>{rating}</p>
             <p><span class='bold-text'>Dirección: </span>{direccion}</p>
             """
 
@@ -171,6 +160,12 @@ def df_to_geojson(df):
 
 geojson_data = df_to_geojson(data)
 
+
+
+lat_min = data['Latitud'].min()
+lat_max = data['Latitud'].max()
+lon_min = data['Longitud'].min()
+lon_max = data['Longitud'].max()
 
 # Layout de la aplicación
 app.layout = html.Div([
@@ -316,6 +311,7 @@ app.layout = html.Div([
         style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
         center=[-34.6, -58.4], 
         zoomControl=False,
+        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
         zoom=12, 
         children=[
             dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
@@ -351,7 +347,7 @@ app.layout = html.Div([
 
 app.clientside_callback(
     """
-    function(barriosSeleccionados, featureFilter, ratingRange, diasApertura, nombreFilter, geojsonData) {
+    function(barriosSeleccionados, featureFilter, ratingRange, diasApertura, nombreFilter, bounds, zoom, geojsonData) {
         if (!geojsonData) {
             return geojsonData;
         }
@@ -398,16 +394,48 @@ app.clientside_callback(
             });
         }
 
+        // Filtrar por límites del mapa
+        if (bounds && bounds.length === 2) {
+            var swLat = bounds[0][0];
+            var swLng = bounds[0][1];
+            var neLat = bounds[1][0];
+            var neLng = bounds[1][1];
+
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                var lat = feature.geometry.coordinates[1];
+                var lng = feature.geometry.coordinates[0];
+                return lat >= swLat && lat <= neLat && lng >= swLng && lng <= neLng;
+            });
+        }
+
+        // Filtrar por top 30% en cantidad de reviews si el zoom es menor a 15
+        if (zoom < 15) {
+            var reviewsList = filteredFeatures.map(function(feature) {
+                return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
+            });
+
+            // Calcular el umbral del top 20%
+            reviewsList.sort(function(a, b) { return b - a; });  // Ordenar de mayor a menor
+            var thresholdIndex = Math.floor(reviewsList.length * 0.2);  // Índice para el 20%
+            var threshold = reviewsList[thresholdIndex] || 0;
+
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return feature.properties['Cantidad Reviews'] >= threshold;
+            });
+        }
+
         // Devolver el GeoJSON filtrado
         return {type: 'FeatureCollection', features: filteredFeatures};
     }
     """,
     Output('geojson-layer', 'data'),
-    Input('barrio-dropdown', 'value'),
-    Input('feature-filter', 'value'),
-    Input('rating-slider', 'value'),
-    Input('dias-apertura-filter', 'value'),
-    Input('nombre-filter', 'value'),
+    [Input('barrio-dropdown', 'value'),
+     Input('feature-filter', 'value'),
+     Input('rating-slider', 'value'),
+     Input('dias-apertura-filter', 'value'),
+     Input('nombre-filter', 'value'),
+     Input('map', 'bounds'),
+     Input('map', 'zoom')],
     State('clientside-store-data', 'data')
 )
 
