@@ -10,3 +10,4 @@ dash-leaflet
 Flask-Caching
 dash-extensions
 setuptools==58.0.0
+Flask-Compress
