@@ -1,6 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output, State
+import dash_leaflet as dl
+import pandas as pd
+from dash_extensions.javascript import assign
+import dash_bootstrap_components as dbc
+import numpy as np
+from flask_compress import Compress
+
 # Crear la aplicación Dash
 external_scripts = ['https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js']
 external_stylesheets = [
