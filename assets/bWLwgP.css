@@ -61,6 +61,10 @@
     }
 }
 
+.leaflet-popup {
+    z-index: 2000 !important; /* Asegura que esté encima de otros elementos */
+}
+
 .leaflet-tooltip {
     border: none !important;
     background: transparent !important;
