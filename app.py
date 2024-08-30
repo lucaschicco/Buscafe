@@ -170,16 +170,12 @@ def df_to_geojson(df):
 
 geojson_data = df_to_geojson(data)
 
-# Crear la aplicación Dash
-external_scripts = ['https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js']
-external_stylesheets = [
-    dbc.themes.BOOTSTRAP,
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap',
-    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css',
-    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css'
-]
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
+
+
+lat_min = data['Latitud'].min()
+lat_max = data['Latitud'].max()
+lon_min = data['Longitud'].min()
+lon_max = data['Longitud'].max()
 
 # Layout de la aplicación
 app.layout = html.Div([
@@ -242,7 +238,7 @@ app.layout = html.Div([
                     'margin-top': '3px'
                 }
         ),
-        html.Label("RATING", style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px','margin-bottom': '5px', 'width': '80%','padding-left': '10%'}),
+        html.Label("RATING", style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px','margin-bottom': '5px', 'width': '80%', 'margin-left': 'auto', 'margin-right': 'auto'}),
         dcc.RangeSlider(
             id='rating-slider',
             min=data['Rating'].min(),
@@ -325,6 +321,7 @@ app.layout = html.Div([
         style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
         center=[-34.6, -58.4], 
         zoomControl=False,
+        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
         zoom=12, 
         children=[
             dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
@@ -365,151 +362,76 @@ app.clientside_callback(
             return geojsonData;
         }
 
-        // Asegurarnos de que los valores de los filtros estén definidos
-        barriosSeleccionados = barriosSeleccionados || [];
-        featureFilter = featureFilter || [];
-        ratingRange = ratingRange || [];
-        diasApertura = diasApertura || [];
-        nombreFilter = nombreFilter || [];
-
-        // Filtrar el top 20% de registros por cantidad de reviews
         var filteredFeatures = geojsonData.features;
 
-        var reviewsList = filteredFeatures.map(function(feature) {
-            return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
-        });
+        // Filtrar por barrios
+        if (barriosSeleccionados && barriosSeleccionados.length > 0) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return barriosSeleccionados.includes(feature.properties.Barrio);
+            });
+        }
 
-        // Calcular el umbral del top 20%
-        reviewsList.sort(function(a, b) { return b - a; });  // Ordenar de mayor a menor
-        var thresholdIndex = Math.floor(reviewsList.length * 0.2);  // Índice para el 20%
-        var threshold = reviewsList[thresholdIndex] || 0;
+        // Filtrar por características
+        if (featureFilter && featureFilter.length > 0) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return featureFilter.every(function(filter) {
+                    return feature.properties[filter] === 1.0;
+                });
+            });
+        }
 
-        // Obtener las features que están en el top 20%
-        var top_20_features = filteredFeatures.filter(function(feature) {
-            return feature.properties['Cantidad Reviews'] >= threshold;
-        });
+        // Filtrar por Rating
+        if (ratingRange && ratingRange.length === 2) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                var rating = feature.properties.Rating;
+                return rating >= ratingRange[0] && rating <= ratingRange[1];
+            });
+        }
 
-        // Guardar el top 20% fijo para cuando no hay filtros aplicados y el zoom es menor a 15
-        var fixedTop20Features = top_20_features.slice();  // Crear una copia del top 20% fijo
+        // Filtrar por días de apertura
+        if (diasApertura && diasApertura.length > 0) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return diasApertura.every(function(day) {
+                    return feature.properties[day + '_open'] && feature.properties[day + '_close'];  // Asegúrate de que ambos valores existen y no están vacíos
+                });
+            });
+        }
 
-        // Aplicar filtros si hay alguno seleccionado
-        var hasFilters = barriosSeleccionados.length > 0 || featureFilter.length > 0 || ratingRange.length === 2 || diasApertura.length > 0 || nombreFilter.length > 0;
+        // Filtrar por nombre
+        if (nombreFilter && nombreFilter.length > 0) {
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return nombreFilter.includes(feature.properties.Nombre);
+            });
+        }
 
+        // Filtrar por límites del mapa
+        if (bounds && bounds.length === 2) {
+            var swLat = bounds[0][0];
+            var swLng = bounds[0][1];
+            var neLat = bounds[1][0];
+            var neLng = bounds[1][1];
+
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                var lat = feature.geometry.coordinates[1];
+                var lng = feature.geometry.coordinates[0];
+                return lat >= swLat && lat <= neLat && lng >= swLng && lng <= neLng;
+            });
+        }
+
+        // Filtrar por top 30% en cantidad de reviews si el zoom es menor a 15
         if (zoom < 15) {
-            if (hasFilters) {
-                // Si hay filtros aplicados, aplicarlos al conjunto completo de datos
-                filteredFeatures = geojsonData.features;
+            var reviewsList = filteredFeatures.map(function(feature) {
+                return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
+            });
 
-                // Filtrar por barrios
-                if (barriosSeleccionados.length > 0) {
-                    filteredFeatures = filteredFeatures.filter(function(feature) {
-                        return barriosSeleccionados.includes(feature.properties.Barrio);
-                    });
-                }
+            // Calcular el umbral del top 20%
+            reviewsList.sort(function(a, b) { return b - a; });  // Ordenar de mayor a menor
+            var thresholdIndex = Math.floor(reviewsList.length * 0.2);  // Índice para el 20%
+            var threshold = reviewsList[thresholdIndex] || 0;
 
-                // Filtrar por características
-                if (featureFilter.length > 0) {
-                    filteredFeatures = filteredFeatures.filter(function(feature) {
-                        return featureFilter.every(function(filter) {
-                            return feature.properties[filter] === 1.0;
-                        });
-                    });
-                }
-
-                // Filtrar por Rating
-                if (ratingRange.length === 2) {
-                    filteredFeatures = filteredFeatures.filter(function(feature) {
-                        var rating = feature.properties.Rating;
-                        return rating >= ratingRange[0] && rating <= ratingRange[1];
-                    });
-                }
-
-                // Filtrar por días de apertura
-                if (diasApertura.length > 0) {
-                    filteredFeatures = filteredFeatures.filter(function(feature) {
-                        return diasApertura.every(function(day) {
-                            return feature.properties[day + '_open'] && feature.properties[day + '_close'];
-                        });
-                    });
-                }
-
-                // Filtrar por nombre
-                if (nombreFilter.length > 0) {
-                    filteredFeatures = filteredFeatures.filter(function(feature) {
-                        return nombreFilter.includes(feature.properties.Nombre);
-                    });
-                }
-
-                // Ahora seleccionamos el top 20% basado en los resultados filtrados
-                var filteredReviewsList = filteredFeatures.map(function(feature) {
-                    return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
-                });
-
-                filteredReviewsList.sort(function(a, b) { return b - a; });  // Ordenar de mayor a menor
-                var filteredThresholdIndex = Math.floor(filteredReviewsList.length * 0.2);  // Índice para el 20%
-                var filteredThreshold = filteredReviewsList[filteredThresholdIndex] || 0;
-
-                filteredFeatures = filteredFeatures.filter(function(feature) {
-                    return feature.properties['Cantidad Reviews'] >= filteredThreshold;
-                });
-            } else {
-                // Si no hay filtros aplicados, mostrar solo el top 20% fijo
-                filteredFeatures = fixedTop20Features;
-            }
-        } else {
-            // Filtrar por barrios
-            if (barriosSeleccionados.length > 0) {
-                filteredFeatures = filteredFeatures.filter(function(feature) {
-                    return barriosSeleccionados.includes(feature.properties.Barrio);
-                });
-            }
-
-            // Filtrar por características
-            if (featureFilter.length > 0) {
-                filteredFeatures = filteredFeatures.filter(function(feature) {
-                    return featureFilter.every(function(filter) {
-                        return feature.properties[filter] === 1.0;
-                    });
-                });
-            }
-
-            // Filtrar por Rating
-            if (ratingRange.length === 2) {
-                filteredFeatures = filteredFeatures.filter(function(feature) {
-                    var rating = feature.properties.Rating;
-                    return rating >= ratingRange[0] && rating <= ratingRange[1];
-                });
-            }
-
-            // Filtrar por días de apertura
-            if (diasApertura.length > 0) {
-                filteredFeatures = filteredFeatures.filter(function(feature) {
-                    return diasApertura.every(function(day) {
-                        return feature.properties[day + '_open'] && feature.properties[day + '_close'];
-                    });
-                });
-            }
-
-            // Filtrar por nombre
-            if (nombreFilter.length > 0) {
-                filteredFeatures = filteredFeatures.filter(function(feature) {
-                    return nombreFilter.includes(feature.properties.Nombre);
-                });
-            }
-
-            // Filtrar por límites del mapa si el zoom es mayor o igual a 15
-            if (bounds && bounds.length === 2) {
-                var swLat = bounds[0][0];
-                var swLng = bounds[0][1];
-                var neLat = bounds[1][0];
-                var neLng = bounds[1][1];
-
-                filteredFeatures = filteredFeatures.filter(function(feature) {
-                    var lat = feature.geometry.coordinates[1];
-                    var lng = feature.geometry.coordinates[0];
-                    return lat >= swLat && lat <= neLat && lng >= swLng && lng <= neLng;
-                });
-            }
+            filteredFeatures = filteredFeatures.filter(function(feature) {
+                return feature.properties['Cantidad Reviews'] >= threshold;
+            });
         }
 
         // Devolver el GeoJSON filtrado
@@ -526,7 +448,6 @@ app.clientside_callback(
      Input('map', 'zoom')],
     State('clientside-store-data', 'data')
 )
-
 
 @app.callback(
     Output('filters-panel', 'style'),
@@ -552,7 +473,7 @@ def update_map_style(map_style):
     }
     # Si map_style es None, usar 'carto-positron' como estilo por defecto
     return style_urls.get(map_style, style_urls['carto-positron'])
-
+    
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
     app.run_server(debug=False)
