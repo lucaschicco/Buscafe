@@ -363,6 +363,7 @@ app.clientside_callback(
         }
 
         var filteredFeatures = geojsonData.features;
+        var top20Features = [];
 
         // Filtrar por barrios
         if (barriosSeleccionados && barriosSeleccionados.length > 0) {
@@ -392,7 +393,7 @@ app.clientside_callback(
         if (diasApertura && diasApertura.length > 0) {
             filteredFeatures = filteredFeatures.filter(function(feature) {
                 return diasApertura.every(function(day) {
-                    return feature.properties[day + '_open'] && feature.properties[day + '_close'];  // Asegúrate de que ambos valores existen y no están vacíos
+                    return feature.properties[day + '_open'] && feature.properties[day + '_close'];
                 });
             });
         }
@@ -404,38 +405,38 @@ app.clientside_callback(
             });
         }
 
-        // Filtrar por límites del mapa
-        if (bounds && bounds.length === 2) {
-            var swLat = bounds[0][0];
-            var swLng = bounds[0][1];
-            var neLat = bounds[1][0];
-            var neLng = bounds[1][1];
-
-            filteredFeatures = filteredFeatures.filter(function(feature) {
-                var lat = feature.geometry.coordinates[1];
-                var lng = feature.geometry.coordinates[0];
-                return lat >= swLat && lat <= neLat && lng >= swLng && lng <= neLng;
-            });
-        }
-
-        // Filtrar por top 30% en cantidad de reviews si el zoom es menor a 15
         if (zoom < 15) {
+            // Si el zoom es menor a 15, calcular el top 20% fijo
             var reviewsList = filteredFeatures.map(function(feature) {
                 return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
             });
 
             // Calcular el umbral del top 20%
-            reviewsList.sort(function(a, b) { return b - a; });  // Ordenar de mayor a menor
-            var thresholdIndex = Math.floor(reviewsList.length * 0.2);  // Índice para el 20%
+            reviewsList.sort(function(a, b) { return b - a; });
+            var thresholdIndex = Math.floor(reviewsList.length * 0.2);
             var threshold = reviewsList[thresholdIndex] || 0;
 
-            filteredFeatures = filteredFeatures.filter(function(feature) {
+            top20Features = filteredFeatures.filter(function(feature) {
                 return feature.properties['Cantidad Reviews'] >= threshold;
             });
-        }
 
-        // Devolver el GeoJSON filtrado
-        return {type: 'FeatureCollection', features: filteredFeatures};
+            return {type: 'FeatureCollection', features: top20Features};
+        } else {
+            // Si el zoom es mayor o igual a 15, filtrar por límites del mapa
+            if (bounds && bounds.length === 2) {
+                var swLat = bounds[0][0];
+                var swLng = bounds[0][1];
+                var neLat = bounds[1][0];
+                var neLng = bounds[1][1];
+
+                filteredFeatures = filteredFeatures.filter(function(feature) {
+                    var lat = feature.geometry.coordinates[1];
+                    var lng = feature.geometry.coordinates[0];
+                    return lat >= swLat && lat <= neLat && lng >= swLng && lng <= neLng;
+                });
+            }
+            return {type: 'FeatureCollection', features: filteredFeatures};
+        }
     }
     """,
     Output('geojson-layer', 'data'),
