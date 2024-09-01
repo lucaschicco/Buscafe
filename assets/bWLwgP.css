@@ -61,13 +61,34 @@
     }
 }
 
-
-
 .leaflet-tooltip {
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
 }
+
+
+
+.leaflet-popup {
+    z-index: 1200 !important;  /* Lo suficientemente alto para estar sobre el mapa, pero por debajo de los controles */
+}
+
+.leaflet-control {
+    z-index: 1400 !important;  /* Más alto que el popup */
+}
+
+.custom-toggle-button, .controls-container {
+    z-index: 1500 !important;  /* Más alto que el popup y los controles de Leaflet */
+}
+
+.leaflet-popup {
+    pointer-events: auto !important;
+}
+
+.leaflet-control {
+    pointer-events: auto !important;
+}
+
 
 
 /* Ajustes de tamaño de fuente para dropdowns y inputs */
@@ -303,7 +324,7 @@
     font-weight: bold !important;
     top: 10px;
     left: 10px;
-    z-index: 2000; /* Asegura que el botón esté por encima del panel de filtros */
+    z-index: 1000 !important; /* Asegura que el botón esté por encima del panel de filtros */
     color: #194d33 !important;
 }
 
@@ -531,3 +552,5 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     justify-content: center;
     align-items: center;
 }
+
+
