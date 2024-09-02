@@ -10,15 +10,15 @@ from dash_extensions.javascript import assign
 import dash_bootstrap_components as dbc
 import numpy as np
 from flask_compress import Compress
+import json
+import requests
 
 # Crear la aplicación Dash
-external_scripts = ['https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster-src.js']
+
 external_stylesheets = [
     dbc.themes.BOOTSTRAP,
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap',
-    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css',
-    'https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css'
+    'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap'
 ]
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
@@ -27,149 +27,17 @@ server = app.server  # Esto expone el servidor de Flask
 # Habilitar la compresión
 Compress(server)
 
-#cache = Cache(app.server, config={
-#    'CACHE_TYPE': 'filesystem',  # Puedes usar 'redis' si prefieres usar Redis
-#    'CACHE_DIR': 'cache-directory',  # Directorio para almacenar archivos de caché
-#    'CACHE_DEFAULT_TIMEOUT': 300  # Tiempo en segundos que los datos permanecerán en caché
-#})
 
 # Cargar datos
 file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf2.xlsx'
 data = pd.read_excel(file_path)
 
-# Preprocesar datos
-data = data.dropna(subset=['Latitud', 'Longitud'])
-data['Dirección'] = data['Dirección'].fillna('Desconocido')
-data['Barrio'] = data['Barrio'].apply(lambda x: x.split(',')[0] if isinstance(x, str) else 'Desconocido')
-data = data.replace({pd.NA: ''})
-data.fillna(0, inplace=True)
-
-def get_marker_icon_url(rating):
-    if rating >= 0 and rating <= 0.9:
-        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markrojo.svg'
-    elif rating >= 1 and rating <= 1.9:
-        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markvioleta.svg'
-    elif rating >= 2 and rating <= 2.9:
-        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markceleste.svg'
-    elif rating >= 3 and rating <= 3.9:
-        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markbeige.svg'
-    elif rating >= 4 and rating <= 5:
-        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markverde.svg'
-    else:
-        return 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/markdefault.svg'  # Marker por defecto
-
-
-# Función para generar el geojson
-def format_hours(row):
-    days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
-    hours = []
-
-    # Verificar si todos los días están vacíos
-    if all(pd.isna(row[f'{day}_open']) and pd.isna(row[f'{day}_close']) for day in days):
-        return "<strong>Horarios:</strong> Sin datos"
-    
-    # Construir la lista de horarios por día
-    for day in days:
-        open_time = row[f'{day}_open']
-        close_time = row[f'{day}_close']
-        
-        if pd.isna(open_time) and pd.isna(close_time):
-            hours.append(f"{day}: No abre")
-        else:
-            hours.append(f"{day}: {open_time if not pd.isna(open_time) else 'No abre'} - {close_time if not pd.isna(close_time) else 'No abre'}")
-    
-    return "<strong>Horarios:</strong><br>" + "<br>".join(hours)
-
-# Asegurarse de que las celdas vacías sean detectadas correctamente
-day_columns = ['Domingo_open', 'Domingo_close', 'Lunes_open', 'Lunes_close', 'Martes_open', 'Martes_close', 
-               'Miercoles_open', 'Miercoles_close', 'Jueves_open', 'Jueves_close', 'Viernes_open', 
-               'Viernes_close', 'Sabado_open', 'Sabado_close']
-
-# Aplicar None a las columnas de días si están vacías utilizando DataFrame.apply
-data[day_columns] = data[day_columns].apply(lambda x: x.map(lambda y: None if pd.isna(y) or y == '' else y))
-
-# Crear una nueva columna 'Horarios' en el dataframe
-data['Horarios'] = data.apply(format_hours, axis=1)
-
-# Función para generar el geojson
-def df_to_geojson(df):
-    geojson = {'type': 'FeatureCollection', 'features': []}
-    for _, row in df.iterrows():
-        nombre = row['Nombre'] if pd.notna(row['Nombre']) else "Sin datos"
-        rating = row['Rating'] if pd.notna(row['Rating']) else "Sin datos"
-        reviews = row['Cantidad Reviews'] if pd.notna(row['Cantidad Reviews']) else "Sin datos"
-        
-        sitio_web = f'<a href="{row["Sitio Web"]}" target="_blank">{row["Sitio Web"]}</a>' if row['Sitio Web']!='' else "Sin datos"
-        direccion = row['Dirección'] if pd.notna(row['Dirección']) else "Sin datos"
-        horarios = row['Horarios']  # Usar la columna 'Horarios' ya creada
-        
-        # Construir el contenido del popup con estilos aplicados
-        popup_content = f"""
-            <p style='font-family: Montserrat; font-size: 16px; text-decoration: underline;'><strong>{nombre}</strong></p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Rating:</strong> {rating}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Reviews:</strong> {reviews}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Sitio Web:</strong> {sitio_web}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'><strong>Dirección:</strong> {direccion}</p>
-            <p style='font-family: Montserrat; font-size: 14px;'>{horarios}</p>
-            """
-        
-        tooltip_content = f"""
-            <p class='nombre'>{nombre}</p>
-            <p><span class='bold-text'>Rating: </span>{rating}</p>
-            <p><span class='bold-text'>Dirección: </span>{direccion}</p>
-            """
-
-        # Obtener el URL del ícono del marcador
-        icon_url = get_marker_icon_url(rating)
-
-        feature = {
-            'type': 'Feature',
-            'geometry': {'type': 'Point', 'coordinates': [row['Longitud'], row['Latitud']]},
-            'properties': {
-                'Nombre': nombre,
-                'Rating': rating,
-                'Cantidad Reviews': reviews,
-                'Sitio Web': sitio_web,
-                'Dirección': direccion,
-                'iconUrl': icon_url,  # Añadir el URL del ícono del marcador
-                'popupContent': popup_content,
-                'tooltipContent': tooltip_content,
-                # Agregar todas las propiedades adicionales necesarias para los filtros
-                'Delivery': row['Delivery'],
-                'Comer en lugar': row['Comer en lugar'],
-                'Almuerzo': row['Almuerzo'],
-                'Cena': row['Cena'],
-                'Brunch': row['Brunch'],
-                'Vino': row['Vino'],
-                'Espacio afuera': row['Espacio afuera'],
-                'Sirve postre': row['Sirve postre'],
-                'Musica en vivo': row['Musica en vivo'],
-                'Desayuno': row['Desayuno'],
-                'Reservable': row['Reservable'],
-                'Tiene takeaway': row['Tiene takeaway'],
-                'Barrio': row['Barrio'],
-                'Domingo_open': row['Domingo_open'],
-                'Domingo_close': row['Domingo_close'],
-                'Lunes_open': row['Lunes_open'],
-                'Lunes_close': row['Lunes_close'],
-                'Martes_open': row['Martes_open'],
-                'Martes_close': row['Martes_close'],
-                'Miercoles_open': row['Miercoles_open'],
-                'Miercoles_close': row['Miercoles_close'],
-                'Jueves_open': row['Jueves_open'],
-                'Jueves_close': row['Jueves_close'],
-                'Viernes_open': row['Viernes_open'],
-                'Viernes_close': row['Viernes_close'],
-                'Sabado_open': row['Sabado_open'],
-                'Sabado_close': row['Sabado_close']
-            }
-        }
-        geojson['features'].append(feature)
-    return geojson
-
-
-geojson_data = df_to_geojson(data)
-
+# URL of the JSON file
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data.json'
+# Fetch the content from the URL
+response = requests.get(url)
+# Load the content into a Python dictionary
+geojson_data = response.json()
 
 
 lat_min = data['Latitud'].min()
