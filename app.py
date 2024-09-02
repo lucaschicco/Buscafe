@@ -128,7 +128,6 @@ app.layout = html.Div([
         dcc.Dropdown(
             id='map-style-dropdown',
             options=[
-                {'label': 'Modo Clásico', 'value': 'open-street-map'},
                 {'label': 'Modo Claro', 'value': 'carto-positron'},
                 {'label': 'Modo Oscuro', 'value': 'carto-darkmatter'}
             ],
@@ -192,7 +191,7 @@ app.layout = html.Div([
         bounds=[[lat_min, lon_min], [lat_max, lon_max]],
         zoom=12, 
         children=[
-            dl.TileLayer(id="base-layer", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
+            dl.TileLayer(id="base-layer", url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"),
             dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': True}, position='topright', showPopup=False),
             dl.ZoomControl(position='topright'),
             dl.GeoJSON(
@@ -336,12 +335,12 @@ def toggle_filters_panel(n_clicks, current_style):
 )
 def update_map_style(map_style):
     style_urls = {
-        'open-street-map': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         'carto-positron': 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
         'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     }
     # Si map_style es None, usar 'carto-positron' como estilo por defecto
     return style_urls.get(map_style, style_urls['carto-positron'])
+
     
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
