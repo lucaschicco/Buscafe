@@ -192,7 +192,7 @@ app.layout = html.Div([
         zoom=12, 
         children=[
             dl.TileLayer(id="base-layer", url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"),
-            dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': True}, position='topright', showPopup=False),
+            dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': False}, position='topright', showPopup=False),
             dl.ZoomControl(position='topright'),
             dl.GeoJSON(
                 id="geojson-layer",
