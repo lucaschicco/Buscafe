@@ -31,7 +31,7 @@ Compress(server)
 # Cargar datos
 file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf2.xlsx'
 data = pd.read_excel(file_path)
-data=data.head()
+
 # URL of the JSON file
 url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data.json'
 # Fetch the content from the URL
