@@ -186,7 +186,7 @@ app.layout = html.Div([
     dl.Map(
         id='map',
         style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
-        center=[-34.6, -58.4], 
+        center=[-34.598, -58.436], 
         zoomControl=False,
         bounds=[[lat_min, lon_min], [lat_max, lon_max]],
         zoom=12, 
