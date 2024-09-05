@@ -280,7 +280,7 @@ app.clientside_callback(
 
             // Calcular el umbral del top 20%
             reviewsList.sort(function(a, b) { return b - a; });
-            var thresholdIndex = Math.floor(reviewsList.length * 0.2);
+            var thresholdIndex = Math.floor(reviewsList.length * 0.15);
             var threshold = reviewsList[thresholdIndex] || 0;
 
             top20Features = filteredFeatures.filter(function(feature) {
