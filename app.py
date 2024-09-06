@@ -211,7 +211,7 @@ app.layout = html.Div([
         bounds=[[lat_min, lon_min], [lat_max, lon_max]],
         zoom=12, 
         children=[
-            dl.TileLayer(id="base-layer", url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", style={"width": "256px", "height": "256px"}),
+            dl.TileLayer(id="base-layer", url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"),
             dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': False}, position='topright', showPopup=False),
             dl.ZoomControl(position='topright'),
             dl.GeoJSON(
