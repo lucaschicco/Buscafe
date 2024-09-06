@@ -7,7 +7,7 @@ from dash.dependencies import Input, Output, State
 import dash_leaflet as dl
 import pandas as pd
 from dash_extensions.javascript import assign
-import dash_bootstrap_components as dbc
+#import dash_bootstrap_components as dbc
 import numpy as np
 from flask_compress import Compress
 import json
@@ -16,7 +16,7 @@ import requests
 # Crear la aplicación Dash
 
 external_stylesheets = [
-    dbc.themes.BOOTSTRAP,
+    #dbc.themes.BOOTSTRAP,
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
     'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap'
 ]
@@ -27,6 +27,26 @@ server = app.server  # Esto expone el servidor de Flask
 # Habilitar la compresión
 Compress(server)
 
+# Agregar el atributo lang al elemento <html>
+app.index_string = '''
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  {%metas%}
+  <title>{%title%}</title>
+  {%favicon%}
+  {%css%}
+</head>
+<body>
+  {%app_entry%}
+  <footer>
+    {%config%}
+    {%scripts%}
+    {%renderer%}
+  </footer>
+</body>
+</html>
+'''
 
 # Cargar datos
 file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf2.xlsx'
@@ -191,7 +211,7 @@ app.layout = html.Div([
         bounds=[[lat_min, lon_min], [lat_max, lon_max]],
         zoom=12, 
         children=[
-            dl.TileLayer(id="base-layer", url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"),
+            dl.TileLayer(id="base-layer", url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", style={"width": "256px", "height": "256px"}),
             dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': False}, position='topright', showPopup=False),
             dl.ZoomControl(position='topright'),
             dl.GeoJSON(
