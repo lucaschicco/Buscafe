@@ -7,7 +7,7 @@ from dash.dependencies import Input, Output, State
 import dash_leaflet as dl
 import pandas as pd
 from dash_extensions.javascript import assign
-import dash_bootstrap_components as dbc
+#import dash_bootstrap_components as dbc
 import numpy as np
 from flask_compress import Compress
 import json
@@ -16,7 +16,7 @@ import requests
 # Crear la aplicación Dash
 
 external_stylesheets = [
-    dbc.themes.BOOTSTRAP,
+    #dbc.themes.BOOTSTRAP,
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
     'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap'
 ]
