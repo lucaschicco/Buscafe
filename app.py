@@ -21,7 +21,11 @@ external_stylesheets = [
     'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap'
 ]
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes")
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes",external_scripts=[
+    {"src": "https://www.buscafes.com.ar/_dash-component-suites/dash/dcc/dash_core_components.v2_14_2m1725637759.js", "defer": True},
+    {"src": "https://www.buscafes.com.ar/_dash-component-suites/dash_leaflet/dash_leaflet.v1_0_15m1725637783.js", "defer": True},
+    {"src": "https://www.buscafes.com.ar/_dash-component-suites/dash/dash-renderer/build/dash_renderer.v2_18_0m1725637755.min.js", "defer": True},
+])
 server = app.server  # Esto expone el servidor de Flask
 
 # Habilitar la compresión
@@ -70,6 +74,19 @@ app.layout = html.Div([
     dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
     dcc.Store(id='info-visible', data=False),
     html.Button("Mostrar/Ocultar Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
+    dcc.Markdown('''
+        <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .important-class {
+            color: #333;
+            font-weight: bold;
+        }
+        </style>
+    ''', dangerously_allow_html=True), 
     html.Div([
         html.Div([
             html.Img(src='/assets/buscafes.png', style={'width': '80%', 'height': 'auto', 'margin-bottom': '0px', 'margin-top': '10px'}),
