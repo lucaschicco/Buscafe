@@ -72,6 +72,7 @@ lon_max = data['Longitud'].max()
 app.layout = html.Div([
     dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
     dcc.Store(id='info-visible', data=False),
+    html.Link(href="https://jsonbuscafe.blob.core.windows.net/contbuscafe/bWLwgP.css", rel="stylesheet"),
     html.Button("Mostrar/Ocultar Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     html.Div([
         html.Div([
