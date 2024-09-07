@@ -307,14 +307,14 @@ app.clientside_callback(
         }
 
         if (zoom < 15) {
-            // Si el zoom es menor a 15, calcular el top 20% fijo
+            // Si el zoom es menor a 15, calcular el top 10% fijo
             var reviewsList = filteredFeatures.map(function(feature) {
                 return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
             });
 
-            // Calcular el umbral del top 20%
+            // Calcular el umbral del top 10%
             reviewsList.sort(function(a, b) { return b - a; });
-            var thresholdIndex = Math.floor(reviewsList.length * 0.15);
+            var thresholdIndex = Math.floor(reviewsList.length * 0.1);
             var threshold = reviewsList[thresholdIndex] || 0;
 
             top20Features = filteredFeatures.filter(function(feature) {
