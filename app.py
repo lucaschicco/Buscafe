@@ -26,7 +26,7 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Busca
     {"src": "https://www.buscafes.com.ar/_dash-component-suites/dash/dash-renderer/build/dash_renderer.v2_18_0m1725637755.min.js", "defer": True},
 ])
 server = app.server  # Esto expone el servidor de Flask
-
+app._favicon = ("coffee-solid.ico")
 # Habilitar la compresión
 Compress(server)
 
