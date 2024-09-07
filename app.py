@@ -17,7 +17,6 @@ import requests
 
 external_stylesheets = [
     #dbc.themes.BOOTSTRAP,
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
     'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap'
 ]
 
@@ -74,19 +73,6 @@ app.layout = html.Div([
     dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
     dcc.Store(id='info-visible', data=False),
     html.Button("Mostrar/Ocultar Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
-    dcc.Markdown('''
-        <style>
-        body {
-            font-family: 'Montserrat', sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        .important-class {
-            color: #333;
-            font-weight: bold;
-        }
-        </style>
-    ''', dangerously_allow_html=True), 
     html.Div([
         html.Div([
             html.Img(src='/assets/buscafes.png', style={'width': '80%', 'height': 'auto', 'margin-bottom': '0px', 'margin-top': '10px'}),
@@ -177,7 +163,12 @@ app.layout = html.Div([
         html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': 'auto'}),  # Línea blanca inferior
         html.Div([
             html.A(
-                html.I(className="fas fa-envelope"),
+                html.Img(src='https://jsonbuscafe.blob.core.windows.net/contbuscafe/envelope-solid.svg',
+             style={
+                 'width': '18px',  # Adjust this value as needed
+                 'height': '18px',  # Adjust this value as needed
+                 'filter': 'invert(38%) sepia(78%) saturate(292%) hue-rotate(94deg) brightness(97%) contrast(101%)'
+             }),
                 href="mailto:buscafes.ai@gmail.com",
                 className='contact-button-circle',
                 style={
@@ -198,7 +189,12 @@ app.layout = html.Div([
                 }
             ),
             html.A(
-                html.I(className="fab fa-instagram"),
+                 html.Img(src='https://jsonbuscafe.blob.core.windows.net/contbuscafe/instagram-brands-solid.svg',
+             style={
+                 'width': '18px',  # Adjust this value as needed
+                 'height': '18px',  # Adjust this value as needed
+                 'filter': 'invert(38%) sepia(78%) saturate(292%) hue-rotate(94deg) brightness(97%) contrast(101%)'
+             }),
                 href="https://www.instagram.com/lucas.chicco",
                 className='contact-button-circle',
                 style={
