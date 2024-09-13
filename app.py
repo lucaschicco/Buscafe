@@ -15,16 +15,9 @@ import requests
 
 # Crear la aplicación Dash
 
-external_stylesheets = [
-    #dbc.themes.BOOTSTRAP,
-    'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap'
-]
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets,title="Buscafes",external_scripts=[
-    {"src": "https://www.buscafes.com.ar/_dash-component-suites/dash/dcc/dash_core_components.v2_14_2m1725637759.js", "defer": True},
-    {"src": "https://www.buscafes.com.ar/_dash-component-suites/dash_leaflet/dash_leaflet.v1_0_15m1725637783.js", "defer": True},
-    {"src": "https://www.buscafes.com.ar/_dash-component-suites/dash/dash-renderer/build/dash_renderer.v2_18_0m1725637755.min.js", "defer": True},
-])
+
+app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
 app._favicon = ("coffee-solid.ico")
 # Habilitar la compresión
