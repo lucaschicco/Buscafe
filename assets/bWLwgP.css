@@ -61,14 +61,17 @@
     }
 }
 
+
 @font-face {
     font-family: 'Montserrat';
-    src: url('/assets/Montserrat-Regular.ttf') format('truetype');
+    src: url('/assets/Montserrat-Regular.woff2') format('woff2'),
+         url('/assets/Montserrat-Regular.ttf') format('truetype');
     font-weight: 400;
 }
 @font-face {
     font-family: 'Montserrat';
-    src: url('/assets/Montserrat-Bold.ttf') format('truetype');
+    src: url('/assets/Montserrat-Bold.woff2') format('woff2'),
+         url('/assets/Montserrat-Bold.ttf') format('truetype');
     font-weight: 700;
 }
 
@@ -79,33 +82,6 @@
     background: transparent !important;
     box-shadow: none !important;
 }
-
-.leaflet-tile {
-    width: 256px;
-    height: 256px;
-}
-
-
-.leaflet-popup {
-    z-index: 1200 !important;  /* Lo suficientemente alto para estar sobre el mapa, pero por debajo de los controles */
-}
-
-.leaflet-control {
-    z-index: 1400 !important;  /* Más alto que el popup */
-}
-
-.custom-toggle-button, .controls-container {
-    z-index: 1500 !important;  /* Más alto que el popup y los controles de Leaflet */
-}
-
-.leaflet-popup {
-    pointer-events: auto !important;
-}
-
-.leaflet-control {
-    pointer-events: auto !important;
-}
-
 
 
 /* Ajustes de tamaño de fuente para dropdowns y inputs */
@@ -158,7 +134,7 @@
 }
 
 .custom-slider {
-    width: 90% !important; /* Ajusta el ancho del RangeSlider */
+    width: 77% !important; /* Ajusta el ancho del RangeSlider */
     margin: 0 auto; /* Centra el RangeSlider */
     margin-top: 0px;
     margin-bottom: 0px !important;
@@ -341,7 +317,7 @@
     font-weight: bold !important;
     top: 10px;
     left: 10px;
-    z-index: 1000 !important; /* Asegura que el botón esté por encima del panel de filtros */
+    z-index: 2000; /* Asegura que el botón esté por encima del panel de filtros */
     color: #194d33 !important;
 }
 
@@ -431,12 +407,6 @@
     cursor: pointer;
 }
 
-/* Ajustar el estilo del botón de contacto */
-.contact-button-circle {
-    border: 2px solid #fffff5 !important;
-    color: #194d33 !important;
-    background-color: #fffff5 !important;
-}
 
 /* Estilo para el Tooltip del marcador del mapa */
 .marker-tooltip {
@@ -524,18 +494,21 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 
 /* Ajustar el estilo del botón de contacto */
 .contact-button-circle {
-    border: 2px solid #fffff5 !important;
-    color: #194d33 !important;
-    background-color: #fffff5 !important;
+    margin-left: 15px !important;  /* Ajusta el margen izquierdo para acercar los botones */
+    margin-right: 15px !important; /* Ajusta el margen derecho para acercar los botones */
+    margin-top: 15px !important;
     display: flex;
     justify-content: center;
     align-items: center;
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: 50%;   
     text-decoration: none;
-    margin: 10px auto; /* Ajusta el margen según sea necesario */
+    border: 2px solid #fffff5 !important;
+    color: #194d33 !important;
+    background-color: #fffff5 !important;
 }
+
 
 
 
@@ -570,4 +543,6 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     align-items: center;
 }
 
-
+.loading-overlay {
+    z-index: 2000 !important; /* Asegúrate de que esté por encima del panel de filtros */
+}
