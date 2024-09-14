@@ -65,20 +65,22 @@ lon_max = data['Longitud'].max()
 app.layout = html.Div([
     dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
     dcc.Store(id='info-visible', data=False),
-    #html.Link(href="https://jsonbuscafe.blob.core.windows.net/contbuscafe/bWLwgP.css", rel="stylesheet"),
     html.Button("Mostrar/Ocultar Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
+
+    # Pantalla de carga para los filtros y el mapa
     html.Div([
         html.Div([
             html.Img(src='/assets/buscafes.png', style={'width': '80%', 'height': 'auto', 'margin-bottom': '0px', 'margin-top': '10px'}),
             html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': '10px auto'})  # Línea blanca superior
         ], style={'display': 'flex', 'align-items': 'center', 'flex-direction': 'column'}),
+
         dcc.Dropdown(
             id='barrio-dropdown',
             options=[{'label': barrio, 'value': barrio} for barrio in data['Barrio'].unique()],
             value=None,
             placeholder="Selecciona un barrio",
             className='custom-dropdown',
-            multi=True  # Permite selección múltiple
+            multi=True
         ),
         dcc.Dropdown(
             id='feature-filter',
@@ -98,7 +100,6 @@ app.layout = html.Div([
             ],
             value=[],
             multi=True,
-            optionHeight=30,
             placeholder="Filtrá por Características...",
             className='custom-dropdown'
         ),
@@ -107,7 +108,6 @@ app.layout = html.Div([
             options=[{'label': day, 'value': day} for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']],
             value=[],
             multi=True,
-            optionHeight=30,
             placeholder="Filtrá por Días de Apertura...",
             className='custom-dropdown'
         ),
@@ -119,11 +119,11 @@ app.layout = html.Div([
             placeholder="Busca por Nombre...",
             className='custom-dropdown',
             style={
-                    'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
-                    'margin-top': '3px'
-                }
+                'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
+                'margin-top': '3px'
+            }
         ),
-        html.Label("RATING", style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px','margin-bottom': '5px', 'width': '80%', 'margin-left': 'auto', 'margin-right': 'auto'}),
+        html.Label("RATING", style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px', 'margin-bottom': '5px',  'margin-left': '40px'}),
         dcc.RangeSlider(
             id='rating-slider',
             min=data['Rating'].min(),
@@ -140,8 +140,7 @@ app.layout = html.Div([
             html.Div(className='color-3'),
             html.Div(className='color-4'),
             html.Div(className='color-5')
-        ]
-        ),
+        ]),
         dcc.Dropdown(
             id='map-style-dropdown',
             options=[
@@ -154,100 +153,102 @@ app.layout = html.Div([
             style={'margin-top': '15px'},
         ),
         html.Div(id='output-container-slider'),
-        html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': 'auto'}),  # Línea blanca inferior
+        html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': 'auto'}),
         html.Div([
             html.A(
                 html.Img(src='https://jsonbuscafe.blob.core.windows.net/contbuscafe/envelope-solid.svg',
-             style={
-                 'width': '18px',  # Adjust this value as needed
-                 'height': '18px',  # Adjust this value as needed
-                 'filter': 'invert(38%) sepia(78%) saturate(292%) hue-rotate(94deg) brightness(97%) contrast(101%)'
-             }),
+                         style={'width': '18px', 'height': '18px', 'filter': 'invert(38%) sepia(78%) saturate(292%) hue-rotate(94deg) brightness(97%) contrast(101%)'}),
                 href="mailto:buscafes.ai@gmail.com",
                 className='contact-button-circle',
-                style={
-                    'margin-top': '15px',
-                    'margin-bottom': '0px',
-                    'display': 'flex',
-                    'justify-content': 'center',
-                    'align-items': 'center',
-                    'width': '40px',
-                    'height': '40px',
-                    'border': '2px solid #fffff5',
-                    'border-radius': '50%',
-                    'background-color': 'rgba(255, 255, 255, 1)',
-                    'color': '#194d33',
-                    'text-decoration': 'none',
-                    'margin-left': 'auto',
-                    'margin-right': '10px'
-                }
+                style={}
             ),
             html.A(
-                 html.Img(src='https://jsonbuscafe.blob.core.windows.net/contbuscafe/instagram-brands-solid.svg',
-             style={
-                 'width': '18px',  # Adjust this value as needed
-                 'height': '18px',  # Adjust this value as needed
-                 'filter': 'invert(38%) sepia(78%) saturate(292%) hue-rotate(94deg) brightness(97%) contrast(101%)'
-             }),
+                html.Img(src='https://jsonbuscafe.blob.core.windows.net/contbuscafe/instagram-brands-solid.svg',
+                         style={'width': '18px', 'height': '18px', 'filter': 'invert(38%) sepia(78%) saturate(292%) hue-rotate(94deg) brightness(97%) contrast(101%)'}),
                 href="https://www.instagram.com/lucas.chicco",
                 className='contact-button-circle',
-                style={
-                    'margin-top': '15px',
-                    'margin-bottom': '0px',
-                    'display': 'flex',
-                    'justify-content': 'center',
-                    'align-items': 'center',
-                    'width': '40px',
-                    'height': '40px',
-                    'border': '2px solid #fffff5',
-                    'border-radius': '50%',
-                    'background-color': 'rgba(255, 255, 255, 1)',
-                    'color': '#194d33',
-                    'text-decoration': 'none',
-                    'margin-left': '10px',
-                    'margin-right': 'auto'
-                }
+                style={}
             )
         ], style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}),
-    ],id='filters-panel', className='controls-container'),
-    dl.Map(
-        id='map',
-        style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
-        center=[-34.598, -58.436], 
-        zoomControl=False,
-        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
-        zoom=12, 
+    ], id='filters-panel', className='controls-container'),
+
+    dcc.Loading(
+        id="loading-spinner",
+        type="default",
+        fullscreen=True,
+        className="loading-overlay",
         children=[
-            dl.TileLayer(id="base-layer", url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"),
-            dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': False}, position='topright', showPopup=False),
-            dl.ZoomControl(position='topright'),
-            dl.GeoJSON(
-                id="geojson-layer",
-                options=dict(
-                    pointToLayer=assign("""
-                    function(feature, latlng){
-                        let iconUrl = feature.properties.iconUrl;  // Usa el URL del ícono definido en Python
-                        
-                        return L.marker(latlng, {
-                            icon: L.icon({
-                                iconUrl: iconUrl,
-                                iconSize: [18, 27],
-                                iconAnchor: [12, 23],
-                                popupAnchor: [1, -34],
-                                shadowSize: [0, 0]
-                            })
-                        }).bindPopup(feature.properties.popupContent)
-                          .bindTooltip(feature.properties.tooltipContent, {
-                              className: 'marker-tooltip'
-                          });
-                    }
-                    """)
-                ),
-                zoomToBoundsOnClick=True,
+            dl.Map(
+                id='map',
+                style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
+                center=[-34.598, -58.436],
+                zoomControl=False,
+                bounds=[[lat_min, lon_min], [lat_max, lon_max]],
+                zoom=12,
+                children=[
+                    dl.TileLayer(id="base-layer", url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"),
+                    dl.LocateControl(locateOptions={'enableHighAccuracy': True,'setView': False}, position='topright', showPopup=False),
+                    dl.ZoomControl(position='topright'),
+                    dl.GeoJSON(
+                        id="geojson-layer",
+                        options=dict(
+                            pointToLayer=assign("""
+                            function(feature, latlng){
+                                let iconUrl = feature.properties.iconUrl;
+                                return L.marker(latlng, {
+                                    icon: L.icon({
+                                        iconUrl: iconUrl,
+                                        iconSize: [18, 27],
+                                        iconAnchor: [12, 23],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [0, 0]
+                                    })
+                                }).bindPopup(feature.properties.popupContent)
+                                  .bindTooltip(feature.properties.tooltipContent, {
+                                      className: 'marker-tooltip'
+                                  });
+                            }
+                            """)
+                        ),
+                        zoomToBoundsOnClick=True,
+                    )
+                ]
             )
         ]
-    )
+    ),html.Div([
+            "Haz zoom para ver más cafeterías",
+            html.Button('✖', id='close-message-button', style={
+                'background': 'none',
+                'border': 'none',
+                'color': 'black',
+                'font-size': '10px',
+                'cursor': 'pointer',
+                'position': 'absolute',
+                'right': '1px',
+                'top': '1px'
+            })
+        ],
+        id='zoom-message',
+        style={
+            'position': 'fixed',
+            'bottom': '30px',  # A 30px del "piso"
+            'left': '50%',
+            'transform': 'translateX(-50%)',  # Centra el recuadro horizontalmente
+            'background-color': '#d3d3d3',  # Fondo gris claro
+            'color': 'black',  # Letra negra
+            'padding': '10px 20px',  # Espaciado interno
+            'border-radius': '8px',  # Bordes redondeados
+            'box-shadow': '0px 4px 10px rgba(0, 0, 0, 0.1)',  # Sombra suave
+            'font-weight': 'bold',
+            'z-index': '2000',  # Asegura que esté por encima del mapa y otros elementos
+            'font-size': '14px',  # Ajusta el tamaño de letra
+            'text-align': 'center',
+            'width': 'auto',  # No ocupar todo el ancho de la pantalla
+            'max-width': '80%'  # Ajustar un máximo de ancho si es necesario
+        }
+    ),
 ])
+
 
 app.clientside_callback(
     """
@@ -354,6 +355,18 @@ def toggle_filters_panel(n_clicks, current_style):
         return {'display': 'block'}
     else:  # Si es par, oculta los filtros
         return {'display': 'none'}
+
+@app.callback(
+    Output('zoom-message', 'style'),
+    Input('close-message-button', 'n_clicks'),
+    State('zoom-message', 'style'),
+    prevent_initial_call=True
+)
+def hide_message(n_clicks, current_style):
+    if n_clicks:
+        # Cambiar el estilo para ocultar el mensaje
+        current_style['display'] = 'none'
+    return current_style
 
 
 @app.callback(
