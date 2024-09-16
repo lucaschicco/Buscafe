@@ -193,22 +193,34 @@ app.layout = html.Div([
                         id="geojson-layer",
                         options=dict(
                             pointToLayer=assign("""
-                            function(feature, latlng){
-                                let iconUrl = feature.properties.iconUrl;
-                                return L.marker(latlng, {
-                                    icon: L.icon({
-                                        iconUrl: iconUrl,
-                                        iconSize: [18, 27],
-                                        iconAnchor: [12, 23],
-                                        popupAnchor: [1, -34],
-                                        shadowSize: [0, 0]
-                                    })
-                                }).bindPopup(feature.properties.popupContent)
-                                  .bindTooltip(feature.properties.tooltipContent, {
+                                function(feature, latlng){
+                                    let iconUrl = feature.properties.iconUrl;
+                                    let marker = L.marker(latlng, {
+                                        icon: L.icon({
+                                            iconUrl: iconUrl,
+                                            iconSize: [18, 27],
+                                            iconAnchor: [12, 23],
+                                            popupAnchor: [1, -34],
+                                            shadowSize: [0, 0]
+                                        })
+                                    }).bindTooltip(feature.properties.tooltipContent, {
                                       className: 'marker-tooltip'
                                   });
-                            }
-                            """)
+                                    
+                                    // Añadir un evento de click al marker para mostrar el Popup
+                                    marker.on('click', function(){
+                                        var popup = L.popup({closeOnMove: false})
+                                            .setLatLng(latlng)
+                                            .setContent(feature.properties.popupContent)
+                                            .openOn(marker._map);  // Asegura que el popup se mantenga abierto
+                        
+                                        // Asegura que el mapa no se centre automáticamente en el marker
+                                        marker._map.panTo(latlng, {animate: true});
+                                    });
+                        
+                                    return marker;
+                                }
+                                """)
                         ),
                         zoomToBoundsOnClick=True,
                     )
