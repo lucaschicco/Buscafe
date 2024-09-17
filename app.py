@@ -12,6 +12,7 @@ import numpy as np
 from flask_compress import Compress
 import json
 import requests
+import dash_loading_spinners as dls
 
 # Crear la aplicación Dash
 
@@ -34,7 +35,9 @@ app.index_string = '''
   {%css%}
 </head>
 <body>
-  {%app_entry%}
+  <div id="react-entry-point">
+    {%app_entry%}
+  </div>
   <footer>
     {%config%}
     {%scripts%}
@@ -61,11 +64,24 @@ lat_max = data['Latitud'].max()
 lon_min = data['Longitud'].min()
 lon_max = data['Longitud'].max()
 
+with open('assets/cafeinit.svg', 'r') as file:
+    svg_content = file.read()
+
 # Layout de la aplicación
 app.layout = html.Div([
+    dcc.Store(id='initial-load', data=True),
     dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
     dcc.Store(id='info-visible', data=False),
     html.Button("Mostrar/Ocultar Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
+    # Spinner de carga inicial
+    html.Div([
+        dls.Custom(
+            svg=svg_content,
+            #color="#119DFF",  # Puedes personalizar el color
+            #size=80,  # Ajusta el tamaño del spinner
+            id='initial-loading-spinner',  # Le damos un id para controlarlo
+        )
+    ], id='loading-div', style={'position': 'fixed', 'top': '0', 'left': '0', 'width': '100%', 'height': '100%', 'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'background-color': 'rgba(255, 255, 255, 1)', 'z-index': '3000'}),
 
     # Pantalla de carga para los filtros y el mapa
     html.Div([
@@ -172,14 +188,9 @@ app.layout = html.Div([
         ], style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}),
     ], id='filters-panel', className='controls-container'),
 
-    dcc.Loading(
-        id="loading-spinner",
-        type="default",
-        fullscreen=True,
-        className="loading-overlay",
-        children=[
-            dl.Map(
-                id='map',
+    # Usamos el spinner de dash-loading-spinners
+    dl.Map(
+            id='map',
                 style={'width': '100%', 'height': '100vh', 'max-height': '100vh'},
                 center=[-34.598, -58.436],
                 zoomControl=False,
@@ -226,8 +237,7 @@ app.layout = html.Div([
                     )
                 ]
             )
-        ]
-    ),html.Div([
+        ,html.Div([
             "Haz zoom para ver más cafeterías",
             html.Button('✖', id='close-message-button', style={
                 'background': 'none',
@@ -260,6 +270,20 @@ app.layout = html.Div([
         }
     ),
 ])
+
+
+
+@app.callback(
+    Output('loading-div', 'style'),  # Cambia la visibilidad del spinner
+    Input('geojson-layer', 'data'),  # Se dispara cuando los datos están listos
+    prevent_initial_call=True
+)
+def hide_spinner_on_load(data):
+    # Ocultar el spinner cuando el mapa se haya cargado
+    if data:
+        return {'display': 'none'}
+    return {'position': 'fixed', 'top': '0', 'left': '0', 'width': '100%', 'height': '100%', 'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'background-color': 'rgba(255, 255, 255, 0.8)', 'z-index': '2000'}
+
 
 
 app.clientside_callback(
