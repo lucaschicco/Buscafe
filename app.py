@@ -52,7 +52,7 @@ file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_ba
 data = pd.read_excel(file_path)
 
 # URL of the JSON file
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data2.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data.json'
 # Fetch the content from the URL
 response = requests.get(url)
 # Load the content into a Python dictionary
