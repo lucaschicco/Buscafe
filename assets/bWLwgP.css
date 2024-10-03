@@ -408,60 +408,41 @@
 }
 
 
-/* Estilo para el Tooltip del marcador del mapa */
-.marker-tooltip {
+/* Estilos para el tooltip */
+.leaflet-tooltip {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
     background: #64b6ac !important;
     color: #fffff5;
-    border: 2px solid #fffff5 !important;  /* Añadir borde con color */
-    padding: 10px !important;  /* Incrementar padding para mayor tamaño */
-    border-radius: 5px !important;
-    cursor: pointer;
-    box-shadow: none !important;
-    width: auto !important;
-    height: auto !important;
-    font-size: 14px !important;
-    min-width: 150px !important;  /* Ancho mínimo del tooltip */
-    word-wrap: break-word !important;
+    border: 2px solid #fffff5;
+    border-radius: 5px;
+    padding: 10px;
+    min-width: 150px;
+    word-wrap: break-word;
 }
 
-.leaflet-tooltip {
-    background: #64b6ac !important;  /* Color de fondo del recuadro */
-    color: #fffff5 !important;  /* Color del texto */
-    border-radius: 5px !important;  /* Bordes redondeados */
-    padding: 10px !important;  /* Espacio interno del recuadro */
-    cursor: pointer !important;  /* Cambiar el cursor al pasar sobre el tooltip */
-    box-shadow: none !important;  /* Eliminar la sombra alrededor del recuadro */
-    border: 2px solid #fffff5 !important;  /* Borde del recuadro */
-    width: auto !important;
-    height: auto !important;
-    font-size: 14px !important;  /* Tamaño de la fuente */
-    min-width: 150px !important;  /* Ancho mínimo del tooltip */
-    word-wrap: break-word !important;  /* Asegura que el texto se ajuste al recuadro */
-}
-
-/* Estilo específico para el nombre en el tooltip */
+/* Ajuste del estilo del nombre en el tooltip */
 .marker-tooltip .nombre {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
     font-weight: bold;
-    color: #2b2b2b;
-    font-size: 16px !important;  /* Tamaño de letra más grande para el nombre */
-    margin-bottom: 2px !important;  /* Margen inferior para separar del siguiente contenido */
+    color: #000000;  /* Cambiar a color negro */
+    margin-top: 0px; /* Reducir espacio superior */
+    margin-bottom: 2px;  /* Mantener un pequeño espacio entre el nombre y el siguiente contenido */
 }
+
+/* Estilo para las palabras en negrita */
+.marker-tooltip .bold-text {
+    font-weight: bold;
+}
+
 
 /* Ajustar el margen entre elementos del tooltip */
 .marker-tooltip p {
     margin-bottom: 2px !important;  /* Reducir el margen entre elementos */
 }
 
-/* Estilo específico para las palabras "Reviews" y "Dirección" en negrita */
-.marker-tooltip .bold-text {
-    font-weight: bold !important;
-}
 
-/* Estilo para las estrellas de rating en dorado */
-.marker-tooltip .stars {
-    color: #ffd700;  /* Color dorado */
-    font-size: 14px !important;  /* Aumentar tamaño de fuente */
-}
 
 .marker-tooltip div {
     margin-bottom: 2px !important;
@@ -488,7 +469,7 @@
     }
 }
 
-body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .Select-placeholder, .custom-dropdown .Select-value-label, .custom-dropdown .Select-menu, .custom-dropdown .Select-option, .custom-slider, .custom-button, .custom-toggle-button, #info-registro, .marker-tooltip, .contact-button-circle {
+body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .Select-placeholder, .custom-dropdown .Select-value-label, .custom-dropdown .Select-menu, .custom-dropdown .Select-option, .custom-slider, .custom-button, .custom-toggle-button, #info-registro, .contact-button-circle {
     font-family: 'Montserrat', sans-serif;
 }
 
@@ -545,4 +526,20 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 
 .loading-overlay {
     z-index: 2000 !important; /* Asegúrate de que esté por encima del panel de filtros */
+}
+
+
+
+/* Estilos para los popups */
+.leaflet-popup-content {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Estilos para el nombre en el popup */
+.leaflet-popup-content strong {
+    font-size: 16px;
+    font-weight: bold;
+    text-decoration: underline;
 }
