@@ -543,3 +543,8 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     font-weight: bold;
     text-decoration: underline;
 }
+
+/* Cambiar el color del texto al escribir en los dropdowns */
+.custom-dropdown .Select-input input {
+    color: #fffff5 !important; /* Cambiar a blanco */
+}
