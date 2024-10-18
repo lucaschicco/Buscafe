@@ -42,21 +42,21 @@
 
 @media (max-width: 430px) {
     .controls-container {
-        width: 90% !important; /* Ancho en dispositivos móviles más pequeños */
+        width: 85% !important; /* Ancho en dispositivos móviles más pequeños */
         left: 5%;  
     }
 }
 
 @media (max-width: 425px) {
     .controls-container {
-        width: 90% !important; /* Ancho en dispositivos móviles más pequeños */
+        width: 85% !important; /* Ancho en dispositivos móviles más pequeños */
         left: 5%;  
     }
 }
 
 @media (max-width: 375px) {
     .controls-container {
-        width: 90%; /* Ancho completo en dispositivos móviles más pequeños */
+        width: 85%; /* Ancho completo en dispositivos móviles más pequeños */
         left: 5%;  
     }
 }
