@@ -224,11 +224,17 @@ app.layout = html.Div([
                                             .setLatLng(latlng)
                                             .setContent(feature.properties.popupContent)
                                             .openOn(marker._map);  // Asegura que el popup se mantenga abierto
-                        
-                                        // Asegura que el mapa no se centre automáticamente en el marker
-                                        marker._map.panTo(latlng, {animate: true});
+                                    
+                                        // Obtener el nivel de zoom actual
+                                        var zoomLevel = marker._map.getZoom();
+                                    
+                                        // Calcular el desplazamiento relativo al nivel de zoom
+                                        // A mayor zoom, menor desplazamiento. El factor 0.002 es ajustado según tu caso, pero puedes variar según sea necesario.
+                                        var latOffset = 0.004 / Math.pow(2, zoomLevel - 12);  // Ajustar en función del nivel de zoom
+                                    
+                                        // Ajustar el mapa desplazando el marcador hacia abajo dependiendo del nivel de zoom
+                                        marker._map.panTo([latlng.lat + latOffset, latlng.lng], {animate: true});
                                     });
-                        
                                     return marker;
                                 }
                                 """)
@@ -270,8 +276,6 @@ app.layout = html.Div([
         }
     ),
 ])
-
-
 
 
 @app.callback(
