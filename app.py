@@ -48,11 +48,11 @@ app.index_string = '''
 '''
 
 # Cargar datos
-file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf3.xlsx'
+file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf31.xlsx'
 data = pd.read_excel(file_path)
 
 # URL of the JSON file
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data3.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data31.json'
 # Fetch the content from the URL
 response = requests.get(url)
 # Load the content into a Python dictionary
@@ -229,8 +229,8 @@ app.layout = html.Div([
                                         var zoomLevel = marker._map.getZoom();
                                     
                                         // Calcular el desplazamiento relativo al nivel de zoom
-                                        // A mayor zoom, menor desplazamiento. El factor 0.002 es ajustado según tu caso, pero puedes variar según sea necesario.
-                                        var latOffset = 0.05 / Math.pow(2, zoomLevel - 12);  // Ajustar en función del nivel de zoom
+                                        // A mayor zoom, menor desplazamiento. El factor 0.07 es ajustado según tu caso, pero puedes variar según sea necesario.
+                                        var latOffset = 0.07 / Math.pow(2, zoomLevel - 12);  // Ajustar en función del nivel de zoom
                                     
                                         // Ajustar el mapa desplazando el marcador hacia abajo dependiendo del nivel de zoom
                                         marker._map.panTo([latlng.lat + latOffset, latlng.lng], {animate: true});
