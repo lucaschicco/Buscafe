@@ -230,7 +230,7 @@ app.layout = html.Div([
                                     
                                         // Calcular el desplazamiento relativo al nivel de zoom
                                         // A mayor zoom, menor desplazamiento. El factor 0.07 es ajustado según tu caso, pero puedes variar según sea necesario.
-                                        var latOffset = 0.07 / Math.pow(2, zoomLevel - 12);  // Ajustar en función del nivel de zoom
+                                        var latOffset = 0.05 / Math.pow(2, zoomLevel - 12);  // Ajustar en función del nivel de zoom
                                     
                                         // Ajustar el mapa desplazando el marcador hacia abajo dependiendo del nivel de zoom
                                         marker._map.panTo([latlng.lat + latOffset, latlng.lng], {animate: true});
