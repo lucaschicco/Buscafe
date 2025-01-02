@@ -48,11 +48,11 @@ app.index_string = '''
 '''
 
 # Cargar datos
-file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf31.xlsx'
+file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf32.xlsx'
 data = pd.read_excel(file_path)
 
 # URL of the JSON file
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data31.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data32.json'
 # Fetch the content from the URL
 response = requests.get(url)
 # Load the content into a Python dictionary
