@@ -181,7 +181,7 @@ app.layout = html.Div([
             html.A(
                 html.Img(src='https://jsonbuscafe.blob.core.windows.net/contbuscafe/instagram-brands-solid.svg',
                          style={'width': '18px', 'height': '18px', 'filter': 'invert(38%) sepia(78%) saturate(292%) hue-rotate(94deg) brightness(97%) contrast(101%)'}),
-                href="https://www.instagram.com/lucas.chicco",
+                href="https://www.instagram.com/buscafes.ai",
                 className='contact-button-circle',
                 style={}
             )
