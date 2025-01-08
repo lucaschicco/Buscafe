@@ -96,6 +96,7 @@ app.layout = html.Div([
             value=None,
             placeholder="Selecciona un barrio",
             className='custom-dropdown',
+            searchable =False,
             multi=True
         ),
         dcc.Dropdown(
@@ -124,6 +125,7 @@ app.layout = html.Div([
             options=[{'label': day, 'value': day} for day in ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']],
             value=[],
             multi=True,
+            searchable =False,
             placeholder="Filtrá por Días de Apertura...",
             className='custom-dropdown'
         ),
@@ -133,6 +135,7 @@ app.layout = html.Div([
             value=[],
             multi=True,
             placeholder="Busca por Nombre...",
+            searchable =True,
             className='custom-dropdown',
             style={
                 'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)',
@@ -165,6 +168,7 @@ app.layout = html.Div([
             ],
             value='carto-positron',
             placeholder="Estilo de mapa",
+            searchable =False,
             className='custom-dropdown',
             style={'margin-top': '15px'},
         ),
