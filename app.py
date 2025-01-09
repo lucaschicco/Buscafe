@@ -116,6 +116,7 @@ app.layout = html.Div([
                 {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'}
             ],
             value=[],
+            searchable =False,
             multi=True,
             placeholder="Filtrá por Características...",
             className='custom-dropdown'
