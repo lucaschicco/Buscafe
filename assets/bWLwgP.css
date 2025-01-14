@@ -530,19 +530,51 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 
 
 
-/* Estilos para los popups */
+/* Estilos generales para los popups */
 .leaflet-popup-content {
     font-family: 'Montserrat', sans-serif;
     font-size: 14px;
     line-height: 1.5;
 }
 
-/* Estilos para el nombre en el popup */
-.leaflet-popup-content strong {
-    font-size: 16px;
+/* Estilo específico para el nombre de la cafetería */
+.leaflet-popup-content .popup-nombre {
+    font-size: 20px; /* Tamaño más grande para el nombre */
     font-weight: bold;
-    text-decoration: underline;
+    text-decoration: none; /* Sin subrayado */
+    color: #333; /* Cambia el color si es necesario */
 }
+
+/* Estilo solo para el título "Horarios" */
+.popup-horarios-title {
+    text-decoration: underline; /* Subrayar solo el título */
+    font-weight: bold;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    margin-bottom: 5px; /* Espacio entre el título y los horarios */
+}
+
+/* Estilo para los valores de los horarios (días y horas) */
+.popup-horarios-content {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    line-height: 1.5; /* Espaciado entre líneas */
+    text-decoration: none; /* Asegura que los valores no estén subrayados */
+    margin: 0; /* Sin margen adicional */
+}
+
+
+/* Estilo para el resto de los parámetros */
+.leaflet-popup-content .popup-rating,
+.leaflet-popup-content .popup-reviews,
+.leaflet-popup-content .popup-web,
+.leaflet-popup-content .popup-direccion {
+    font-size: 14px;
+    font-weight: normal;
+    text-decoration: none; /* Quitar subrayado */
+    color: #555; /* Color opcional */
+}
+
 
 /* Cambiar el color del texto al escribir en los dropdowns */
 .custom-dropdown .Select-input input {
