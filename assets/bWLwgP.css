@@ -539,10 +539,13 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 
 /* Estilo específico para el nombre de la cafetería */
 .leaflet-popup-content .popup-nombre {
-    font-size: 20px; /* Tamaño más grande para el nombre */
+    font-size: 18px; !important /* Mantén el tamaño grande del nombre */
     font-weight: bold;
-    text-decoration: none; /* Sin subrayado */
-    color: #333; /* Cambia el color si es necesario */
+    text-decoration: none;
+    color: #333;
+    margin-top: 5px !important; /* Reduce el espacio superior */
+    margin-bottom: 5px !important; /* Reduce el espacio inferior */
+    text-align: center; /* Alinea al centro si es necesario */
 }
 
 /* Estilo solo para el título "Horarios" */
@@ -574,6 +577,36 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     text-decoration: none; /* Quitar subrayado */
     color: #555; /* Color opcional */
 }
+
+.leaflet-popup-content .popup-rating {
+    font-size: 14px;
+    font-weight: normal;
+    text-decoration: none;
+    color: #555;
+    margin-top: 5px !important; /* Reduce el espacio entre el nombre y Rating */
+    margin-bottom: 5px !important; /* Reduce el espacio entre Rating y el siguiente parámetro */
+}
+
+/* Cambiar el color del texto al escribir en los dropdowns */
+.custom-dropdown .Select-input input {
+    color: #fffff5 !important; /* Cambiar a blanco */
+}
+
+.leaflet-popup-close-button {
+    position: absolute !important;
+    top: 15px !important; /* Ajusta la posición vertical */
+    right: 3px !important; /* Ajusta la posición horizontal */
+    background-color: transparent !important;
+    border: none !important;
+    font-size: 2em !important; /* Aumenta el tamaño del símbolo */
+    cursor: pointer !important;
+    line-height: 1 !important; /* Mantiene la proporción del símbolo */
+    color: black !important; /* Cambia el color si es necesario */
+    width: 50px !important; /* Aumenta el área clickeable horizontalmente */
+    height: 50px !important; /* Aumenta el área clickeable verticalmente */
+    text-align: center !important; /* Centra el símbolo en el área clickeable */
+}
+
 
 
 /* Cambiar el color del texto al escribir en los dropdowns */
