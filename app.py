@@ -14,10 +14,6 @@ import json
 import requests
 import dash_loading_spinners as dls
 
-# Crear la aplicación Dash
-
-
-
 app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
 app._favicon = ("coffee-solid.ico")
@@ -304,7 +300,6 @@ app.clientside_callback(
         }
 
         var filteredFeatures = geojsonData.features;
-        var top20Features = [];
 
         // Filtrar por barrios
         if (barriosSeleccionados && barriosSeleccionados.length > 0) {
@@ -344,6 +339,8 @@ app.clientside_callback(
             filteredFeatures = filteredFeatures.filter(function(feature) {
                 return nombreFilter.includes(feature.properties.Nombre);
             });
+            // Si el filtro de nombre está activo, devolver todos los resultados filtrados sin importar el zoom
+            return {type: 'FeatureCollection', features: filteredFeatures};
         }
 
         if (zoom < 15) {
@@ -357,7 +354,7 @@ app.clientside_callback(
             var thresholdIndex = Math.floor(reviewsList.length * 0.1);
             var threshold = reviewsList[thresholdIndex] || 0;
 
-            top20Features = filteredFeatures.filter(function(feature) {
+            var top20Features = filteredFeatures.filter(function(feature) {
                 return feature.properties['Cantidad Reviews'] >= threshold;
             });
 
