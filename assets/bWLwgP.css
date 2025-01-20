@@ -529,7 +529,6 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 }
 
 
-
 /* Estilos generales para los popups */
 .leaflet-popup-content {
     font-family: 'Montserrat', sans-serif;
@@ -608,8 +607,3 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 }
 
 
-
-/* Cambiar el color del texto al escribir en los dropdowns */
-.custom-dropdown .Select-input input {
-    color: #fffff5 !important; /* Cambiar a blanco */
-}
