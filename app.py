@@ -13,6 +13,9 @@ from flask_compress import Compress
 import json
 import requests
 import dash_loading_spinners as dls
+import os
+from opencensus.ext.azure import metrics_exporter
+
 
 app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
@@ -42,6 +45,11 @@ app.index_string = '''
 </body>
 </html>
 '''
+
+# Establece la clave de instrumentación
+exporter = metrics_exporter.new_metrics_exporter(
+    connection_string='InstrumentationKey=058dbec3-1473-46d9-9ad1-b052bee2b510'
+)
 
 # Cargar datos
 file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf33.xlsx'
