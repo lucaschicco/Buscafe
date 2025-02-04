@@ -351,9 +351,9 @@ app.clientside_callback(
                 return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
             });
 
-            // Calcular el umbral del top 10%
+            // Calcular el umbral del top 7%
             reviewsList.sort(function(a, b) { return b - a; });
-            var thresholdIndex = Math.floor(reviewsList.length * 0.1);
+            var thresholdIndex = Math.floor(reviewsList.length * 0.07);
             var threshold = reviewsList[thresholdIndex] || 0;
 
             var top20Features = filteredFeatures.filter(function(feature) {
