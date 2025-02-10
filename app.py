@@ -46,11 +46,11 @@ app.index_string = '''
 
 
 # Cargar datos
-file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf33.xlsx'
+file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf35.xlsx'
 data = pd.read_excel(file_path)
 
 # URL of the JSON file
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data33.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data35.json'
 # Fetch the content from the URL
 response = requests.get(url)
 # Load the content into a Python dictionary
@@ -105,13 +105,17 @@ app.layout = html.Div([
                 {'label': 'Almuerzo', 'value': 'Almuerzo'},
                 {'label': 'Cena', 'value': 'Cena'},
                 {'label': 'Brunch', 'value': 'Brunch'},
-                {'label': 'Vino', 'value': 'Vino'},
+                {'label': 'Sirve Vino', 'value': 'Vino'},
                 {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
                 {'label': 'Sirve postre', 'value': 'Sirve postre'},
                 {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
                 {'label': 'Desayuno', 'value': 'Desayuno'},
                 {'label': 'Reservable', 'value': 'Reservable'},
-                {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'}
+                {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
+                {'label': 'Tiene comida vegeteriana', 'value': 'Comida vegetariana'},
+                {'label': 'Permite mascotas', 'value': 'Permite mascotas'},
+                {'label': 'Acceso silla de ruedas', 'value': 'Acceso silla de ruedas'},
+                {'label': 'Sirve Cerveza', 'value': 'Sirve Cerveza'}
             ],
             value=[],
             searchable =False,
