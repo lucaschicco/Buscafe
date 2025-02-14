@@ -50,7 +50,7 @@ file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_ba
 data = pd.read_excel(file_path)
 
 # URL of the JSON file
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data35.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data36.json'
 # Fetch the content from the URL
 response = requests.get(url)
 # Load the content into a Python dictionary
@@ -101,21 +101,22 @@ app.layout = html.Div([
             id='feature-filter',
             options=[
                 {'label': 'Tiene Delivery', 'value': 'Delivery'},
+                {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
                 {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
+                {'label': 'Desayuno', 'value': 'Desayuno'},
                 {'label': 'Almuerzo', 'value': 'Almuerzo'},
                 {'label': 'Cena', 'value': 'Cena'},
                 {'label': 'Brunch', 'value': 'Brunch'},
-                {'label': 'Sirve Vino', 'value': 'Vino'},
-                {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
+                {'label': 'Sirve Vino', 'value': 'Sirve Vino'},
+                {'label': 'Sirve Cerveza', 'value': 'Sirve cerveza'},
                 {'label': 'Sirve postre', 'value': 'Sirve postre'},
+                {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
                 {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
-                {'label': 'Desayuno', 'value': 'Desayuno'},
                 {'label': 'Reservable', 'value': 'Reservable'},
-                {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
-                {'label': 'Tiene comida vegeteriana', 'value': 'Comida vegetariana'},
+                {'label': 'Tiene comida vegeteriana', 'value': 'Tiene comida vegetariana'},
                 {'label': 'Permite mascotas', 'value': 'Permite mascotas'},
                 {'label': 'Acceso silla de ruedas', 'value': 'Acceso silla de ruedas'},
-                {'label': 'Sirve Cerveza', 'value': 'Sirve Cerveza'}
+                {'label': 'Tiene opciones sin tacc', 'value': 'Tiene opciones sin tacc'}
             ],
             value=[],
             searchable =False,
@@ -302,14 +303,19 @@ app.clientside_callback(
     """
     function(barriosSeleccionados, featureFilter, ratingRange, diasApertura, nombreFilter, bounds, zoom, geojsonData) {
         if (!geojsonData) {
-            return geojsonData;
+            return [geojsonData, []];
         }
 
         var filteredFeatures = geojsonData.features;
+        var filteredForNames = geojsonData.features;  // Esta lista es solo para el dropdown de nombres
 
         // Filtrar por barrios
         if (barriosSeleccionados && barriosSeleccionados.length > 0) {
             filteredFeatures = filteredFeatures.filter(function(feature) {
+                return barriosSeleccionados.includes(feature.properties.Barrio);
+            });
+
+            filteredForNames = filteredForNames.filter(function(feature) {
                 return barriosSeleccionados.includes(feature.properties.Barrio);
             });
         }
@@ -317,6 +323,12 @@ app.clientside_callback(
         // Filtrar por características
         if (featureFilter && featureFilter.length > 0) {
             filteredFeatures = filteredFeatures.filter(function(feature) {
+                return featureFilter.every(function(filter) {
+                    return feature.properties[filter] === 1.0;
+                });
+            });
+
+            filteredForNames = filteredForNames.filter(function(feature) {
                 return featureFilter.every(function(filter) {
                     return feature.properties[filter] === 1.0;
                 });
@@ -329,11 +341,22 @@ app.clientside_callback(
                 var rating = feature.properties.Rating;
                 return rating >= ratingRange[0] && rating <= ratingRange[1];
             });
+
+            filteredForNames = filteredForNames.filter(function(feature) {
+                var rating = feature.properties.Rating;
+                return rating >= ratingRange[0] && rating <= ratingRange[1];
+            });
         }
 
         // Filtrar por días de apertura
         if (diasApertura && diasApertura.length > 0) {
             filteredFeatures = filteredFeatures.filter(function(feature) {
+                return diasApertura.every(function(day) {
+                    return feature.properties[day + '_open'] && feature.properties[day + '_close'];
+                });
+            });
+
+            filteredForNames = filteredForNames.filter(function(feature) {
                 return diasApertura.every(function(day) {
                     return feature.properties[day + '_open'] && feature.properties[day + '_close'];
                 });
@@ -345,12 +368,18 @@ app.clientside_callback(
             filteredFeatures = filteredFeatures.filter(function(feature) {
                 return nombreFilter.includes(feature.properties.Nombre);
             });
-            // Si el filtro de nombre está activo, devolver todos los resultados filtrados sin importar el zoom
-            return {type: 'FeatureCollection', features: filteredFeatures};
+
+            // Si el usuario seleccionó un nombre, devolver todas las coincidencias sin importar el zoom
+            return [{type: 'FeatureCollection', features: filteredFeatures}, 
+                    nombreFilter.map(nombre => ({ label: nombre, value: nombre }))];
         }
 
+        // 🔹 No aplicar filtro de zoom en el dropdown de nombres
+        var nombresUnicos = [...new Set(filteredForNames.map(feature => feature.properties.Nombre))].sort();
+        var nombreOptions = nombresUnicos.map(nombre => ({ label: nombre, value: nombre }));
+
         if (zoom < 15) {
-            // Si el zoom es menor a 15, calcular el top 10% fijo
+            // Si el zoom es menor a 15, aplicar la lógica del top 7%
             var reviewsList = filteredFeatures.map(function(feature) {
                 return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
             });
@@ -360,13 +389,13 @@ app.clientside_callback(
             var thresholdIndex = Math.floor(reviewsList.length * 0.07);
             var threshold = reviewsList[thresholdIndex] || 0;
 
-            var top20Features = filteredFeatures.filter(function(feature) {
+            var topFeatures = filteredFeatures.filter(function(feature) {
                 return feature.properties['Cantidad Reviews'] >= threshold;
             });
 
-            return {type: 'FeatureCollection', features: top20Features};
+            return [{type: 'FeatureCollection', features: topFeatures}, nombreOptions];
         } else {
-            // Si el zoom es mayor o igual a 15, filtrar por límites del mapa
+            // Si el zoom es mayor o igual a 15, filtrar por los límites del mapa
             if (bounds && bounds.length === 2) {
                 var swLat = bounds[0][0];
                 var swLng = bounds[0][1];
@@ -379,11 +408,13 @@ app.clientside_callback(
                     return lat >= swLat && lat <= neLat && lng >= swLng && lng <= neLng;
                 });
             }
-            return {type: 'FeatureCollection', features: filteredFeatures};
+
+            return [{type: 'FeatureCollection', features: filteredFeatures}, nombreOptions];
         }
     }
     """,
-    Output('geojson-layer', 'data'),
+    [Output('geojson-layer', 'data'),
+     Output('nombre-filter', 'options')],  # Actualiza el dropdown de nombres
     [Input('barrio-dropdown', 'value'),
      Input('feature-filter', 'value'),
      Input('rating-slider', 'value'),
@@ -393,7 +424,6 @@ app.clientside_callback(
      Input('map', 'zoom')],
     State('clientside-store-data', 'data')
 )
-
 @app.callback(
     Output('filters-panel', 'style'),
     Input('toggle-button', 'n_clicks'),
