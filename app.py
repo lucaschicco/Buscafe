@@ -65,6 +65,21 @@ lon_min, lon_max = min(longitudes), max(longitudes)
 with open('assets/cafeinit.svg', 'r') as file:
     svg_content = file.read()
 
+# Obtener valores mínimos y máximos de latitud/longitud
+lat_min = min(feature['geometry']['coordinates'][1] for feature in geojson_data['features'])
+lat_max = max(feature['geometry']['coordinates'][1] for feature in geojson_data['features'])
+lon_min = min(feature['geometry']['coordinates'][0] for feature in geojson_data['features'])
+lon_max = max(feature['geometry']['coordinates'][0] for feature in geojson_data['features'])
+
+# Obtener valores únicos para dropdowns
+barrios_unicos = sorted(set(feature['properties'].get('Barrio', 'Desconocido') for feature in geojson_data['features']))
+nombres_unicos = sorted(set(feature['properties'].get('Nombre', 'Desconocido') for feature in geojson_data['features']))
+
+# Obtener valores mínimo y máximo de rating (evita errores con `.get()` y valores por defecto)
+ratings = [feature['properties'].get('Rating', 0) for feature in geojson_data['features']]
+rating_min = min(ratings)
+rating_max = max(ratings)
+
 # Layout de la aplicación
 app.layout = html.Div([
     dcc.Store(id='initial-load', data=True),
@@ -110,13 +125,15 @@ app.layout = html.Div([
 
         dcc.Dropdown(
             id='barrio-dropdown',
-            options=[{'label': barrio, 'value': barrio} for barrio in data['Barrio'].unique()],
+            options=[{'label': barrio, 'value': barrio} for barrio in set(
+                feature['properties']['Barrio'] for feature in geojson_data['features']
+            )],
             value=None,
-            placeholder="Filtra por barrio...",
+            placeholder="Selecciona un barrio",
             className='custom-dropdown',
-            searchable =False,
+            searchable=False,
             multi=True
-        ),
+            ),
         dcc.Dropdown(
             id='feature-filter',
             options=[
@@ -155,7 +172,9 @@ app.layout = html.Div([
         ),
         dcc.Dropdown(
             id='nombre-filter',
-            options=[{'label': nombre, 'value': nombre} for nombre in sorted(data['Nombre'].unique())],
+            options=[{'label': nombre, 'value': nombre} for nombre in sorted(set(
+                feature['properties']['Nombre'] for feature in geojson_data['features']
+                ))],
             value=[],
             multi=True,
             placeholder="Busca por Nombre...",
@@ -167,13 +186,14 @@ app.layout = html.Div([
             }
         ),
         html.Label("RATING", style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px', 'margin-bottom': '5px',  'margin-left': '40px'}),
+
         dcc.RangeSlider(
             id='rating-slider',
-            min=data['Rating'].min(),
-            max=data['Rating'].max(),
+            min=rating_min,
+            max=rating_max,
             step=0.1,
-            marks={str(rating): {'label': str(rating)} for rating in range(int(data['Rating'].min()), int(data['Rating'].max()) + 1)},
-            value=[data['Rating'].min(), data['Rating'].max()],
+            marks={str(rating): {'label': str(rating)} for rating in range(int(rating_min), int(rating_max) + 1)},
+            value=[rating_min, rating_max],
             tooltip={"placement": "bottom", "always_visible": True},
             className='custom-slider'
         ),
@@ -305,7 +325,6 @@ app.layout = html.Div([
         }
     ),
 ])
-
 
 
 @app.callback(
