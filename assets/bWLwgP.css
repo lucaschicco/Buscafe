@@ -607,3 +607,91 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 }
 
 
+/* Botón flotante para abrir panel de sugerencias */
+.custom-floating-button {
+    position: fixed;
+    top: 140px; /* Alineado con los botones de zoom y geolocalización */
+    right: 10px;
+    width: 45px;
+    height: 45px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    z-index: 3000; /* Asegura que esté sobre otros elementos */
+}
+
+.custom-floating-button:hover {
+    background-color: #f0f0f0;
+}
+
+/* Estilos generales del panel de sugerencias */
+.suggestion-panel {
+    position: fixed;
+    top: 210px;  /* Ajusta la posición en pantallas grandes */
+    right: 10px;
+    width: 40%;  /* Ancho del 40% de la pantalla */
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    z-index: 2000; /* Asegura que esté por encima del mapa */
+    max-width: 200px;
+}
+
+/* Ajuste específico para móviles */
+@media (max-width: 768px) {
+    .suggestion-panel {
+        top: 210px !important;  /* Forzamos el cambio del top */
+        width: 200px !important;  /* Hacemos que ocupe más ancho */
+
+    }
+}
+
+
+
+/* Botón de cerrar dentro del panel */
+.close-button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+}
+
+/* Inputs y botón dentro del panel */
+.custom-input {
+    width: 90%;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.custom-button {
+    width: 100%;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.custom-button:hover {
+    background-color: #45a049;
+}
+
+/* 📱 Responsive: Ajustes en pantallas pequeñas */
+@media (max-width: 768px) {
+    .suggestion-panel {
+        width: 80%; /* En móviles ocupa más espacio */
+        right: 10px;
+        top: 120px;
+    }
+}
