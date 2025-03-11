@@ -13,6 +13,7 @@ from flask_compress import Compress
 import json
 import requests
 import dash_loading_spinners as dls
+import os
 
 app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
@@ -45,9 +46,7 @@ app.index_string = '''
 
 
 
-# Cargar datos
-file_path = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/base_todos_barrios_vf36.xlsx'
-data = pd.read_excel(file_path)
+
 
 # URL of the JSON file
 url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data37.json'
@@ -56,11 +55,12 @@ response = requests.get(url)
 # Load the content into a Python dictionary
 geojson_data = response.json()
 
+# Calcular latitud y longitud mín/máx desde el GeoJSON
+latitudes = [feature['geometry']['coordinates'][1] for feature in geojson_data['features']]
+longitudes = [feature['geometry']['coordinates'][0] for feature in geojson_data['features']]
 
-lat_min = data['Latitud'].min()
-lat_max = data['Latitud'].max()
-lon_min = data['Longitud'].min()
-lon_max = data['Longitud'].max()
+lat_min, lat_max = min(latitudes), max(latitudes)
+lon_min, lon_max = min(longitudes), max(longitudes)
 
 with open('assets/cafeinit.svg', 'r') as file:
     svg_content = file.read()
@@ -70,6 +70,26 @@ app.layout = html.Div([
     dcc.Store(id='initial-load', data=True),
     dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
     dcc.Store(id='info-visible', data=False),
+    # Botón flotante para abrir el panel de sugerencias
+    html.Button(
+        "☕➕",  # Icono de café con "+" para sugerencias
+        id="btn-abrir-panel",
+        className="custom-floating-button",
+        title="Sugerir cafetería"
+    ),
+
+    # Panel flotante para sugerir cafeterías
+    html.Div([
+        html.Div([
+            html.Button("❌", id="btn-cerrar-panel", className="close-button"),
+            html.H3("Informa cafetería faltante", style={'text-align': 'center'}),
+            dcc.Input(id="nombre-cafeteria", type="text", placeholder="Nombre de la cafetería *", className="custom-input"),
+            dcc.Input(id="direccion-cafeteria", type="text", placeholder="Dirección (opcional)", className="custom-input"),
+            html.Button("Enviar", id="enviar-sugerencia", className="custom-button"),
+            html.Div(id="mensaje-confirmacion", style={"margin-top": "10px", "color": "green"})
+        ], className="suggestion-panel"),
+    ], id="panel-sugerencia", style={"display": "none"}),
+
     html.Button("Mostrar/Ocultar Filtros", id='toggle-button', className='custom-toggle-button', n_clicks=0),
     # Spinner de carga inicial
     html.Div([
@@ -92,7 +112,7 @@ app.layout = html.Div([
             id='barrio-dropdown',
             options=[{'label': barrio, 'value': barrio} for barrio in data['Barrio'].unique()],
             value=None,
-            placeholder="Selecciona un barrio",
+            placeholder="Filtra por barrio...",
             className='custom-dropdown',
             searchable =False,
             multi=True
@@ -176,6 +196,7 @@ app.layout = html.Div([
             className='custom-dropdown',
             style={'margin-top': '15px'},
         ),
+
         html.Div(id='output-container-slider'),
         html.Hr(style={'border-top': '2px solid #fffff5', 'width': '80%', 'margin': 'auto'}),
         html.Div([
@@ -286,6 +307,7 @@ app.layout = html.Div([
 ])
 
 
+
 @app.callback(
     Output('loading-div', 'style'),  # Cambia la visibilidad del spinner
     Input('geojson-layer', 'data'),  # Se dispara cuando los datos están listos
@@ -296,6 +318,47 @@ def hide_spinner_on_load(data):
     if data:
         return {'display': 'none'}
     return {'position': 'fixed', 'top': '0', 'left': '0', 'width': '100%', 'height': '100%', 'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'background-color': 'rgba(255, 255, 255, 0.8)', 'z-index': '2000'}
+
+
+
+
+
+
+# Configuración de Azure Blob Storage
+BLOB_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+BLOB_CONTAINER = "contbuscafe"  # Contenedor en tu cuenta de almacenamiento
+BLOB_FILENAME = "sugerencias.json"  # Archivo donde se guardarán las sugerencias
+
+
+
+
+# Callback para guardar la sugerencia en Azure Blob Storage
+@app.callback(
+    Output("mensaje-confirmacion", "children"),
+    Input("enviar-sugerencia", "n_clicks"),
+    State("nombre-cafeteria", "value"),
+    State("direccion-cafeteria", "value"),
+    prevent_initial_call=True
+)
+def guardar_sugerencia(n_clicks, nombre, direccion):
+    if not nombre:
+        return "❌ El nombre de la cafetería es obligatorio."
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    sugerencia = {
+        "nombre": nombre,
+        "direccion": direccion or "No especificado",
+        "timestamp": timestamp
+    }
+
+    try:
+        blob_service_client = BlobServiceClient.from_connection_string(BLOB_CONNECTION_STRING)
+        filename = f"sugerencia_{timestamp}.json"
+        blob_client = blob_service_client.get_blob_client(container=BLOB_CONTAINER, blob=filename)
+        blob_client.upload_blob(json.dumps(sugerencia, indent=2), overwrite=True)
+        return "✅ ¡Gracias! Sugerencia guardada con éxito."
+    except Exception as e:
+        return f"❌ Error al guardar la sugerencia: {str(e)}"
 
 
 
@@ -378,7 +441,7 @@ app.clientside_callback(
         var nombresUnicos = [...new Set(filteredForNames.map(feature => feature.properties.Nombre))].sort();
         var nombreOptions = nombresUnicos.map(nombre => ({ label: nombre, value: nombre }));
 
-        if (zoom < 15) {
+        if (zoom < 14) {
             // Si el zoom es menor a 15, aplicar la lógica del top 7%
             var reviewsList = filteredFeatures.map(function(feature) {
                 return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
@@ -424,6 +487,10 @@ app.clientside_callback(
      Input('map', 'zoom')],
     State('clientside-store-data', 'data')
 )
+
+
+
+
 @app.callback(
     Output('filters-panel', 'style'),
     Input('toggle-button', 'n_clicks'),
@@ -434,6 +501,33 @@ def toggle_filters_panel(n_clicks, current_style):
         return {'display': 'block'}
     else:  # Si es par, oculta los filtros
         return {'display': 'none'}
+
+
+@app.callback(
+    Output("panel-sugerencia", "style"),
+    Input("btn-abrir-panel", "n_clicks"),
+    Input("btn-cerrar-panel", "n_clicks"),
+    State("panel-sugerencia", "style"),
+    prevent_initial_call=True
+)
+def toggle_suggestion_panel(n_clicks_abrir, n_clicks_cerrar, current_style):
+    ctx = dash.callback_context  # Ver qué botón fue clickeado
+
+    if not ctx.triggered:
+        return current_style  # Si no hay clics, no hacer nada
+
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if triggered_id == "btn-abrir-panel":
+        # Si el panel está visible, ocultarlo. Si está oculto, mostrarlo.
+        return {"display": "none"} if current_style["display"] == "block" else {"display": "block"}
+
+    elif triggered_id == "btn-cerrar-panel":
+        return {"display": "none"}  # Siempre oculta el panel si se presiona la cruz
+
+    return current_style  # Mantener el estado actual en cualquier otro caso
+
+
 
 @app.callback(
     Output('zoom-message', 'style'),
