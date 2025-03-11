@@ -15,6 +15,8 @@ import requests
 import dash_loading_spinners as dls
 from azure.storage.blob import BlobServiceClient
 import os
+from datetime import datetime
+
 
 app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
