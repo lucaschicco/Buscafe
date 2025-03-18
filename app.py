@@ -52,7 +52,7 @@ app.index_string = '''
 
 
 # URL of the JSON file
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data37.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data38.json'
 # Fetch the content from the URL
 response = requests.get(url)
 # Load the content into a Python dictionary
@@ -140,6 +140,8 @@ app.layout = html.Div([
         dcc.Dropdown(
             id='feature-filter',
             options=[
+                {'label': 'Tiene pasteleria casera', 'value': 'Tiene pastelería artesanal'},
+                {'label': 'El café es de especialidad', 'value': 'El café es de especialidad'},
                 {'label': 'Tiene Delivery', 'value': 'Delivery'},
                 {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
                 {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
