@@ -49,8 +49,6 @@ app.index_string = '''
 
 
 
-
-
 # URL of the JSON file
 url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data38.json'
 # Fetch the content from the URL
