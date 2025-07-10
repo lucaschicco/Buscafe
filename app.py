@@ -49,7 +49,7 @@ app.index_string = '''
 
 
 # URL of the JSON file
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data38.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data39.json'
 # Fetch the content from the URL
 response = requests.get(url)
 # Load the content into a Python dictionary
