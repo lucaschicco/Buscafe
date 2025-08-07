@@ -142,6 +142,7 @@ app.layout = html.Div([
                 {'label': 'Tiene Delivery', 'value': 'Delivery'},
                 {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
                 {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
+                {'label': 'Temática: Puesto de diario', 'value':'Temática: Puesto de diario'},
                 {'label': 'Desayuno', 'value': 'Desayuno'},
                 {'label': 'Almuerzo', 'value': 'Almuerzo'},
                 {'label': 'Cena', 'value': 'Cena'},
