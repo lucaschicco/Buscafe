@@ -83,7 +83,8 @@ rating_max = max(ratings)
 # Layout de la aplicación
 app.layout = html.Div([
     dcc.Store(id='initial-load', data=True),
-    dcc.Store(id='clientside-store-data', data=geojson_data),  # Almacenar los datos GeoJSON directamente en el frontend
+    dcc.Store(id='clientside-store-data', data=geojson_data),
+  # Almacenar los datos GeoJSON directamente en el frontend
     dcc.Store(id='info-visible', data=False),
     # Botón flotante para abrir el panel de sugerencias
     html.Button(
@@ -175,10 +176,8 @@ app.layout = html.Div([
         ),
         dcc.Dropdown(
             id='nombre-filter',
-            options=[{'label': nombre, 'value': nombre} for nombre in sorted(set(
-                feature['properties']['Nombre'] for feature in geojson_data['features']
-                ))],
-            value=[],
+            options=[],
+            #value=[],
             multi=True,
             placeholder="Busca por Nombre...",
             searchable =True,
@@ -344,8 +343,6 @@ def hide_spinner_on_load(data):
 
 
 
-
-
 # Configuración de Azure Blob Storage
 BLOB_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 BLOB_CONTAINER = "contbuscafe"  # Contenedor en tu cuenta de almacenamiento
@@ -386,129 +383,69 @@ def guardar_sugerencia(n_clicks, nombre, direccion):
 
 app.clientside_callback(
     """
-    function(barriosSeleccionados, featureFilter, ratingRange, diasApertura, nombreFilter, bounds, zoom, geojsonData) {
-        if (!geojsonData) {
-            return [geojsonData, []];
-        }
+    function(barriosSeleccionados, featureFilter, ratingRange, diasApertura, nombreFilter, bounds, zoom, geojsonStore) {
+        if (!geojsonStore) return [{type:'FeatureCollection', features:[]}, []];
 
+        const geojsonData = geojsonStore;  // ya contiene todo el GeoJSON
+        // === FILTROS ===
         var filteredFeatures = geojsonData.features;
-        var filteredForNames = geojsonData.features;  // Esta lista es solo para el dropdown de nombres
+        var filteredForNames = geojsonData.features;
 
-        // Filtrar por barrios
-        if (barriosSeleccionados && barriosSeleccionados.length > 0) {
-            filteredFeatures = filteredFeatures.filter(function(feature) {
-                return barriosSeleccionados.includes(feature.properties.Barrio);
-            });
-
-            filteredForNames = filteredForNames.filter(function(feature) {
-                return barriosSeleccionados.includes(feature.properties.Barrio);
-            });
+        if (barriosSeleccionados?.length) {
+            filteredFeatures = filteredFeatures.filter(f => barriosSeleccionados.includes(f.properties.Barrio));
+            filteredForNames = filteredForNames.filter(f => barriosSeleccionados.includes(f.properties.Barrio));
+        }
+        if (featureFilter?.length) {
+            filteredFeatures = filteredFeatures.filter(f => featureFilter.every(ff => f.properties[ff]===1.0));
+            filteredForNames = filteredForNames.filter(f => featureFilter.every(ff => f.properties[ff]===1.0));
+        }
+        if (ratingRange?.length===2) {
+            filteredFeatures = filteredFeatures.filter(f => f.properties.Rating>=ratingRange[0] && f.properties.Rating<=ratingRange[1]);
+            filteredForNames = filteredForNames.filter(f => f.properties.Rating>=ratingRange[0] && f.properties.Rating<=ratingRange[1]);
+        }
+        if (diasApertura?.length) {
+            filteredFeatures = filteredFeatures.filter(f => diasApertura.every(day => f.properties[day+'_open'] && f.properties[day+'_close']));
+            filteredForNames = filteredForNames.filter(f => diasApertura.every(day => f.properties[day+'_open'] && f.properties[day+'_close']));
+        }
+        if (nombreFilter?.length) {
+            filteredFeatures = filteredFeatures.filter(f => nombreFilter.includes(f.properties.Nombre));
+            return [{type:'FeatureCollection', features:filteredFeatures}, nombreFilter.map(n=>({label:n,value:n}))];
         }
 
-        // Filtrar por características
-        if (featureFilter && featureFilter.length > 0) {
-            filteredFeatures = filteredFeatures.filter(function(feature) {
-                return featureFilter.every(function(filter) {
-                    return feature.properties[filter] === 1.0;
-                });
-            });
+        var nombreOptions = [...new Set(filteredForNames.map(f=>f.properties.Nombre))].sort().map(n=>({label:n,value:n}));
 
-            filteredForNames = filteredForNames.filter(function(feature) {
-                return featureFilter.every(function(filter) {
-                    return feature.properties[filter] === 1.0;
-                });
-            });
-        }
-
-        // Filtrar por Rating
-        if (ratingRange && ratingRange.length === 2) {
-            filteredFeatures = filteredFeatures.filter(function(feature) {
-                var rating = feature.properties.Rating;
-                return rating >= ratingRange[0] && rating <= ratingRange[1];
-            });
-
-            filteredForNames = filteredForNames.filter(function(feature) {
-                var rating = feature.properties.Rating;
-                return rating >= ratingRange[0] && rating <= ratingRange[1];
-            });
-        }
-
-        // Filtrar por días de apertura
-        if (diasApertura && diasApertura.length > 0) {
-            filteredFeatures = filteredFeatures.filter(function(feature) {
-                return diasApertura.every(function(day) {
-                    return feature.properties[day + '_open'] && feature.properties[day + '_close'];
-                });
-            });
-
-            filteredForNames = filteredForNames.filter(function(feature) {
-                return diasApertura.every(function(day) {
-                    return feature.properties[day + '_open'] && feature.properties[day + '_close'];
-                });
-            });
-        }
-
-        // Filtrar por nombre
-        if (nombreFilter && nombreFilter.length > 0) {
-            filteredFeatures = filteredFeatures.filter(function(feature) {
-                return nombreFilter.includes(feature.properties.Nombre);
-            });
-
-            // Si el usuario seleccionó un nombre, devolver todas las coincidencias sin importar el zoom
-            return [{type: 'FeatureCollection', features: filteredFeatures}, 
-                    nombreFilter.map(nombre => ({ label: nombre, value: nombre }))];
-        }
-
-        // 🔹 No aplicar filtro de zoom en el dropdown de nombres
-        var nombresUnicos = [...new Set(filteredForNames.map(feature => feature.properties.Nombre))].sort();
-        var nombreOptions = nombresUnicos.map(nombre => ({ label: nombre, value: nombre }));
-
-        if (zoom < 14) {
-            // Si el zoom es menor a 15, aplicar la lógica del top 7%
-            var reviewsList = filteredFeatures.map(function(feature) {
-                return feature.properties['Cantidad Reviews'] !== 'Sin datos' ? feature.properties['Cantidad Reviews'] : 0;
-            });
-
-            // Calcular el umbral del top 7%
-            reviewsList.sort(function(a, b) { return b - a; });
-            var thresholdIndex = Math.floor(reviewsList.length * 0.07);
-            var threshold = reviewsList[thresholdIndex] || 0;
-
-            var topFeatures = filteredFeatures.filter(function(feature) {
-                return feature.properties['Cantidad Reviews'] >= threshold;
-            });
-
-            return [{type: 'FeatureCollection', features: topFeatures}, nombreOptions];
+        if (zoom<14) {
+            let reviews = filteredFeatures.map(f=>f.properties['Cantidad Reviews']!=='Sin datos'?f.properties['Cantidad Reviews']:0).sort((a,b)=>b-a);
+            let threshold = reviews[Math.floor(reviews.length*0.07)]||0;
+            let topFeatures = filteredFeatures.filter(f=>f.properties['Cantidad Reviews']>=threshold);
+            return [{type:'FeatureCollection', features:topFeatures}, nombreOptions];
         } else {
-            // Si el zoom es mayor o igual a 15, filtrar por los límites del mapa
-            if (bounds && bounds.length === 2) {
-                var swLat = bounds[0][0];
-                var swLng = bounds[0][1];
-                var neLat = bounds[1][0];
-                var neLng = bounds[1][1];
-
-                filteredFeatures = filteredFeatures.filter(function(feature) {
-                    var lat = feature.geometry.coordinates[1];
-                    var lng = feature.geometry.coordinates[0];
-                    return lat >= swLat && lat <= neLat && lng >= swLng && lng <= neLng;
+            if(bounds?.length===2){
+                let [sw, ne] = bounds;
+                filteredFeatures = filteredFeatures.filter(f=>{
+                    let [lng, lat] = f.geometry.coordinates;
+                    return lat>=sw[0] && lat<=ne[0] && lng>=sw[1] && lng<=ne[1];
                 });
             }
-
-            return [{type: 'FeatureCollection', features: filteredFeatures}, nombreOptions];
+            return [{type:'FeatureCollection', features:filteredFeatures}, nombreOptions];
         }
     }
     """,
-    [Output('geojson-layer', 'data'),
-     Output('nombre-filter', 'options')],  # Actualiza el dropdown de nombres
-    [Input('barrio-dropdown', 'value'),
-     Input('feature-filter', 'value'),
-     Input('rating-slider', 'value'),
-     Input('dias-apertura-filter', 'value'),
-     Input('nombre-filter', 'value'),
-     Input('map', 'bounds'),
-     Input('map', 'zoom')],
-    State('clientside-store-data', 'data')
+    [Output('geojson-layer','data'), Output('nombre-filter','options')],
+    [
+        Input('barrio-dropdown','value'),
+        Input('feature-filter','value'),
+        Input('rating-slider','value'),
+        Input('dias-apertura-filter','value'),
+        Input('nombre-filter','value'),
+        Input('map','bounds'),
+        Input('map','zoom')
+    ],
+    [
+        State('clientside-store-data','data')  # <-- acá llega geojsonStore
+    ]
 )
+
 
 
 
