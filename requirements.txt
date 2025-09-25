@@ -14,3 +14,4 @@ Flask-Compress
 dash-loading-spinners
 opencensus-ext-azure
 azure-storage-blob
+orjson
