@@ -16,6 +16,7 @@ import dash_loading_spinners as dls
 from azure.storage.blob import BlobServiceClient
 import os
 from datetime import datetime
+import orjson
 
 app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
@@ -48,12 +49,18 @@ app.index_string = '''
 
 
 
-# URL of the JSON file
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data39.json'
-# Fetch the content from the URL
+# URL del archivo JSON comprimido en Azure
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data41.json'
+
+# Traer el contenido
 response = requests.get(url)
-# Load the content into a Python dictionary
-geojson_data = response.json()
+
+response.raise_for_status()  # lanza error si algo falló
+
+# Cargar el contenido ya descomprimido en un diccionario Python
+geojson_data = orjson.loads(response.content)
+
+
 
 # Calcular latitud y longitud mín/máx desde el GeoJSON
 latitudes = [feature['geometry']['coordinates'][1] for feature in geojson_data['features']]
