@@ -67,12 +67,15 @@
     src: url('/assets/Montserrat-Regular.woff2') format('woff2'),
          url('/assets/Montserrat-Regular.ttf') format('truetype');
     font-weight: 400;
+    font-display: swap;
 }
+
 @font-face {
     font-family: 'Montserrat';
     src: url('/assets/Montserrat-Bold.woff2') format('woff2'),
          url('/assets/Montserrat-Bold.ttf') format('truetype');
     font-weight: 700;
+    font-display: swap;
 }
 
 
