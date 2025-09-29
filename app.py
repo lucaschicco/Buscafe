@@ -27,46 +27,48 @@ Compress(server)
 # Agregar el atributo lang al elemento <html>
 CLIENT_CONN = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
 
-app.index_string = f'''
+app.index_string = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  {{%metas%}}
-  <title>{{%title%}}</title>
-  {{%favicon%}}
-  {{%css%}}
+  {%metas%}
+  <title>{%title%}</title>
+  {%favicon%}
+  {%css%}
 
   <!-- Preload del logo para mejorar LCP -->
-  <link rel="preload" as="image" href="/assets/buscafes.webp" fetchpriority="high">
+  <link rel="preload" as="image" href="/assets/buscafes.png" fetchpriority="high">
 
   <!-- Preconnect a Carto basemaps para reducir latencia -->
   <link rel="preconnect" href="https://a.basemaps.cartocdn.com" crossorigin>
   <link rel="preconnect" href="https://b.basemaps.cartocdn.com" crossorigin>
   <link rel="preconnect" href="https://c.basemaps.cartocdn.com" crossorigin>
 
-  <!-- Application Insights -->
+  <!-- Application Insights recomendado -->
+  <script src="https://js.monitor.azure.com/scripts/b/ai.2.min.js" crossorigin="anonymous"></script>
   <script type="text/javascript">
-    !function(T,l,y){{var S=T.location,e="appInsightsSDK",t=y.name||"appInsights";(y.name||T[e])&&(T[e]=t);var n=T[t]||function(d){{var m={{initialize:!0,queue:[],sv:"7",version:2,config:d}};return m.trackPageView=function(e){{m.queue.push({{name:"Pageview",data:e}})}},m}}(y.cfg);return n
-    }}(window,document,{{
-        src:"https://js.monitor.azure.com/scripts/b/ai.2.min.js",
-        name:"appInsights",
-        cfg:{{ connectionString:"{CLIENT_CONN}" }}
+    var appInsights = window.appInsights || new Microsoft.ApplicationInsights.ApplicationInsights({{
+        config: {{
+            connectionString: "{CLIENT_CONN}",
+            enableAutoRouteTracking: true
+        }}
     }});
+    appInsights.loadAppInsights();
     appInsights.trackPageView();
   </script>
 </head>
 <body>
   <div id="react-entry-point">
-    {{%app_entry%}}
+    {%app_entry%}
   </div>
   <footer>
-    {{%config%}}
-    {{%scripts%}}
-    {{%renderer%}}
+    {%config%}
+    {%scripts%}
+    {%renderer%}
   </footer>
 </body>
 </html>
-'''
+"""
 
 
 
