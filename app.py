@@ -47,28 +47,26 @@ app.index_string = """
   <!-- Application Insights recomendado -->
   <script src="https://js.monitor.azure.com/scripts/b/ai.2.min.js" crossorigin="anonymous"></script>
   <script type="text/javascript">
-    var appInsights = window.appInsights || new Microsoft.ApplicationInsights.ApplicationInsights({{
-        config: {{
-            connectionString: "{CLIENT_CONN}",
-            enableAutoRouteTracking: true
-        }}
-    }});
+    var appInsights = window.appInsights || new Microsoft.ApplicationInsights.ApplicationInsights({
+      config: {
+        connectionString: "__AI_CONN__",
+        enableAutoRouteTracking: true
+      }
+    });
     appInsights.loadAppInsights();
     appInsights.trackPageView();
   </script>
 </head>
 <body>
-  <div id="react-entry-point">
-    {%app_entry%}
-  </div>
-  <footer>
-    {%config%}
-    {%scripts%}
-    {%renderer%}
-  </footer>
+  <div id="react-entry-point">{%app_entry%}</div>
+  <footer>{%config%}{%scripts%}{%renderer%}</footer>
 </body>
 </html>
 """
+
+# Reemplaza el placeholder por tu connection string sin romper las llaves de Dash/JS
+app.index_string = app.index_string.replace("__AI_CONN__", CLIENT_CONN)
+
 
 
 
