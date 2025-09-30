@@ -698,3 +698,11 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
         top: 120px;
     }
 }
+
+
+.hidden {
+  display: none;
+}
+.visible {
+  display: block;
+}
