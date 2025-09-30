@@ -706,3 +706,7 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
 .visible {
   display: block;
 }
+/* Oculta el texto “No results found” de los dcc.Dropdown */
+.Select-noresults { 
+  display: none !important; 
+}
