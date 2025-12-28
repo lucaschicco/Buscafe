@@ -207,13 +207,13 @@ app.layout = html.Div([
                     {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
                     {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
                     {'label': 'Temática: Puesto de diario', 'value': 'Temática: Puesto de diario'},
-                    {'label': 'Desayuno', 'value': 'Desayuno'},
-                    {'label': 'Almuerzo', 'value': 'Almuerzo'},
-                    {'label': 'Cena', 'value': 'Cena'},
-                    {'label': 'Brunch', 'value': 'Brunch'},
-                    {'label': 'Sirve Vino', 'value': 'Sirve Vino'},
-                    {'label': 'Sirve Cerveza', 'value': 'Sirve cerveza'},
-                    {'label': 'Sirve postre', 'value': 'Sirve postre'},
+                    #{'label': 'Desayuno', 'value': 'Desayuno'},
+                    #{'label': 'Almuerzo', 'value': 'Almuerzo'},
+                    #{'label': 'Cena', 'value': 'Cena'},
+                    #{'label': 'Brunch', 'value': 'Brunch'},
+                    #{'label': 'Sirve Vino', 'value': 'Sirve Vino'},
+                    #{'label': 'Sirve Cerveza', 'value': 'Sirve cerveza'},
+                    #{'label': 'Sirve postre', 'value': 'Sirve postre'},
                     {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
                     {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
                     {'label': 'Reservable', 'value': 'Reservable'},
@@ -603,6 +603,7 @@ def update_map_style(map_style):
     }
     # Si map_style es None, usar 'carto-positron' como estilo por defecto
     return style_urls.get(map_style, style_urls['carto-positron'])
+    
     
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
