@@ -71,7 +71,7 @@ app.index_string = app.index_string.replace("__AI_CONN__", CLIENT_CONN)
 
 
 # URL del archivo JSON comprimido en Azure
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data41.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data43.json'
 
 # Traer el contenido
 response = requests.get(url)
@@ -210,11 +210,13 @@ app.layout = html.Div([
                     #{'label': 'Desayuno', 'value': 'Desayuno'},
                     #{'label': 'Almuerzo', 'value': 'Almuerzo'},
                     #{'label': 'Cena', 'value': 'Cena'},
-                    #{'label': 'Brunch', 'value': 'Brunch'},
+                    {'label': 'Brunch', 'value': 'Brunch'},
                     #{'label': 'Sirve Vino', 'value': 'Sirve Vino'},
                     #{'label': 'Sirve Cerveza', 'value': 'Sirve cerveza'},
                     #{'label': 'Sirve postre', 'value': 'Sirve postre'},
                     {'label': 'Con espacio afuera', 'value': 'Espacio afuera'},
+                    {'label': 'Es cadena', 'value': 'Es cadena'},
+                    {'label': 'No es cadena', 'value': 'No es cadena'},
                     {'label': 'Musica en vivo', 'value': 'Musica en vivo'},
                     {'label': 'Reservable', 'value': 'Reservable'},
                     {'label': 'Tiene comida vegeteriana', 'value': 'Tiene comida vegetariana'},
@@ -278,6 +280,7 @@ app.layout = html.Div([
             dcc.Dropdown(
                 id='map-style-dropdown',
                 options=[
+                    {'label': 'Mapa tradicional', 'value': 'osm'},
                     {'label': 'Modo Claro', 'value': 'carto-positron'},
                     {'label': 'Modo Oscuro', 'value': 'carto-darkmatter'}
                 ],
@@ -598,12 +601,14 @@ def hide_message(n_clicks, current_style):
 )
 def update_map_style(map_style):
     style_urls = {
+        'osm': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         'carto-positron': 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
         'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     }
-    # Si map_style es None, usar 'carto-positron' como estilo por defecto
+
+    # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
-    
+  
     
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
