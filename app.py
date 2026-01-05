@@ -81,8 +81,6 @@ response.raise_for_status()  # lanza error si algo falló
 # Cargar el contenido ya descomprimido en un diccionario Python
 geojson_data = orjson.loads(response.content)
 
-
-
 # Calcular latitud y longitud mín/máx desde el GeoJSON
 latitudes = [feature['geometry']['coordinates'][1] for feature in geojson_data['features']]
 longitudes = [feature['geometry']['coordinates'][0] for feature in geojson_data['features']]
@@ -205,12 +203,12 @@ app.layout = html.Div([
                     {'label': 'El café es de especialidad', 'value': 'El café es de especialidad'},
                     {'label': 'Tiene Delivery', 'value': 'Delivery'},
                     {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
-                    {'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
+                    #{'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
                     {'label': 'Temática: Puesto de diario', 'value': 'Temática: Puesto de diario'},
                     #{'label': 'Desayuno', 'value': 'Desayuno'},
                     #{'label': 'Almuerzo', 'value': 'Almuerzo'},
                     #{'label': 'Cena', 'value': 'Cena'},
-                    {'label': 'Brunch', 'value': 'Brunch'},
+                    {'label': 'Brunch', 'value': 'Sirve brunch'},
                     #{'label': 'Sirve Vino', 'value': 'Sirve Vino'},
                     #{'label': 'Sirve Cerveza', 'value': 'Sirve cerveza'},
                     #{'label': 'Sirve postre', 'value': 'Sirve postre'},
@@ -466,53 +464,65 @@ def guardar_sugerencia(n_clicks, nombre, direccion):
 
 app.clientside_callback(
     """
-    function(barriosSeleccionados, featureFilter, ratingRange, diasApertura, nombreFilter, bounds, zoom, geojsonStore) {
-        if (!geojsonStore) {
+        function(barrios, features, rating, dias, nombre, bounds, zoom, store) {
+    
+        if (!store || !store.features) {
             return {type:'FeatureCollection', features:[]};
         }
-
-        const geojsonData = geojsonStore;  // todo el GeoJSON
-        var filteredFeatures = geojsonData.features;
-
-        // === FILTROS ===
-        if (barriosSeleccionados && barriosSeleccionados.length) {
-            filteredFeatures = filteredFeatures.filter(f => barriosSeleccionados.includes(f.properties.Barrio));
+    
+        const ctx = dash_clientside.callback_context;
+        const triggered = ctx.triggered[0]?.prop_id;
+    
+        let feats = store.features;
+    
+        // filtros comunes
+        if (barrios?.length) {
+            feats = feats.filter(f => barrios.includes(f.properties.Barrio));
         }
-        if (featureFilter && featureFilter.length) {
-            filteredFeatures = filteredFeatures.filter(f => featureFilter.every(ff => f.properties[ff] === 1.0));
+        if (features?.length) {
+            feats = feats.filter(f => features.every(ff => f.properties[ff] === true));
         }
-        if (ratingRange && ratingRange.length === 2) {
-            filteredFeatures = filteredFeatures.filter(f => f.properties.Rating >= ratingRange[0] && f.properties.Rating <= ratingRange[1]);
+        if (rating?.length === 2) {
+            feats = feats.filter(f =>
+                f.properties.Rating >= rating[0] &&
+                f.properties.Rating <= rating[1]
+            );
         }
-        if (diasApertura && diasApertura.length) {
-            filteredFeatures = filteredFeatures.filter(f => diasApertura.every(day =>
-                f.properties[day + '_open'] && f.properties[day + '_close']
-            ));
+        if (dias?.length) {
+            feats = feats.filter(f =>
+                dias.every(d => f.properties[d + '_open'] && f.properties[d + '_close'])
+            );
         }
-        if (nombreFilter && nombreFilter.length) {
-            filteredFeatures = filteredFeatures.filter(f => nombreFilter.includes(f.properties.Nombre));
+    
+        // 🔒 CASO NOMBRE: PRIORIDAD ABSOLUTA
+        if (nombre?.length) {
+            return {
+                type: 'FeatureCollection',
+                features: feats.filter(f => nombre.includes(f.properties.Nombre))
+            };
         }
-
-        // === LÓGICA DE ZOOM ===
+    
+        // recién acá aplicar zoom / bounds
         if (zoom < 14) {
-            let reviews = filteredFeatures.map(f =>
-                f.properties['Cantidad Reviews'] !== 'Sin datos' ? f.properties['Cantidad Reviews'] : 0
-            ).sort((a,b) => b - a);
-
-            let threshold = reviews[Math.floor(reviews.length * 0.07)] || 0;
-            let topFeatures = filteredFeatures.filter(f => f.properties['Cantidad Reviews'] >= threshold);
-
-            return {type:'FeatureCollection', features: topFeatures};
-        } else {
-            if (bounds && bounds.length === 2) {
-                let [sw, ne] = bounds;
-                filteredFeatures = filteredFeatures.filter(f => {
-                    let [lng, lat] = f.geometry.coordinates;
-                    return lat >= sw[0] && lat <= ne[0] && lng >= sw[1] && lng <= ne[1];
-                });
-            }
-            return {type:'FeatureCollection', features: filteredFeatures};
+            const reviews = feats
+                .map(f => f.properties['Cantidad Reviews'] || 0)
+                .sort((a,b)=>b-a);
+            const t = reviews[Math.floor(reviews.length * 0.07)] || 0;
+            return {
+                type:'FeatureCollection',
+                features: feats.filter(f => f.properties['Cantidad Reviews'] >= t)
+            };
         }
+    
+        if (bounds?.length === 2) {
+            const [sw, ne] = bounds;
+            feats = feats.filter(f => {
+                const [lng, lat] = f.geometry.coordinates;
+                return lat>=sw[0] && lat<=ne[0] && lng>=sw[1] && lng<=ne[1];
+            });
+        }
+    
+        return {type:'FeatureCollection', features: feats};
     }
     """,
     Output('geojson-layer','data'),
@@ -529,13 +539,30 @@ app.clientside_callback(
 )
 
 
+
 @app.callback(
     Output('nombre-filter', 'options'),
-    Input('nombre-filter', 'search_value')
+    Input('nombre-filter', 'search_value'),
+    State('nombre-filter', 'value')  # 👈 Agregamos el estado actual
 )
-def update_nombre_options(search_value):
+def update_nombre_options(search_value, current_value):
+    # Si hay valores seleccionados, mantener esas opciones visibles
+    if current_value:
+        selected_options = [{'label': n, 'value': n} for n in (current_value if isinstance(current_value, list) else [current_value])]
+        
+        # Si no hay búsqueda, solo mostrar los seleccionados
+        if not search_value or len(search_value) < 2:
+            return selected_options
+        
+        # Si hay búsqueda, combinar seleccionados + resultados
+        s = search_value.lower()
+        results = [n for n in nombres_unicos if s in n.lower() and n not in (current_value if isinstance(current_value, list) else [current_value])]
+        return selected_options + [{'label': n, 'value': n} for n in results[:50]]
+    
+    # Comportamiento original cuando no hay nada seleccionado
     if not search_value or len(search_value) < 2:
         return []
+    
     s = search_value.lower()
     results = [n for n in nombres_unicos if s in n.lower()]
     return [{'label': n, 'value': n} for n in results[:50]]
