@@ -71,7 +71,7 @@ app.index_string = app.index_string.replace("__AI_CONN__", CLIENT_CONN)
 
 
 # URL del archivo JSON comprimido en Azure
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data43.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data44.json'
 
 # Traer el contenido
 response = requests.get(url)
@@ -337,35 +337,71 @@ app.layout = html.Div([
             dl.ZoomControl(position='topright'),
             dl.GeoJSON(
                 id="geojson-layer",
+                data=geojson_data,
                 options=dict(
-                    pointToLayer=assign("""
-                        function(feature, latlng){
-                            let iconUrl = feature.properties.iconUrl;
-                            let marker = L.marker(latlng, {
-                                icon: L.icon({
-                                    iconUrl: iconUrl,
-                                    iconSize: [18, 27],
-                                    iconAnchor: [12, 23],
-                                    popupAnchor: [1, -34],
-                                    shadowSize: [0, 0]
-                                })
-                            }).bindTooltip(feature.properties.tooltipContent, {
-                                className: 'marker-tooltip'
+                pointToLayer=assign("""
+                    function(feature, latlng){
+                        const props = feature.properties;
+                        let iconUrl = props.iconUrl;
+                        
+                        let marker = L.marker(latlng, {
+                            icon: L.icon({
+                                iconUrl: iconUrl,
+                                iconSize: [18, 27],
+                                iconAnchor: [12, 23],
+                                popupAnchor: [1, -34],
+                                shadowSize: [0, 0]
+                            })
+                        });
+                        
+                        // Tooltip dinámico
+                        const tooltipHTML = `
+                            <p class='nombre'>${props.Nombre}</p>
+                            <p><span class='bold-text'>Rating: </span>${props.Rating}</p>
+                            <p><span class='bold-text'>Direccion: </span>${props.Direccion}</p>
+                        `;
+                        marker.bindTooltip(tooltipHTML, {className: 'marker-tooltip'});
+                
+                        marker.on('click', function(){
+                            const days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+                            let horariosHTML = '<strong style="text-decoration: underline;">Horarios:</strong><br>';
+                            
+                            days.forEach(day => {
+                                const open = props[day + '_open'];
+                                const close = props[day + '_close'];
+                                if (open && close && open !== 'None' && close !== 'None') {
+                                    horariosHTML += day + ': ' + open + ' - ' + close + '<br>';
+                                } else {
+                                    horariosHTML += day + ': No abre<br>';
+                                }
                             });
-
-                            marker.on('click', function(){
-                                var popup = L.popup({closeOnMove: false})
-                                    .setLatLng(latlng)
-                                    .setContent(feature.properties.popupContent)
-                                    .openOn(marker._map);
-
-                                var zoomLevel = marker._map.getZoom();
-                                var latOffset = 0.05 / Math.pow(2, zoomLevel - 12);
-                                marker._map.panTo([latlng.lat + latOffset, latlng.lng], {animate: true});
-                            });
-                            return marker;
-                        }
-                    """)
+                            
+                            const sitioWeb = props['Sitio Web']
+                                ? '<a href="' + props['Sitio Web'] + '" target="_blank">' + props['Sitio Web'] + '</a>' 
+                                : 'Sin datos';
+                            
+                            const popupHTML = `
+                                <p class='popup-nombre'><strong>${props.Nombre}</strong></p>
+                                <p class='popup-rating'><strong>Rating:</strong> ${props.Rating}</p>
+                                <p class='popup-reviews'><strong>Reviews:</strong> ${props['Cantidad Reviews']}</p>
+                                <p class='popup-web'><strong>Sitio Web:</strong> ${sitioWeb}</p>
+                                <p class='popup-direccion'><strong>Direccion:</strong> ${props.Direccion}</p>
+                                <p class='popup-horarios'>${horariosHTML}</p>
+                            `;
+                            
+                            var popup = L.popup({closeOnMove: false})
+                                .setLatLng(latlng)
+                                .setContent(popupHTML)
+                                .openOn(marker._map);
+                
+                            var zoomLevel = marker._map.getZoom();
+                            var latOffset = 0.05 / Math.pow(2, zoomLevel - 12);
+                            marker._map.panTo([latlng.lat + latOffset, latlng.lng], {animate: true});
+                        });
+                        
+                        return marker;
+                    }
+                """)
                 ),
                 zoomToBoundsOnClick=True,
             )
@@ -635,6 +671,7 @@ def update_map_style(map_style):
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
+  
   
     
 # Ejecuta la aplicación Dash
