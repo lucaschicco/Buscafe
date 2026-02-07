@@ -1,67 +1,6 @@
-/* Estilo general para el contenedor de los controles */
-.controls-container {
-    position: absolute;
-    top: 100px;
-    left: 10px;
-    z-index: 1000;
-    width: 22%; /* Ancho por defecto en pantallas grandes */
-    height: auto !important; /* Altura del panel ajustada */
-    background-color: #104547 !important;
-    color: #fffff5 !important;
-    border-radius: 12px;
-    padding: 10px; /* Aumentar el padding para más espacio */
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.4);
-    gap: 8px;
-    flex-direction: column;
-    max-height: 80vh;  # Ajustar altura máxima del panel
-    overflow-y: auto;
-}
-
-.controls-container > * {
-    margin-bottom: 15px; /* Añadir espacio entre los filtros */
-}
-
-@media (max-width: 1440px) {
-    .controls-container {
-        width: 30%; /* Ancho en pantallas un poco más pequeñas */
-    }
-}
-
-@media (max-width: 1024px) {
-    .controls-container {
-        width: 30%; /* Ancho en tabletas grandes */
-    }
-}
-
-@media (max-width: 768px) {
-    .controls-container {
-        width: 90%; /* Ancho en tabletas */
-        left: 5%;  
-    }
-}
-
-@media (max-width: 430px) {
-    .controls-container {
-        width: 85% !important; /* Ancho en dispositivos móviles más pequeños */
-        left: 5%;  
-    }
-}
-
-@media (max-width: 425px) {
-    .controls-container {
-        width: 85% !important; /* Ancho en dispositivos móviles más pequeños */
-        left: 5%;  
-    }
-}
-
-@media (max-width: 375px) {
-    .controls-container {
-        width: 85%; /* Ancho completo en dispositivos móviles más pequeños */
-        left: 5%;  
-    }
-}
-
-
+/* ============================================
+   FUENTES
+   ============================================ */
 @font-face {
     font-family: 'Montserrat';
     src: url('/assets/Montserrat-Regular.woff2') format('woff2'),
@@ -78,104 +17,348 @@
     font-display: swap;
 }
 
-
-
-.leaflet-tooltip {
-    border: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
+body, .controls-container, .custom-dropdown, .custom-slider, .custom-button, .custom-toggle-button, #info-registro, .contact-button-circle {
+    font-family: 'Montserrat', sans-serif;
 }
 
+/* ============================================
+   UTILIDADES
+   ============================================ */
+.hidden {
+    display: none;
+}
 
-/* Ajustes de tamaño de fuente para dropdowns y inputs */
-.custom-dropdown .Select-control {
-    width: 80% !important; /* Ajusta el ancho según lo necesites */
-    margin: auto; /* Centra los dropdowns */
+.visible {
+    display: block;
+}
+
+/* ============================================
+   CONTENEDOR DE CONTROLES (PANEL FILTROS)
+   ============================================ */
+.controls-container {
+    position: absolute;
+    top: 100px;
+    left: 10px;
+    z-index: 1000;
+    width: 22%;
+    height: auto !important;
+    background-color: #104547 !important;
     color: #fffff5 !important;
-    background-color: #104547 !important; /* Fondo verde oscuro */
-    z-index: 1001 !important;
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.4);
+    gap: 8px;
+    flex-direction: column;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
-.custom-dropdown .Select-placeholder,
-.custom-dropdown .Select-value-label {
-    font-size: 0.8em !important; /* Tamaño del texto para pantallas grandes */
-    color: #fffff5 !important;
+.controls-container > * {
+    margin-bottom: 15px;
 }
 
-.custom-dropdown .Select-menu-outer {
-    left: 50% !important; /* Posiciona el menú desplegable en el centro del contenedor */
-    transform: translateX(-50%) !important; /* Centra el menú desplegable */   
-    background-color: #104547 !important; /* Fondo verde oscuro */
-    color: #fffff5 !important;
-    margin: auto;
-    width: 80% !important; /* Asegúrate de que el menú del dropdown también se ajuste */
-    box-sizing: border-box; /* Incluye el padding y el borde en el ancho total */
-    overflow-x: hidden !important; /* Evitar el desbordamiento horizontal */
-    z-index: 1500 !important; /* Asegura que las opciones estén por encima del panel de filtros */
+@media (max-width: 1440px) {
+    .controls-container {
+        width: 30%;
+    }
 }
 
-.custom-dropdown .Select-menu {
-    width: 100% !important; /* Asegúrate de que el menú del dropdown también se ajuste */
+@media (max-width: 1024px) {
+    .controls-container {
+        width: 30%;
+    }
 }
 
-.custom-dropdown .Select-option {
-    background-color: #104547 !important; /* Fondo verde oscuro */
-    color: #fffff5 !important;
+@media (max-width: 768px) {
+    .controls-container {
+        width: 90%;
+        left: 5%;  
+    }
+}
+
+@media (max-width: 430px) {
+    .controls-container {
+        width: 85% !important;
+        left: 5%;  
+    }
+}
+
+@media (max-width: 425px) {
+    .controls-container {
+        width: 85% !important;
+        left: 5%;  
+    }
+}
+
+@media (max-width: 375px) {
+    .controls-container {
+        width: 85%;
+        left: 5%;  
+    }
+}
+
+/* ============================================
+   DROPDOWNS - Dash 4.0.0 (ULTRA ESPECÍFICO)
+   ============================================ */
+
+/* Contenedor principal */
+.custom-dropdown {
     width: 80% !important;
+    margin: 10px auto !important;
 }
 
-.custom-dropdown .Select-option.is-selected,
-.custom-dropdown .Select-option.is-focused {
-    background-color: #145a3d !important; /* Fondo verde más oscuro al seleccionar o enfocar */
+/* Forzar fondo oscuro en TODO el dropdown */
+.custom-dropdown *:not(input):not(svg) {
+    background-color: #104547 !important;
+}
+
+/* Control principal - el campo cerrado */
+.custom-dropdown > div,
+.custom-dropdown > div > div,
+.custom-dropdown [class*="control"],
+.custom-dropdown .dropdown__control {
+    background-color: #104547 !important;
+    border: 1px solid #fffff5 !important;
+    border-radius: 4px !important;
+    min-height: 38px !important;
+}
+
+/* Contenedor de valores */
+.custom-dropdown [class*="ValueContainer"],
+.custom-dropdown .dropdown__value-container {
+    background-color: #104547 !important;
+    padding: 2px 8px !important;
+}
+
+/* Placeholder */
+.custom-dropdown [class*="placeholder"],
+.custom-dropdown .dropdown__placeholder {
+    color: #fffff5 !important;
+    font-size: 0.8em !important;
+    background-color: transparent !important;
+}
+
+/* Valor único seleccionado */
+.custom-dropdown [class*="singleValue"],
+.custom-dropdown .dropdown__single-value {
+    color: #fffff5 !important;
+    font-size: 0.8em !important;
+    background-color: transparent !important;
+}
+
+/* Chips de valores múltiples */
+.custom-dropdown [class*="multiValue"],
+.custom-dropdown .dropdown__multi-value {
+    background-color: #145a3d !important;
+    border-radius: 4px !important;
+    margin: 2px !important;
+}
+
+.custom-dropdown [class*="multiValue"] *,
+.custom-dropdown .dropdown__multi-value * {
+    background-color: #145a3d !important;
+}
+
+.custom-dropdown [class*="multiValueLabel"],
+.custom-dropdown .dropdown__multi-value__label {
+    color: #fffff5 !important;
+    font-size: 0.8em !important;
+    padding: 2px 6px !important;
+}
+
+/* Botón X para quitar selección */
+.custom-dropdown [class*="multiValueRemove"],
+.custom-dropdown .dropdown__multi-value__remove {
+    color: #fffff5 !important;
+    cursor: pointer !important;
+    padding: 0 4px !important;
+}
+
+.custom-dropdown [class*="multiValueRemove"]:hover,
+.custom-dropdown .dropdown__multi-value__remove:hover {
+    background-color: rgba(255, 0, 0, 0.5) !important;
+    color: #fff !important;
+}
+
+/* Input cuando escribís */
+.custom-dropdown input {
+    color: #fffff5 !important;
+    background-color: transparent !important;
+}
+
+/* Indicadores (flechita, separador) */
+.custom-dropdown [class*="IndicatorsContainer"],
+.custom-dropdown .dropdown__indicators {
+    background-color: #104547 !important;
+}
+
+.custom-dropdown [class*="indicatorSeparator"],
+.custom-dropdown .dropdown__indicator-separator {
+    background-color: #fffff5 !important;
+}
+
+.custom-dropdown [class*="indicatorContainer"] svg,
+.custom-dropdown .dropdown__dropdown-indicator svg,
+.custom-dropdown .dropdown__clear-indicator svg {
+    fill: #fffff5 !important;
+}
+
+/* MENÚ DESPLEGABLE - CRÍTICO */
+.custom-dropdown [class*="menu"],
+.custom-dropdown .dropdown__menu {
+    background-color: #104547 !important;
+    border: 1px solid #fffff5 !important;
+    z-index: 1500 !important;
+}
+
+/* Forzar fondo oscuro en todo el menú */
+.custom-dropdown [class*="menu"] *,
+.custom-dropdown .dropdown__menu * {
+    background-color: #104547 !important;
+}
+
+/* Lista de opciones */
+.custom-dropdown [class*="MenuList"],
+.custom-dropdown .dropdown__menu-list {
+    background-color: #104547 !important;
+    padding: 0 !important;
+}
+
+/* Cada opción individual */
+.custom-dropdown [class*="option"],
+.custom-dropdown .dropdown__option {
+    background-color: #104547 !important;
+    color: #fffff5 !important;
+    padding: 8px 12px !important;
+    cursor: pointer !important;
+    font-size: 0.8em !important;
+}
+
+/* Opción con hover */
+.custom-dropdown [class*="option"]:hover,
+.custom-dropdown .dropdown__option:hover,
+.custom-dropdown [class*="option--is-focused"],
+.custom-dropdown .dropdown__option--is-focused {
+    background-color: #145a3d !important;
     color: #fffff5 !important;
 }
 
+/* Opción seleccionada */
+.custom-dropdown [class*="option--is-selected"],
+.custom-dropdown .dropdown__option--is-selected {
+    background-color: #0d3d2e !important;
+    color: #fffff5 !important;
+    font-weight: bold !important;
+}
 
-/* Ajustes de color para otros elementos en el panel de filtros */
+/* Ocultar checkboxes */
+.custom-dropdown input[type="checkbox"] {
+    display: none !important;
+}
+
+/* Ocultar Select All/Deselect All */
+.custom-dropdown [class*="group"]:first-child,
+.custom-dropdown .dropdown__group:first-child {
+    display: none !important;
+}
+
+/* Ocultar "No results" */
+.custom-dropdown [class*="menu-notice"],
+.custom-dropdown .dropdown__menu-notice,
+.Select-noresults {
+    display: none !important;
+}
+
+/* ============================================
+   RANGE SLIDER - Dash 4.0.0 (colores antiguos)
+   ============================================ */
+.controls-container .custom-slider {
+    width: 77% !important;
+    margin: 0 auto !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Rail - pista completa */
+.controls-container .custom-slider .rc-slider-rail {
+    background-color: #666 !important; /* gris oscuro */
+    height: 4px !important;
+}
+
+/* Track - pista activa */
+.controls-container .custom-slider .rc-slider-track {
+    background-color: #dac69a !important; /* amarillo/beige */
+    height: 4px !important;
+}
+
+/* Handle - manijas */
+.controls-container .custom-slider .rc-slider-handle {
+    border: 2px solid #dac69a !important;
+    background-color: #dac69a !important;
+    width: 16px !important;
+    height: 16px !important;
+    margin-top: -6px !important;
+}
+
+/* Hover / Focus manijas */
+.controls-container .custom-slider .rc-slider-handle:hover,
+.controls-container .custom-slider .rc-slider-handle:active,
+.controls-container .custom-slider .rc-slider-handle:focus {
+    border-color: #dac69a !important;
+    box-shadow: 0 0 0 5px rgba(218, 198, 154, 0.2) !important;
+}
+
+/* Dots */
+.controls-container .custom-slider .rc-slider-dot {
+    border-color: #dac69a !important;
+    background-color: #104547 !important;
+}
+
+/* Dots activos */
+.controls-container .custom-slider .rc-slider-dot-active {
+    border-color: #dac69a !important;
+}
+
+/* Texto marcas (min / max) */
 .controls-container .custom-slider .rc-slider-mark-text {
-    color: #fffff5 !important;
+    color: #fffff5 !important; /* blanco */
+    font-size: 12px !important;
 }
 
-.custom-slider {
-    width: 77% !important; /* Ajusta el ancho del RangeSlider */
-    margin: 0 auto; /* Centra el RangeSlider */
-    margin-top: 0px;
-    margin-bottom: 0px !important;
+/* Tooltip */
+.controls-container .custom-slider .rc-slider-tooltip-inner {
+    background-color: #dac69a !important; /* beige */
+    color: #104547 !important;           /* texto verde oscuro */
+    border: 1px solid #dac69a !important;
+    min-width: 30px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
 }
 
-.custom-slider .rc-slider-track {
-    background-color: #dac69a !important; /* Cambia el color de la pista del RangeSlider */
-}
-
-.custom-slider .rc-slider-handle {
-    border-color: #dac69a !important; /* Cambia el color del controlador del RangeSlider */
-}
-
-.custom-slider .rc-slider-dot {
-    border-color: #dac69a !important; /* Cambia el color de los puntos del RangeSlider */
+/* Flechita tooltip */
+.controls-container .custom-slider .rc-slider-tooltip-arrow {
+    border-top-color: #dac69a !important;
 }
 
 
 
 
-/* Ajustes de visibilidad y estilo para el recuadro de colores */
+/* ============================================
+   LEYENDA DE COLORES
+   ============================================ */
 .color-legend {
-    display: flex !important; /* Fuerza el display a flex */
+    display: flex !important;
     width: 80%;
     min-height: 10px !important;
-    margin: 10px auto; /* Ajusta el margen según sea necesario */
-    height: 10px; /* Altura del recuadro */
-    visibility: visible !important; /* Fuerza la visibilidad */
-    position: relative; /* Asegúrate de que tenga una posición relativa */
-    z-index: 1 !important; /* Asegúrate de que esté sobre otros elementos */
+    margin: 10px auto;
+    height: 10px;
+    visibility: visible !important;
+    position: relative;
+    z-index: 1 !important;
     min-width: 200px;
     max-width: 80%;
     margin-bottom: 0px !important;
-    background-color: transparent !important; /* Asegúrate de que no tenga fondo que interfiera */
-}
-
-.leaflet-control-attribution {
-    display: none !important;
+    background-color: transparent !important;
 }
 
 .color-legend div {
@@ -184,302 +367,82 @@
 }
 
 .color-legend .color-1 { 
-    background-color: #ff0000 !important; /* Color rojo para 0 a 0.9 */
+    background-color: #ff0000 !important;
 }
 .color-legend .color-2 { 
-    background-color: #800080 !important; /* Color violeta para 1 a 1.9 */
+    background-color: #800080 !important;
 }
 .color-legend .color-3 { 
-    background-color: #00ced1 !important; /* Color celeste para 2 a 2.9 */
+    background-color: #00ced1 !important;
 }
 .color-legend .color-4 { 
-    background-color: #f5deb3 !important; /* Color beige para 3 a 3.9 */
+    background-color: #f5deb3 !important;
 }
 .color-legend .color-5 { 
-    background-color: #008000 !important; /* Color verde para 4 a 5 */
-}
-
-/* Asegúrate de que sea visible en dispositivos móviles */
-@media (max-width: 768px) {
-    .color-legend {
-        width: 80% !important; /* Ajusta el ancho según sea necesario */
-        margin: 10px auto; /* Centra el recuadro de colores */
-    }
-}
-
-@media (max-width: 430px) {
-    .color-legend {
-        width: 80% !important; /* Ajusta el ancho según sea necesario */
-        margin: 10px auto; /* Centra el recuadro de colores */
-    }
-}
-
-@media (max-width: 425px) {
-    .color-legend {
-        width: 80% !important; /* Ajusta el ancho según sea necesario */
-        margin: 10px auto; /* Centra el recuadro de colores */
-    }
-}
-
-@media (max-width: 375px) {
-    .color-legend {
-        width: 80% !important; /* Ajusta el ancho según sea necesario */
-        margin: 10px auto; /* Centra el recuadro de colores */
-    }
-}
-
-@media (max-width: 300px) {
-    .color-legend {
-        width: 80% !important; /* Ajusta el ancho según sea necesario */
-        margin: 10px auto; /* Centra el recuadro de colores */
-    }
-}
-
-
-
-
-@media (min-width: 1441px) {
-    .custom-dropdown .Select-control,
-    .custom-dropdown .Select-placeholder,
-    .custom-dropdown .Select-value-label,
-    .custom-input {
-        font-size: 1em !important; /* Tamaño del texto para pantallas mayores a 1440px */
-    }
-}
-
-@media (max-width: 1440px) {
-    .custom-dropdown .Select-control,
-    .custom-dropdown .Select-placeholder,
-    .custom-dropdown .Select-value-label,
-    .custom-input {
-        font-size: 1em !important; /* Tamaño del texto para pantallas un poco más pequeñas */
-    }
-}
-
-@media (max-width: 1024px) {
-    .custom-dropdown .Select-control,
-    .custom-dropdown .Select-placeholder,
-    .custom-dropdown .Select-value-label,
-    .custom-input {
-        font-size: 0.85em; /* Tamaño del texto para pantallas medianas */
-    }
+    background-color: #008000 !important;
 }
 
 @media (max-width: 768px) {
-    .custom-dropdown .Select-control,
-    .custom-dropdown .Select-placeholder,
-    .custom-dropdown .Select-value-label,
-    .custom-input {
-        font-size: 0.8em; /* Tamaño del texto para pantallas más pequeñas */
+    .color-legend {
+        width: 80% !important;
+        margin: 10px auto;
     }
 }
 
-@media (max-width: 425px) {
-    .custom-dropdown .Select-control,
-    .custom-dropdown .Select-placeholder,
-    .custom-dropdown .Select-value-label,
-    .custom-input {
-        font-size: 0.75em; /* Tamaño del texto para pantallas muy pequeñas */
-    }
-}
-
-/* Estilo para el botón Cambiar tipo de mapa */
+/* ============================================
+   BOTONES
+   ============================================ */
 .custom-button {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1em; /* Tamaño de fuente inicial */
-    width: 80%; /* Ancho completo del contenedor */
-    margin-top: 10px;
-    padding: 7px 20px; /* Ajusta el relleno según sea necesario */
+    font-size: 1em;
+    width: 80%;
+    margin: 10px auto;
+    padding: 7px 20px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     color: #fffff5 !important;
+    background-color: #4CAF50 !important;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.custom-button:hover {
+    background-color: #45a049 !important;
 }
 
 @media (max-width: 768px) {
     .custom-button {
-        font-size: 0.85em; /* Tamaño de fuente reducido en dispositivos móviles */
+        font-size: 0.85em;
     }
 }
 
-/* Estilo para el botón de Mostrar/Ocultar Filtros */
 .custom-toggle-button {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 80%; /* Tamaño de fuente más pequeño relativo al tamaño de la pantalla */
-    width: auto; /* Permitir que el ancho del botón se ajuste al contenido */
+    font-size: 80%;
+    width: auto;
     margin-top: 10px;
-    padding: 8px 16px; /* Ajusta el relleno según sea necesario */
-    background-color: #fffff5 !important; /* Fondo blanco */
-    border: 2px solid #000000 !important; /* Borde negro */
-    border-radius: 5px; /* Bordes redondeados */
+    padding: 8px 16px;
+    background-color: #fffff5 !important;
+    border: 2px solid #000000 !important;
+    border-radius: 5px;
     position: fixed !important;
     font-weight: bold !important;
     top: 10px;
     left: 10px;
-    z-index: 2000; /* Asegura que el botón esté por encima del panel de filtros */
+    z-index: 2000;
     color: #194d33 !important;
-}
-
-
-/* Estilo general para el panel de información */
-#info-registro {
-    position: absolute;
-    top: 60px;
-    right: 110px;
-    width: 30%; /* Aumenta el ancho en pantallas grandes */
-    border: 2px solid #404040;
-    background-color: rgba(255, 255, 255, 1);
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    display: none; /* Initially hidden */
-}
-
-#info-registro h4, #info-registro p {
-    font-size: 1em; /* Tamaño de fuente para pantallas grandes */
-}
-
-#info-registro a {
-    word-wrap: break-word;
-}
-
-/* Ajustes de tamaño de panel y texto para pantallas más pequeñas */
-@media (max-width: 1440px) {
-    #info-registro {
-        width: 35%; /* Ancho en pantallas un poco más pequeñas */
-        right: 20px;
-    }
-    #info-registro h4, #info-registro p {
-        font-size: 0.9em; /* Reducir tamaño de fuente */
-    }
-}
-
-@media (max-width: 1024px) {
-    #info-registro {
-        width: 40%; /* Ancho en tabletas grandes */
-        right: 20px;
-    }
-    #info-registro h4, #info-registro p {
-        font-size: 0.85em; /* Reducir tamaño de fuente */
-    }
-}
-
-@media (max-width: 768px) {
-    #info-registro {
-        width: 50% !important; /* Ancho en tabletas */
-        right: 20px;
-    }
-    #info-registro h4, #info-registro p {
-        font-size: 0.8em; /* Reducir tamaño de fuente */
-    }
-}
-
-@media (max-width: 425px) {
-    #info-registro {
-        width: 65%; /* Ancho en dispositivos móviles más pequeños */
-        right: 20px;
-    }
-    #info-registro h4, #info-registro p {
-        font-size: 0.75em; /* Reducir tamaño de fuente */
-    }
-}
-
-@media (max-width: 375px) {
-    #info-registro {
-        width: 70% !important; /* Ancho completo en dispositivos móviles más pequeños */
-        right: 20px;
-    }
-    #info-registro h4, #info-registro p {
-        font-size: 0.7em; /* Reducir tamaño de fuente */
-    }
-}
-
-/* Estilo para el botón de cerrado del panel de información */
-.close-info-button {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background-color: transparent;
-    border: none;
-    font-size: 1.2em;
     cursor: pointer;
 }
 
-
-/* Estilos para el tooltip */
-.leaflet-tooltip {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 14px;
-    background: #64b6ac !important;
-    color: #fffff5;
-    border: 2px solid #fffff5;
-    border-radius: 5px;
-    padding: 10px;
-    min-width: 150px;
-    word-wrap: break-word;
-}
-
-/* Ajuste del estilo del nombre en el tooltip */
-.marker-tooltip .nombre {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 16px;
-    font-weight: bold;
-    color: #000000;  /* Cambiar a color negro */
-    margin-top: 0px; /* Reducir espacio superior */
-    margin-bottom: 2px;  /* Mantener un pequeño espacio entre el nombre y el siguiente contenido */
-}
-
-/* Estilo para las palabras en negrita */
-.marker-tooltip .bold-text {
-    font-weight: bold;
-}
-
-
-/* Ajustar el margen entre elementos del tooltip */
-.marker-tooltip p {
-    margin-bottom: 2px !important;  /* Reducir el margen entre elementos */
-}
-
-
-
-.marker-tooltip div {
-    margin-bottom: 2px !important;
-    font-size: 14px !important;  /* Aumentar tamaño de fuente */
-}
-
-.marker-tooltip div:last-child {
-    margin-bottom: 0;
-}
-
-.tooltip-header:hover + .tooltip-extra-info {
-    display: block !important;  /* Mostrar información adicional al hacer hover */
-}
-
-/* Hacer que el tooltip no se muestre después de hacer clic */
-.marker-tooltip.clicked {
-    display: none !important;
-}
-
-/* Ocultar el tooltip en dispositivos móviles */
-@media (max-width: 768px) {
-    .marker-tooltip {
-        display: none !important;
-    }
-}
-
-body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .Select-placeholder, .custom-dropdown .Select-value-label, .custom-dropdown .Select-menu, .custom-dropdown .Select-option, .custom-slider, .custom-button, .custom-toggle-button, #info-registro, .contact-button-circle {
-    font-family: 'Montserrat', sans-serif;
-}
-
-/* Ajustar el estilo del botón de contacto */
 .contact-button-circle {
-    margin-left: 15px !important;  /* Ajusta el margen izquierdo para acercar los botones */
-    margin-right: 15px !important; /* Ajusta el margen derecho para acercar los botones */
+    margin-left: 15px !important;
+    margin-right: 15px !important;
     margin-top: 15px !important;
     display: flex;
     justify-content: center;
@@ -493,127 +456,9 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     background-color: #fffff5 !important;
 }
 
-
-
-
-.location-button {
-    background-color: #007bff;
-    border: none;
-    color: white;
-    padding: 10px;
-    border-radius: 50%;
-    cursor: pointer;
-    position: absolute !important;
-    bottom: 500px !important;
-    right: 10px;
-    z-index: 1000;
-}
-
-.location-button .fas {
-    font-size: 20px;
-}
-
-
-.custom-spinner {
-    z-index: 9999 !important; /* Asegúrate de que el spinner esté al frente */
-    position: fixed; /* Asegúrate de que cubra toda la pantalla */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.9); /* Fondo semitransparente */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.loading-overlay {
-    z-index: 2000 !important; /* Asegúrate de que esté por encima del panel de filtros */
-}
-
-
-/* Estilos generales para los popups */
-.leaflet-popup-content {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-/* Estilo específico para el nombre de la cafetería */
-.leaflet-popup-content .popup-nombre {
-    font-size: 18px; !important /* Mantén el tamaño grande del nombre */
-    font-weight: bold;
-    text-decoration: none;
-    color: #333;
-    margin-top: 5px !important; /* Reduce el espacio superior */
-    margin-bottom: 5px !important; /* Reduce el espacio inferior */
-    text-align: center; /* Alinea al centro si es necesario */
-}
-
-/* Estilo solo para el título "Horarios" */
-.popup-horarios-title {
-    text-decoration: underline; /* Subrayar solo el título */
-    font-weight: bold;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 14px;
-    margin-bottom: 5px; /* Espacio entre el título y los horarios */
-}
-
-/* Estilo para los valores de los horarios (días y horas) */
-.popup-horarios-content {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 14px;
-    line-height: 1.5; /* Espaciado entre líneas */
-    text-decoration: none; /* Asegura que los valores no estén subrayados */
-    margin: 0; /* Sin margen adicional */
-}
-
-
-/* Estilo para el resto de los parámetros */
-.leaflet-popup-content .popup-rating,
-.leaflet-popup-content .popup-reviews,
-.leaflet-popup-content .popup-web,
-.leaflet-popup-content .popup-direccion {
-    font-size: 14px;
-    font-weight: normal;
-    text-decoration: none; /* Quitar subrayado */
-    color: #555; /* Color opcional */
-}
-
-.leaflet-popup-content .popup-rating {
-    font-size: 14px;
-    font-weight: normal;
-    text-decoration: none;
-    color: #555;
-    margin-top: 5px !important; /* Reduce el espacio entre el nombre y Rating */
-    margin-bottom: 5px !important; /* Reduce el espacio entre Rating y el siguiente parámetro */
-}
-
-/* Cambiar el color del texto al escribir en los dropdowns */
-.custom-dropdown .Select-input input {
-    color: #fffff5 !important; /* Cambiar a blanco */
-}
-
-.leaflet-popup-close-button {
-    position: absolute !important;
-    top: 15px !important; /* Ajusta la posición vertical */
-    right: 3px !important; /* Ajusta la posición horizontal */
-    background-color: transparent !important;
-    border: none !important;
-    font-size: 2em !important; /* Aumenta el tamaño del símbolo */
-    cursor: pointer !important;
-    line-height: 1 !important; /* Mantiene la proporción del símbolo */
-    color: black !important; /* Cambia el color si es necesario */
-    width: 50px !important; /* Aumenta el área clickeable horizontalmente */
-    height: 50px !important; /* Aumenta el área clickeable verticalmente */
-    text-align: center !important; /* Centra el símbolo en el área clickeable */
-}
-
-
-/* Botón flotante para abrir panel de sugerencias */
 .custom-floating-button {
     position: fixed;
-    top: 140px; /* Alineado con los botones de zoom y geolocalización */
+    top: 140px;
     right: 10px;
     width: 45px;
     height: 45px;
@@ -624,39 +469,36 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     cursor: pointer;
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
     text-align: center;
-    z-index: 3000; /* Asegura que esté sobre otros elementos */
+    z-index: 3000;
 }
 
 .custom-floating-button:hover {
     background-color: #f0f0f0;
 }
 
-/* Estilos generales del panel de sugerencias */
+/* ============================================
+   PANEL DE SUGERENCIAS
+   ============================================ */
 .suggestion-panel {
     position: fixed;
-    top: 210px;  /* Ajusta la posición en pantallas grandes */
+    top: 210px;
     right: 10px;
-    width: 40%;  /* Ancho del 40% de la pantalla */
+    width: 40%;
     background: white;
     padding: 15px;
     border-radius: 10px;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-    z-index: 2000; /* Asegura que esté por encima del mapa */
+    z-index: 2000;
     max-width: 200px;
 }
 
-/* Ajuste específico para móviles */
 @media (max-width: 768px) {
     .suggestion-panel {
-        top: 210px !important;  /* Forzamos el cambio del top */
-        width: 200px !important;  /* Hacemos que ocupe más ancho */
-
+        top: 210px !important;
+        width: 200px !important;
     }
 }
 
-
-
-/* Botón de cerrar dentro del panel */
 .close-button {
     background: none;
     border: none;
@@ -667,7 +509,6 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     cursor: pointer;
 }
 
-/* Inputs y botón dentro del panel */
 .custom-input {
     width: 90%;
     padding: 8px;
@@ -676,37 +517,169 @@ body, .controls-container, .custom-dropdown .Select-control, .custom-dropdown .S
     border-radius: 5px;
 }
 
-.custom-button {
-    width: 100%;
-    padding: 10px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
+/* ============================================
+   LEAFLET (MAPA Y POPUPS)
+   ============================================ */
+.leaflet-control-attribution {
+    display: none !important;
+}
+
+.leaflet-tooltip {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.leaflet-tooltip {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    background: #64b6ac !important;
+    color: #fffff5;
+    border: 2px solid #fffff5;
     border-radius: 5px;
-    cursor: pointer;
+    padding: 10px;
+    min-width: 150px;
+    word-wrap: break-word;
 }
 
-.custom-button:hover {
-    background-color: #45a049;
+.marker-tooltip .nombre {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    color: #000000;
+    margin-top: 0px;
+    margin-bottom: 2px;
 }
 
-/* 📱 Responsive: Ajustes en pantallas pequeñas */
+.marker-tooltip .bold-text {
+    font-weight: bold;
+}
+
+.marker-tooltip p {
+    margin-bottom: 2px !important;
+}
+
+.marker-tooltip div {
+    margin-bottom: 2px !important;
+    font-size: 14px !important;
+}
+
+.marker-tooltip div:last-child {
+    margin-bottom: 0;
+}
+
+.marker-tooltip.clicked {
+    display: none !important;
+}
+
 @media (max-width: 768px) {
-    .suggestion-panel {
-        width: 80%; /* En móviles ocupa más espacio */
-        right: 10px;
-        top: 120px;
+    .marker-tooltip {
+        display: none !important;
     }
 }
 
+.leaflet-popup-content {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
 
-.hidden {
-  display: none;
+.leaflet-popup-content .popup-nombre {
+    font-size: 18px !important;
+    font-weight: bold;
+    text-decoration: none;
+    color: #333;
+    margin-top: 5px !important;
+    margin-bottom: 5px !important;
+    text-align: center;
 }
-.visible {
-  display: block;
+
+.leaflet-popup-content .popup-rating,
+.leaflet-popup-content .popup-reviews,
+.leaflet-popup-content .popup-web,
+.leaflet-popup-content .popup-direccion {
+    font-size: 14px;
+    font-weight: normal;
+    text-decoration: none;
+    color: #555;
 }
-/* Oculta el texto “No results found” de los dcc.Dropdown */
-.Select-noresults { 
-  display: none !important; 
+
+.leaflet-popup-content .popup-rating {
+    margin-top: 5px !important;
+    margin-bottom: 5px !important;
+}
+
+.popup-horarios-title {
+    text-decoration: underline;
+    font-weight: bold;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.popup-horarios-content {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    text-decoration: none;
+    margin: 0;
+}
+
+.leaflet-popup-close-button {
+    position: absolute !important;
+    top: 15px !important;
+    right: 3px !important;
+    background-color: transparent !important;
+    border: none !important;
+    font-size: 2em !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+    color: black !important;
+    width: 50px !important;
+    height: 50px !important;
+    text-align: center !important;
+}
+
+/* ============================================
+   OTROS
+   ============================================ */
+.custom-spinner {
+    z-index: 9999 !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-overlay {
+    z-index: 2000 !important;
+}
+
+#info-registro {
+    position: absolute;
+    top: 60px;
+    right: 110px;
+    width: 30%;
+    border: 2px solid #404040;
+    background-color: rgba(255, 255, 255, 1);
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none;
+}
+
+.close-info-button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: transparent;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
 }
