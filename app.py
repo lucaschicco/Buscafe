@@ -260,12 +260,17 @@ app.layout = html.Div([
                 min=rating_min,
                 max=rating_max,
                 step=0.1,
-                marks={str(rating): {'label': str(rating)}
+                marks={str(rating): {'label': str(rating), 'style': {'color': '#fffff5'}} 
                        for rating in range(int(rating_min), int(rating_max) + 1)},
                 value=[rating_min, rating_max],
-                tooltip={"placement": "bottom", "always_visible": True},
-                className='custom-slider'
-            ),
+                tooltip={"placement": "bottom", "always_visible": True,
+                         "style": {"backgroundColor": "#dac69a", "color": "#104547"}},  
+                className='custom-slider',
+                allow_direct_input=False,
+                dots=True
+            )
+            ,
+
 
             html.Div(className='color-legend', children=[
                 html.Div(className='color-1'),
@@ -442,6 +447,7 @@ app.layout = html.Div([
         }
     ),
 ])
+
 
 
 
