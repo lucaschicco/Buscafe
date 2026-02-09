@@ -203,6 +203,8 @@ app.layout = html.Div([
                     {'label': 'El café es de especialidad', 'value': 'El café es de especialidad'},
                     {'label': 'Tiene Delivery', 'value': 'Delivery'},
                     {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
+                    {'label': 'Es nueva', 'value': 'Nueva'},
+                    {'label': 'Es popular', 'value': 'Popular'},
                     #{'label': 'Para comer en el lugar', 'value': 'Comer en lugar'},
                     {'label': 'Temática: Puesto de diario', 'value': 'Temática: Puesto de diario'},
                     #{'label': 'Desayuno', 'value': 'Desayuno'},
@@ -248,26 +250,40 @@ app.layout = html.Div([
                 placeholder="Busca por Nombre...",
                 searchable=True,
                 className='custom-dropdown',
-                style={'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)', 'margin-top': '3px'}
+                style={'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)', 'margin-top': '2px'}
             ),
 
-            html.Label("RATING",
-                       style={'color': '#fffff5', 'font-weight': 'bold', 'margin-top': '5px',
-                              'margin-bottom': '5px', 'margin-left': '40px'}),
+            html.Label(
+                "RATING",
+                style={
+                    'display': 'block',
+                    'color': '#fffff5',
+                    'font-weight': 'bold',
+                    'margin-bottom': '10px',
+                    'margin-left': '40px'
+                }
+            ),
 
             dcc.RangeSlider(
                 id='rating-slider',
                 min=rating_min,
                 max=rating_max,
                 step=0.1,
-                marks={str(rating): {'label': str(rating), 'style': {'color': '#fffff5'}} 
-                       for rating in range(int(rating_min), int(rating_max) + 1)},
+                marks={
+                    rating: {
+                        'label': str(rating),
+                        'style': {'color': '#fffff5'}
+                    }
+                    for rating in range(int(rating_min), int(rating_max) + 1)
+                },
                 value=[rating_min, rating_max],
-                tooltip={"placement": "bottom", "always_visible": True,
-                         "style": {"backgroundColor": "#dac69a", "color": "#104547"}},  
+                tooltip={
+                    "placement": "bottom",
+                    "always_visible": False,
+                    "style": {"backgroundColor": "#dac69a", "color": "#104547"}
+                },
                 className='custom-slider',
-                allow_direct_input=False,
-                dots=True
+                allow_direct_input=False
             )
             ,
 
@@ -447,7 +463,6 @@ app.layout = html.Div([
         }
     ),
 ])
-
 
 
 
