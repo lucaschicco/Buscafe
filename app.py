@@ -22,6 +22,17 @@ import unicodedata
 
 app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
+
+
+# Redirect www → sin www
+@server.before_request
+def redirect_www():
+    from flask import request, redirect
+    if request.host.startswith('www.'):
+        url = request.url.replace('www.', '', 1)
+        return redirect(url, code=301)
+
+
 app._favicon = ("coffee-solid.ico")
 # Habilitar la compresión
 Compress(server)
