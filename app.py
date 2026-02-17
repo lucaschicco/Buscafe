@@ -29,7 +29,9 @@ server = app.server  # Esto expone el servidor de Flask
 def redirect_www():
     from flask import request, redirect
     if request.host.startswith('www.'):
-        url = request.url.replace('www.', '', 1)
+        scheme = request.headers.get('X-Forwarded-Proto', 'https')
+        new_host = request.host.replace('www.', '', 1)
+        url = f"{scheme}://{new_host}{request.full_path.rstrip('?')}"
         return redirect(url, code=301)
 
 
