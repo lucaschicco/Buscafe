@@ -24,6 +24,83 @@ app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
 
 
+# ════════════════════════════════════════════════════════════
+# PÁGINAS LEGALES (para Google OAuth verification)
+# ════════════════════════════════════════════════════════════
+@server.route('/privacidad')
+def privacidad():
+    return '''
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <title>Política de Privacidad - Buscafes</title>
+        <style>
+            body { font-family: 'Montserrat', Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6; }
+            h1 { color: #104547; }
+            a { color: #104547; }
+        </style>
+    </head>
+    <body>
+        <h1>Política de Privacidad</h1>
+        <p><strong>Última actualización:</strong> Febrero 2026</p>
+        
+        <h2>Información que recopilamos</h2>
+        <p>Buscafes recopila únicamente tu dirección de correo electrónico y nombre de perfil 
+        cuando iniciás sesión con Google. Estos datos se utilizan exclusivamente para:</p>
+        <ul>
+            <li>Identificarte dentro de la aplicación</li>
+            <li>Guardar tus cafeterías favoritas y visitadas</li>
+            <li>Generar recomendaciones en base a tus preferencias</li>
+        </ul>
+        
+        <h2>Uso de la información</h2>
+        <p>No compartimos tu información personal con terceros. Tus datos se almacenan 
+        de forma segura en Firebase (Google Cloud).</p>
+        
+        <h2>Contacto</h2>
+        <p>Para consultas sobre esta política: buscafes.ai@gmail.com</p>
+        
+        <p><a href="/">Volver al inicio</a></p>
+    </body>
+    </html>
+    '''
+
+@server.route('/terminos')
+def terminos():
+    return '''
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <title>Términos de Servicio - Buscafes</title>
+        <style>
+            body { font-family: 'Montserrat', Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6; }
+            h1 { color: #104547; }
+            a { color: #104547; }
+        </style>
+    </head>
+    <body>
+        <h1>Términos de Servicio</h1>
+        <p><strong>Última actualización:</strong> Febrero 2026</p>
+        
+        <h2>Uso del servicio</h2>
+        <p>Buscafes es una aplicación gratuita para descubrir cafeterías. Al usar nuestro servicio, 
+        aceptás estos términos.</p>
+        
+        <h2>Cuentas de usuario</h2>
+        <p>Podés iniciar sesión con Google. Sos responsable de mantener la seguridad de tu cuenta.</p>
+        
+        <h2>Limitación de responsabilidad</h2>
+        <p>La información sobre cafeterías se proporciona "tal cual". No garantizamos la exactitud 
+        de los horarios, ubicaciones o calificaciones.</p>
+        
+        <h2>Contacto</h2>
+        <p>buscafes.ai@gmail.com</p>
+        
+        <p><a href="/">Volver al inicio</a></p>
+    </body>
+    </html>
+    '''
+
 # Redirect www → sin www
 @server.before_request
 def redirect_www():
