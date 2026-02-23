@@ -426,6 +426,12 @@ app.layout = html.Div([
                     style={}
                 )
             ], style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}),
+            # Links legales (NUEVO - requerido por Google)
+            html.Div([
+                html.A("Privacidad", href="/privacidad", target="_blank", className="legal-link"),
+                html.Span(" · ", style={'color': '#fffff5'}),
+                html.A("Términos", href="/terminos", target="_blank", className="legal-link"),
+            ], style={'text-align': 'center', 'margin-top': '15px'}),            
         ]
     ),
 
