@@ -150,6 +150,14 @@ app.index_string = """
   </script>
 </head>
 <body>
+  <!-- Contenido para crawlers (Google OAuth verification) -->
+  <div style="position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;">
+    <h1>Buscafes</h1>
+    <p>Buscafes - Mapa interactivo para descubrir cafeterías de Buenos Aires con filtros por barrio, rating y características.</p>
+    <a href="/privacidad">Política de Privacidad</a>
+    <a href="/terminos">Términos de Servicio</a>
+  </div>
+
   <div id="react-entry-point">{%app_entry%}</div>
   <footer>{%config%}{%scripts%}{%renderer%}</footer>
 </body>
