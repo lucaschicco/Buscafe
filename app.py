@@ -289,6 +289,7 @@ app.layout = html.Div([
                 value=None,
                 placeholder="Selecciona un barrio",
                 className='custom-dropdown',
+                labels={'select_all': '', 'deselect_all': ''},  # ← OCULTA LOS BOTONES
                 searchable=False,
                 multi=True
             )
@@ -325,6 +326,7 @@ app.layout = html.Div([
                 value=[],
                 searchable=False,
                 multi=True,
+                labels={'select_all': '', 'deselect_all': ''},  # ← OCULTA LOS BOTONES
                 placeholder="Filtrá por Características...",
                 className='custom-dropdown'
             ),
@@ -336,6 +338,7 @@ app.layout = html.Div([
                 value=[],
                 multi=True,
                 searchable=False,
+                labels={'select_all': '', 'deselect_all': ''},  # ← OCULTA LOS BOTONES
                 placeholder="Filtrá por Días de Apertura...",
                 className='custom-dropdown'
             ),
@@ -346,6 +349,7 @@ app.layout = html.Div([
                 value=[],             # multi
                 multi=True,
                 placeholder="Busca por Nombre...",
+                labels={'select_all': '', 'deselect_all': ''},  # ← OCULTA LOS BOTONES
                 searchable=True,
                 className='custom-dropdown',
                 style={'box-shadow': '0px 0px 5px 2px rgba(0, 0, 0, 0.1)', 'margin-top': '2px'}
@@ -439,7 +443,18 @@ app.layout = html.Div([
                 html.A("Privacidad", href="/privacidad", target="_blank", className="legal-link"),
                 html.Span(" · ", style={'color': '#fffff5'}),
                 html.A("Términos", href="/terminos", target="_blank", className="legal-link"),
-            ], style={'text-align': 'center', 'margin-top': '15px'}),            
+            ], style={'text-align': 'center', 'margin-top': '15px'}),  
+            
+            # Nombre de la app (para OAuth verification)
+            html.Div([
+                html.P("Buscafes", style={
+                    'color': '#dac69a',
+                    'font-size': '14px',
+                    'font-weight': '600',
+                    'margin': '10px 0 0 0',
+                    'text-align': 'center'
+                })
+            ], style={'text-align': 'center'}),
         ]
     ),
 
