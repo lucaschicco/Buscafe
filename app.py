@@ -169,7 +169,7 @@ app.index_string = app.index_string.replace("__AI_CONN__", CLIENT_CONN)
 
 
 # URL del archivo JSON comprimido en Azure
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data44.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data45.json'
 
 # Traer el contenido
 response = requests.get(url)
