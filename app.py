@@ -3954,7 +3954,10 @@ app.layout = html.Div([
                                 });
 
                                 
-                                const sitioWeb = props['Sitio Web'] || 'Sin datos';
+                                const sitioWebRaw = props['Sitio Web'] || '';
+                                const sitioWeb = sitioWebRaw && sitioWebRaw !== 'Sin datos' 
+                                    ? `<a href="${sitioWebRaw}" target="_blank" style="color:#104547;">${sitioWebRaw.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a>`
+                                    : 'Sin datos';
                     
                                 const id = props.id;
                                 const nombre = props.Nombre;
