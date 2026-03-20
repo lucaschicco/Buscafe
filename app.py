@@ -143,6 +143,7 @@ def perfil():
     <head>
         <title>Mi Perfil - Buscafes</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/png" href="/assets/icono_cafeterias.png">
         <!-- Firebase SDK -->
         <script type="module">
             import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
@@ -692,7 +693,7 @@ def perfil():
     </head>
     <body>
         <div class="app-header">
-            <img src="/assets/buscafes_header2.jpeg" alt="Buscafes" class="app-header-logo">
+            <img src="/assets/buscafes_header2.png" alt="Buscafes" class="app-header-logo">
             <div class="app-header-contact">
                 <a href="mailto:buscafes.ai@gmail.com">
                     <img src="https://jsonbuscafe.blob.core.windows.net/contbuscafe/envelope-solid.svg" alt="Email">
@@ -761,24 +762,15 @@ def perfil():
         <!-- Navbar -->
         <div class="bottom-navbar-simple">
             <a href="/perfil" class="nav-item active">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
+                <img src="/assets/icon_usuario.png" style="width:24px;height:24px;">
                 <span>Perfil</span>
             </a>
             <a href="/" class="nav-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
-                </svg>
+                <img src="/assets/icono_mapa.png" style="width:24px;height:24px;">
                 <span>Mapa</span>
             </a>
             <a href="/comunidad" class="nav-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                </svg>
+                <img src="/assets/icono_comunidad2.png" style="width:24px;height:24px;">
                 <span>Comunidad</span>
             </a>
         </div>
@@ -1528,8 +1520,9 @@ def comunidad():
     <head>
         <title>Comunidad - Buscafes</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/png" href="/assets/icono_cafeterias.png">
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
+        
         <script type="module">
             import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
             import { getFirestore, collection, query, orderBy, limit, getDocs } 
@@ -2007,7 +2000,7 @@ def comunidad():
     
         <!-- Header -->
         <div class="app-header">
-            <img src="/assets/buscafes_header2.jpeg" alt="Buscafes" class="app-header-logo">
+            <img src="/assets/buscafes_header2.png" alt="Buscafes" class="app-header-logo">
             <div class="app-header-contact">
                 <a href="mailto:buscafes.ai@gmail.com">
                     <img src="https://jsonbuscafe.blob.core.windows.net/contbuscafe/envelope-solid.svg" alt="Email">
@@ -2124,25 +2117,15 @@ def comunidad():
         <!-- Navbar -->
         <div class="bottom-navbar">
             <a href="/perfil" class="nav-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
+                <img src="/assets/icon_usuario.png" style="width:24px;height:24px;">
                 <span>Perfil</span>
             </a>
             <a href="/" class="nav-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
-                </svg>
+                <img src="/assets/icono_mapa.png" style="width:24px;height:24px;">
                 <span>Mapa</span>
             </a>
             <a href="/comunidad" class="nav-item active">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
+                <img src="/assets/icono_comunidad2.png" style="width:24px;height:24px;">
                 <span>Comunidad</span>
             </a>
         </div>
@@ -2363,6 +2346,8 @@ app.index_string = """
   {%metas%}
   <title>{%title%}</title>
   {%favicon%}
+  <link rel="icon" type="image/png" href="/assets/icono_cafeterias.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/icono_cafeterias.png">
   {%css%}
   
   <!-- CSS Crítico para render inicial -->
@@ -2408,7 +2393,7 @@ app.index_string = """
     #panel-sugerencia { display: none; }
   </style>
 
-  <link rel="preload" as="image" href="/assets/buscafes_header2.jpeg" fetchpriority="high">
+  <link rel="preload" as="image" href="/assets/buscafes_header2.png" fetchpriority="high">
   <link rel="preload" as="font" type="font/woff2" href="/assets/Montserrat-Regular.woff2" crossorigin="anonymous">
   <link rel="preload" as="font" type="font/woff2" href="/assets/Montserrat-Bold.woff2" crossorigin="anonymous">
   <link rel="preconnect" href="https://a.basemaps.cartocdn.com" crossorigin="anonymous">
@@ -2429,7 +2414,7 @@ app.index_string = """
 <body>
   <!-- Header -->
   <div class="app-header">
-    <img src="/assets/buscafes_header2.jpeg" alt="Buscafes" class="app-header-logo">
+    <img src="/assets/buscafes_header2.png" alt="Buscafes" class="app-header-logo">
     <div class="app-header-contact">
       <a href="mailto:buscafes.ai@gmail.com" title="Email">
         <img src="https://jsonbuscafe.blob.core.windows.net/contbuscafe/envelope-solid.svg " alt="Email">
@@ -3722,12 +3707,20 @@ app.layout = html.Div([
                 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'
             }),
             html.Div([
-                html.A("👤  Mi perfil", href="/perfil", className="menu-item"),
-                html.A("👥  Ver comunidad", href="/comunidad", className="menu-item"),
+                html.A([
+                    html.Img(src="/assets/icon_usuario.png",
+                             style={'width': '18px', 'height': '18px', 'marginRight': '8px', 'verticalAlign': 'middle'}),
+                    "Mi perfil"
+                ], href="/perfil", className="menu-item"),
+                html.A([
+                    html.Img(src="/assets/icono_comunidad.png",
+                             style={'width': '18px', 'height': '18px', 'marginRight': '8px', 'verticalAlign': 'middle'}),
+                    "Ver comunidad"
+                ], href="/comunidad", className="menu-item"),
                 html.Hr(style={'margin': '4px 0', 'border': 'none', 'borderTop': '1px solid #eee'}),
                 html.Div("🔑  Logearme", id="menu-auth-action", className="menu-item menu-item-primary"),
-                html.Hr(style={'margin': '4px 0', 'border': 'none', 'borderTop': '1px solid #eee'}),  # ← nuevo
-                html.Div([  # ← nuevo
+                html.Hr(style={'margin': '4px 0', 'border': 'none', 'borderTop': '1px solid #eee'}),
+                html.Div([
                     html.A("Privacidad", href="/privacidad", target="_blank",
                            style={'color': '#999', 'fontSize': '11px', 'textDecoration': 'none'}),
                     html.Span(" · ", style={'color': '#999', 'fontSize': '11px'}),
@@ -3737,7 +3730,6 @@ app.layout = html.Div([
             ], style={'padding': '0px 0'})
         ], className="user-menu-content")
     ], id="user-menu", className="user-menu", style={"display": "none"}),
-
     html.Div([
         html.Div([
             html.Div(style={
@@ -3953,7 +3945,7 @@ app.layout = html.Div([
                                     }
                                 });
 
-                                
+                                                                
                                 const sitioWebRaw = props['Sitio Web'] || '';
                                 const sitioWeb = sitioWebRaw && sitioWebRaw !== 'Sin datos' 
                                     ? `<a href="${sitioWebRaw}" target="_blank" style="color:#104547;">${sitioWebRaw.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a>`
@@ -4047,6 +4039,7 @@ app.layout = html.Div([
         }
     ),
 ])
+
 
 
 
