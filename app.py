@@ -3084,6 +3084,7 @@ app.index_string = """
   <script>
     // Sistema de mini-modal para notas
     window.openNoteModal = function(id, nombre) {
+        if (!nombre) nombre = (window.buscafesLookup[id] && window.buscafesLookup[id].nombre) || id;
         const data = window.getCafeData(id);
         const overlay = document.createElement('div');
         overlay.className = 'note-modal-overlay';
@@ -3152,6 +3153,7 @@ app.index_string = """
     };
 
     window.toggleFavorito = function(id, nombre) {
+        if (!nombre) nombre = (window.buscafesLookup[id] && window.buscafesLookup[id].nombre) || id;
         const data = window.getCafeData(id);
         const newFav = !data.isFavorite;
         const yaVisitado = data.isVisited;
@@ -3219,6 +3221,7 @@ app.index_string = """
     };
     
     window.toggleVisitado = function(id, nombre) {
+        if (!nombre) nombre = (window.buscafesLookup[id] && window.buscafesLookup[id].nombre) || id;
         const data = window.getCafeData(id);
         const newVist = !data.isVisited;
         const yaFavorito = data.isFavorite;
@@ -3589,14 +3592,51 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             html.Div([
-                html.H3("Informa cafetería faltante", className="sg-title"),
+                html.H3("Informar problema", className="sg-title"),
                 html.Button("✕", id="btn-cerrar-panel", className="sg-close-btn"),
             ], className="sg-header"),
             html.Div([
-                dcc.Input(id="nombre-cafeteria", type="text",
-                          placeholder="Nombre de la cafetería *", className="sg-input"),
-                dcc.Input(id="direccion-cafeteria", type="text",
-                          placeholder="Dirección (opcional)", className="sg-input"),
+                dcc.Dropdown(
+                    id="tipo-sugerencia",
+                    options=[
+                        {'label': 'Cafetería faltante', 'value': 'cafeteria_faltante'},
+                        {'label': 'Cafetería cerrada', 'value': 'cafeteria_cerrada'},
+                        {'label': 'Dirección incorrecta', 'value': 'direccion_incorrecta'},
+                        {'label': 'Sitio web incorrecto o faltante', 'value': 'sitio_web'},
+                        {'label': 'Otro error', 'value': 'otro'},
+                    ],
+                    value=None,
+                    placeholder="¿Qué querés informar? *",
+                    searchable=False,
+                    clearable=False,
+                    className='custom-dropdown',
+                    style={'marginBottom': '8px', 'fontSize': '0.9em'}
+                ),
+                dcc.Input(
+                    id="nombre-cafeteria",
+                    type="text",
+                    placeholder="Nombre de la cafetería *",
+                    className="sg-input"
+                ),
+                dcc.Input(
+                    id="direccion-cafeteria",
+                    type="text",
+                    placeholder="Dirección",
+                    className="sg-input"
+                ),
+                dcc.Input(
+                    id="url-cafeteria",
+                    type="text",
+                    placeholder="URL o Instagram (opcional)",
+                    className="sg-input",
+                    style={'display': 'none'}
+                ),
+                dcc.Textarea(
+                    id="descripcion-sugerencia",
+                    placeholder="Descripción adicional (opcional)",
+                    className="sg-input",
+                    style={'minHeight': '60px', 'resize': 'vertical', 'display': 'none'}
+                ),
                 html.Button("Enviar", id="enviar-sugerencia", className="sg-submit-btn"),
                 html.Div(id="mensaje-confirmacion", className="sg-message")
             ], className="sg-body")
@@ -3882,7 +3922,7 @@ app.layout = html.Div([
                     placeholder="Estilo de mapa",
                     searchable=False,
                     className='custom-dropdown',
-                    style={'marginTop': '15px'},
+                    style={'marginTop': '15px'}
                 ),
             ], className="filters-body"),
         ]
@@ -3969,18 +4009,18 @@ app.layout = html.Div([
                                         <button 
                                             id='btn-fav-${id}' 
                                             class='popup-action-btn ${esFav ? "active" : ""}' 
-                                            onclick='window.toggleFavorito("${id}", "${safeNombre}")'>
+                                            onclick='window.toggleFavorito("${id}")'>
                                             ${esFav ? '❤️' : '🤍'} Favorito
                                         </button>
                                         <button 
                                             id='btn-vist-${id}' 
                                             class='popup-action-btn ${esVist ? "active" : ""}' 
-                                            onclick='window.toggleVisitado("${id}", "${safeNombre}")'>
+                                            onclick='window.toggleVisitado("${id}")'>
                                             ${esVist ? '✅' : '📍'} Visitado
                                         </button>
                                         <button 
                                             class='popup-action-btn ${hasNote ? "active" : ""}' 
-                                            onclick='window.openNoteModal("${id}", "${safeNombre}")'>
+                                            onclick='window.openNoteModal("${id}")'>
                                             📝 ${hasNote ? 'Ver nota' : 'Nota'}
                                         </button>
                                     </div>
@@ -4040,8 +4080,55 @@ app.layout = html.Div([
     ),
 ])
 
+@app.callback(
+    [Output("url-cafeteria", "style"),
+     Output("descripcion-sugerencia", "style"),
+     Output("nombre-cafeteria", "placeholder"),
+     Output("direccion-cafeteria", "placeholder"),
+     Output("url-cafeteria", "placeholder"),
+     Output("descripcion-sugerencia", "placeholder")],
+    Input("tipo-sugerencia", "value"),
+    prevent_initial_call=True
+)
+def actualizar_campos_sugerencia(tipo):
+    url_style = {'display': 'none'}
+    desc_style = {'minHeight': '60px', 'resize': 'vertical', 'display': 'none'}
+    nombre_ph = "Nombre de la cafetería *"
+    dir_ph = "Dirección (opcional)"
+    url_ph = "URL o Instagram (opcional)"
+    desc_ph = "Descripción adicional (opcional)"
 
+    if tipo == 'cafeteria_faltante':
+        url_style = {'display': 'block', 'marginBottom': '8px', 'width': '100%', 'boxSizing': 'border-box'}
+        dir_ph = "Dirección *"
+        desc_style = {'minHeight': '60px', 'resize': 'vertical', 'display': 'block',
+                      'marginBottom': '8px', 'width': '100%', 'boxSizing': 'border-box'}
 
+    elif tipo == 'cafeteria_cerrada':
+        dir_ph = "Dirección (opcional)"
+        desc_style = {'minHeight': '60px', 'resize': 'vertical', 'display': 'block',
+                      'marginBottom': '8px', 'width': '100%', 'boxSizing': 'border-box'}
+
+    elif tipo == 'direccion_incorrecta':
+        dir_ph = "Dirección incorrecta *"
+        desc_style = {'minHeight': '60px', 'resize': 'vertical', 'display': 'block',
+                      'marginBottom': '8px', 'width': '100%', 'boxSizing': 'border-box'}
+        desc_ph = "Dirección correcta o comentario (opcional)"
+
+    elif tipo == 'sitio_web':
+        url_style = {'display': 'block', 'marginBottom': '8px', 'width': '100%', 'boxSizing': 'border-box'}
+        url_ph = "URL o Instagram del sitio correcto (opcional)"
+        desc_style = {'minHeight': '60px', 'resize': 'vertical', 'display': 'block',
+                      'marginBottom': '8px', 'width': '100%', 'boxSizing': 'border-box'}
+
+    elif tipo == 'otro':
+        nombre_ph = "Nombre de la cafetería (opcional)"
+        dir_ph = "Dirección (opcional)"
+        desc_style = {'minHeight': '60px', 'resize': 'vertical', 'display': 'block',
+                      'marginBottom': '8px', 'width': '100%', 'boxSizing': 'border-box'}
+        desc_ph = "Describí el problema *"
+
+    return url_style, desc_style, nombre_ph, dir_ph, url_ph, desc_ph
 
 @app.callback(
     Output('loading-div', 'style'),
@@ -4085,29 +4172,48 @@ def toggle_panel_guardados(n_abrir, current_style):
 @app.callback(
     Output("mensaje-confirmacion", "children"),
     Input("enviar-sugerencia", "n_clicks"),
+    State("tipo-sugerencia", "value"),
     State("nombre-cafeteria", "value"),
     State("direccion-cafeteria", "value"),
+    State("url-cafeteria", "value"),
+    State("descripcion-sugerencia", "value"),
     prevent_initial_call=True
 )
-def guardar_sugerencia(n_clicks, nombre, direccion):
-    if not nombre:
+def guardar_sugerencia(n_clicks, tipo, nombre, direccion, url, descripcion):
+    if not tipo:
+        return "❌ Seleccioná el tipo de problema."
+    if tipo != 'otro' and not nombre:
         return "❌ El nombre de la cafetería es obligatorio."
+    if tipo in ['cafeteria_faltante', 'direccion_incorrecta'] and not direccion:
+        return "❌ La dirección es obligatoria para este tipo de reporte."
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    tipos_label = {
+        'cafeteria_faltante': 'Cafetería faltante',
+        'cafeteria_cerrada': 'Cafetería cerrada',
+        'direccion_incorrecta': 'Dirección incorrecta',
+        'sitio_web': 'Sitio web incorrecto o faltante',
+        'otro': 'Otro error'
+    }
+
     sugerencia = {
-        "nombre": nombre,
-        "direccion": direccion or "No especificado",
-        "timestamp": timestamp
+        'tipo': tipos_label.get(tipo, tipo),
+        'nombre': nombre or '',
+        'direccion': direccion or '',
+        'url': url or '',
+        'descripcion': descripcion or '',
+        'timestamp': datetime.now().isoformat()
     }
 
     try:
+        if not BLOB_CONNECTION_STRING:
+            return "❌ Error de configuración del servidor."
         blob_service_client = BlobServiceClient.from_connection_string(BLOB_CONNECTION_STRING)
-        filename = f"sugerencia_{timestamp}.json"
+        filename = f"sugerencia_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         blob_client = blob_service_client.get_blob_client(container=BLOB_CONTAINER, blob=filename)
-        blob_client.upload_blob(json.dumps(sugerencia, indent=2), overwrite=True)
-        return "✅ ¡Gracias! Sugerencia guardada con éxito."
+        blob_client.upload_blob(json.dumps(sugerencia, indent=2, ensure_ascii=False), overwrite=True)
+        return "✅ ¡Gracias! Tu reporte fue enviado."
     except Exception as e:
-        return f"❌ Error al guardar la sugerencia: {str(e)}"
+        return f"❌ Error al enviar: {str(e)}"
 
 app.clientside_callback(
     """
@@ -4287,7 +4393,8 @@ def update_map_style(map_style):
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
- 
+
+
   
     
 # Ejecuta la aplicación Dash
