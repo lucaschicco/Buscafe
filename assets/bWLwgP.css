@@ -172,7 +172,7 @@ body {
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease, visibility 0.3s ease;
-  overflow: hidden;
+  overflow: visible;
   padding: 0;
   font-family: 'Montserrat', sans-serif;
 }
@@ -208,6 +208,7 @@ body {
 .filters-body {
   padding: 20px;
   overflow-y: auto;
+  overflow-x: visible;
   max-height: 360px;
   background: white;
 }
@@ -218,6 +219,7 @@ body {
   text-align: center;
   background: white;
 }
+
 
 /* ============================================
    DROPDOWNS EN PANEL DE FILTROS (GRISES)
@@ -246,6 +248,13 @@ body {
   color: #666;
   font-size: 0.9em;
   background-color: transparent;
+}
+
+.filters-body .custom-dropdown [class*="menu"] {
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  z-index: 9999 !important;  /* ← cambiar el z-index existente */
+  position: fixed !important; /* ← agregar */
 }
 
 .filters-body .custom-dropdown input {
