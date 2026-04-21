@@ -3942,7 +3942,7 @@ app.layout = html.Div([
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
                 detectRetina=False
             ),
-            dl.LocateControl(locateOptions={'enableHighAccuracy': True, 'setView': False},
+            dl.LocateControl(locateOptions={'enableHighAccuracy': True, 'setView': 'once'},
                              position='topright', showPopup=False),
             dl.ZoomControl(position='topright'),
             dl.GeoJSON(
