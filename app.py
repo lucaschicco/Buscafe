@@ -2979,13 +2979,39 @@ app.index_string = """
       const btnLocate = document.getElementById('btn-nav-locate');
       if (btnLocate) {
         btnLocate.addEventListener('click', function() {
-          const locateControl = document.querySelector('.leaflet-control-locate a');
-          if (locateControl) {
-            locateControl.click();
+            if (!navigator.geolocation) {
+                window.showToast('Tu dispositivo no soporta geolocalización');
+                return;
+            }
             btnLocate.classList.add('active');
-            setTimeout(() => btnLocate.classList.remove('active'), 2000);
-          }
-        });
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    // Buscar el mapa de Leaflet y centrarlo
+                    const mapEl = document.querySelector('.leaflet-container');
+                    if (mapEl && mapEl._leaflet_map) {
+                        mapEl._leaflet_map.setView([lat, lng], 15, {animate: true});
+                        // Agregar marcador de posición
+                        const existing = window._userLocationMarker;
+                        if (existing) existing.remove();
+                        window._userLocationMarker = L.circleMarker([lat, lng], {
+                            radius: 8,
+                            fillColor: '#104547',
+                            color: 'white',
+                            weight: 2,
+                            fillOpacity: 0.9
+                        }).addTo(mapEl._leaflet_map);
+                    }
+                    btnLocate.classList.remove('active');
+                },
+                function(error) {
+                    window.showToast('No se pudo obtener tu ubicación');
+                    btnLocate.classList.remove('active');
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+          });
       }
 
       // Auto-inicializar Firebase en background
