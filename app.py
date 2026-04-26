@@ -4255,82 +4255,100 @@ app.clientside_callback(
 
 app.clientside_callback(
     """
-        function(barrios, features, rating, dias, nombre, bounds, zoom, store) {
-    
+    function(barrios, features, rating, dias, nombre, bounds, zoom, store) {
         if (!store || !store.features) {
             return window.dash_clientside.no_update;
         }
-    
+        
+        // Cancelar render pendiente anterior si lo hay
+        if (window._filterDebounceTimer) {
+            clearTimeout(window._filterDebounceTimer);
+            if (window._filterDebounceReject) {
+                window._filterDebounceReject(window.dash_clientside.no_update);
+            }
+        }
+        
+        // Detectar si el trigger fue bounds/zoom (mover el mapa) → sin debounce, response inmediata
+        // o si fue un filtro → con debounce de 700ms
         const ctx = dash_clientside.callback_context;
-        const triggered = ctx.triggered[0]?.prop_id;
-    
-        let feats = store.features;
-    
-        // filtros comunes
-        if (barrios?.length) {
-            feats = feats.filter(f => barrios.includes(f.properties.Barrio));
-        }
-        if (features?.length) {
-            feats = feats.filter(f => features.every(ff => f.properties[ff] === true));
-        }
-        if (rating?.length === 2) {
-            feats = feats.filter(f =>
-                f.properties.Rating >= rating[0] &&
-                f.properties.Rating <= rating[1]
-            );
-        }
-        if (dias?.length) {
-            feats = feats.filter(f =>
-                dias.every(d => f.properties[d + '_open'] && f.properties[d + '_close'])
-            );
-        }
-    
-        // 🔒 CASO NOMBRE: PRIORIDAD ABSOLUTA
-        if (nombre?.length) {
-            return {
-                type: 'FeatureCollection',
-                features: feats.filter(f => nombre.includes(f.properties.Nombre))
-            };
-        }
-    
-        // recién acá aplicar zoom / bounds
-        if (zoom < 14) {
-            const reviews = feats
-                .map(f => f.properties['Cantidad Reviews'] || 0)
-                .sort((a,b)=>b-a);
-            const t = reviews[Math.floor(reviews.length * 0.07)] || 0;
-            return {
-                type:'FeatureCollection',
-                features: feats.filter(f => f.properties['Cantidad Reviews'] >= t)
-            };
-        }
-    
-        if (bounds?.length === 2) {
-            const [sw, ne] = bounds;
-            feats = feats.filter(f => {
-                const [lng, lat] = f.geometry.coordinates;
-                return lat>=sw[0] && lat<=ne[0] && lng>=sw[1] && lng<=ne[1];
-            });
-        }
-    
-        return {type:'FeatureCollection', features: feats};
+        const triggered = ctx.triggered[0]?.prop_id || '';
+        const isMapMove = triggered.includes('map.bounds') || triggered.includes('map.zoom');
+        const delay = isMapMove ? 0 : 700;
+        
+        return new Promise((resolve, reject) => {
+            window._filterDebounceReject = reject;
+            window._filterDebounceTimer = setTimeout(() => {
+                window._filterDebounceTimer = null;
+                window._filterDebounceReject = null;
+                
+                let feats = store.features;
+                
+                // filtros comunes
+                if (barrios?.length) {
+                    feats = feats.filter(f => barrios.includes(f.properties.Barrio));
+                }
+                if (features?.length) {
+                    feats = feats.filter(f => features.every(ff => f.properties[ff] === true));
+                }
+                if (rating?.length === 2) {
+                    feats = feats.filter(f =>
+                        f.properties.Rating >= rating[0] &&
+                        f.properties.Rating <= rating[1]
+                    );
+                }
+                if (dias?.length) {
+                    feats = feats.filter(f =>
+                        dias.every(d => f.properties[d + '_open'] && f.properties[d + '_close'])
+                    );
+                }
+                
+                // 🔒 CASO NOMBRE: PRIORIDAD ABSOLUTA
+                if (nombre?.length) {
+                    resolve({
+                        type: 'FeatureCollection',
+                        features: feats.filter(f => nombre.includes(f.properties.Nombre))
+                    });
+                    return;
+                }
+                
+                // recién acá aplicar zoom / bounds
+                if (zoom < 14) {
+                    const reviews = feats
+                        .map(f => f.properties['Cantidad Reviews'] || 0)
+                        .sort((a,b) => b-a);
+                    const t = reviews[Math.floor(reviews.length * 0.07)] || 0;
+                    resolve({
+                        type: 'FeatureCollection',
+                        features: feats.filter(f => f.properties['Cantidad Reviews'] >= t)
+                    });
+                    return;
+                }
+                
+                if (bounds?.length === 2) {
+                    const [sw, ne] = bounds;
+                    feats = feats.filter(f => {
+                        const [lng, lat] = f.geometry.coordinates;
+                        return lat >= sw[0] && lat <= ne[0] && lng >= sw[1] && lng <= ne[1];
+                    });
+                }
+                
+                resolve({type: 'FeatureCollection', features: feats});
+            }, delay);
+        });
     }
     """,
-    Output('geojson-layer','data'),
+    Output('geojson-layer', 'data'),
     [
-        Input('barrio-dropdown','value'),
-        Input('feature-filter','value'),
-        Input('rating-slider','value'),
-        Input('dias-apertura-filter','value'),
-        Input('nombre-filter','value'),
-        Input('map','bounds'),
-        Input('map','zoom'),
-        Input('clientside-store-data','data'),
+        Input('barrio-dropdown', 'value'),
+        Input('feature-filter', 'value'),
+        Input('rating-slider', 'value'),
+        Input('dias-apertura-filter', 'value'),
+        Input('nombre-filter', 'value'),
+        Input('map', 'bounds'),
+        Input('map', 'zoom'),
+        Input('clientside-store-data', 'data'),
     ]
-    
 )
-
-
 
 @app.callback(
     Output('nombre-filter', 'options'),
