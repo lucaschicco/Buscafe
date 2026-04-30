@@ -2339,7 +2339,7 @@ geo_lookup = {
     for f in geojson_data['features']
 }
 
-app.index_string = """
+app.index_string = r"""
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2359,6 +2359,12 @@ app.index_string = """
   }});
   </script>
 
+  <!-- Plausible Analytics -->
+  <script async src="https://plausible.io/js/pa-O3G5p9yqP3LqneR-vxxCU.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
   
   <!-- CSS Crítico para render inicial -->
   <style>
