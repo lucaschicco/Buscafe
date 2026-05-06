@@ -2312,7 +2312,7 @@ Compress(server)
 CLIENT_CONN = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
 
 # URL del archivo JSON comprimido en Azure
-url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data45.json'
+url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data46.json'
 
 # Traer el contenido
 response = requests.get(url)
