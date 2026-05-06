@@ -3901,7 +3901,7 @@ app.layout = html.Div([
                 dcc.Dropdown(
                     id='nombre-filter',
                     options=[],
-                    value=[],
+                    value=None,
                     multi=True,
                     labels={'select_all': '', 'deselect_all': ''},
                     placeholder="Busca por Nombre...",
@@ -4362,29 +4362,26 @@ app.clientside_callback(
 @app.callback(
     Output('nombre-filter', 'options'),
     Input('nombre-filter', 'search_value'),
-    State('nombre-filter', 'value')  # 👈 Agregamos el estado actual
+    State('nombre-filter', 'value')
 )
 def update_nombre_options(search_value, current_value):
-    # Si hay valores seleccionados, mantener esas opciones visibles
-    if current_value:
-        selected_options = [{'label': n, 'value': n} for n in (current_value if isinstance(current_value, list) else [current_value])]
-        
-        # Si no hay búsqueda, solo mostrar los seleccionados
-        if not search_value or len(search_value) < 2:
-            return selected_options
-        
-        # Si hay búsqueda, combinar seleccionados + resultados
-        s = search_value.lower()
-        results = [n for n in nombres_unicos if s in n.lower() and n not in (current_value if isinstance(current_value, list) else [current_value])]
-        return selected_options + [{'label': n, 'value': n} for n in results[:50]]
+    selected = current_value if isinstance(current_value, list) else ([current_value] if current_value else [])
     
-    # Comportamiento original cuando no hay nada seleccionado
+    # Siempre incluir las opciones ya seleccionadas
+    selected_options = [{'label': n, 'value': n} for n in selected]
+    
     if not search_value or len(search_value) < 2:
-        return []
+        # Sin búsqueda activa: mostrar solo las seleccionadas (pueden deseleccionarse)
+        return selected_options
     
     s = search_value.lower()
-    results = [n for n in nombres_unicos if s in n.lower()]
-    return [{'label': n, 'value': n} for n in results[:50]]
+    # Resultados que NO están ya seleccionados
+    results = [
+        {'label': n, 'value': n}
+        for n in nombres_unicos
+        if s in n.lower() and n not in selected
+    ]
+    return selected_options + results[:50]
 
 
 @app.callback(
