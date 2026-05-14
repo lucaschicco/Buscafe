@@ -163,7 +163,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   width: 350px;
-  max-height: 450px;
+  max-height: 480px;
   height: auto;
   background: #ffffff;
   border-radius: 12px;
@@ -206,10 +206,10 @@ body {
 }
 
 .filters-body {
-  padding: 20px;
+  padding: 8px 20px 20px 20px;
   overflow-y: auto;
   overflow-x: visible;
-  max-height: 360px;
+  max-height: 390px;
   background: white;
 }
 
@@ -332,8 +332,8 @@ body {
     width: 90%;
     margin: 0 auto;
     margin-top: 10px;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
 }
 
 /* Track fondo gris */
@@ -1079,8 +1079,8 @@ body {
   cursor: pointer;
   line-height: 1;
   color: black;
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   text-align: center;
 }
 
@@ -1536,4 +1536,85 @@ body {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+
+/* ============================================
+   CHECKLIST "ABIERTO AHORA" EN PANEL DE FILTROS
+   ============================================ */
+.filters-body .abierto-ahora-checklist {
+  width: 100%;
+  margin: 4px 0 10px 0;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.filters-body .abierto-ahora-checklist label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background-color: #f8f8f8;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  min-height: 38px;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: #666;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.filters-body .abierto-ahora-checklist label:hover {
+  background-color: #f0f0f0;
+  border-color: #d0d0d0;
+}
+
+/* Checkbox custom alineado a la paleta */
+.filters-body .abierto-ahora-checklist input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #b0b0b0;
+  border-radius: 3px;
+  background-color: white;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.filters-body .abierto-ahora-checklist input[type="checkbox"]:checked {
+  background-color: #104547;
+  border-color: #104547;
+}
+
+.filters-body .abierto-ahora-checklist input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid #fffff5;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Cuando está activo, todo el label se "ilumina" para señalar que el filtro está aplicado */
+.filters-body .abierto-ahora-checklist label:has(input:checked) {
+  background-color: #104547;
+  border-color: #104547;
+  color: #fffff5;
+  font-weight: 600;
+}
+
+.filters-body .abierto-ahora-checklist label:has(input:checked) input[type="checkbox"] {
+  background-color: #fffff5;
+  border-color: #fffff5;
+}
+
+.filters-body .abierto-ahora-checklist label:has(input:checked) input[type="checkbox"]::after {
+  border-color: #104547;
 }
