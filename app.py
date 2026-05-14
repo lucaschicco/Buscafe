@@ -3856,7 +3856,7 @@ app.layout = html.Div([
                     id='barrio-dropdown',
                     options=[{'label': b, 'value': b} for b in barrios_unicos],
                     value=None,
-                    placeholder="Selecciona un barrio",
+                    placeholder="Selecciona un Barrio",
                     className='custom-dropdown',
                     labels={'select_all': '', 'deselect_all': ''},
                     searchable=False,
@@ -3870,7 +3870,6 @@ app.layout = html.Div([
                         {'label': 'El café es de especialidad', 'value': 'El café es de especialidad'},
                         {'label': 'Tiene Delivery', 'value': 'Delivery'},
                         {'label': 'Tiene takeaway', 'value': 'Tiene takeaway'},
-                        {'label': 'Es nueva', 'value': 'Nueva'},
                         {'label': 'Es popular', 'value': 'Popular'},
                         {'label': 'Temática: Puesto de diario', 'value': 'Temática: Puesto de diario'},
                         {'label': 'Brunch', 'value': 'Sirve brunch'},
@@ -3949,7 +3948,14 @@ app.layout = html.Div([
                     className='custom-slider',
                     allow_direct_input=False
                 ),
-
+                
+                dcc.Checklist(
+                    id='abierto-ahora-filter',
+                    options=[{'label': 'Abierto ahora', 'value': 'abierto'}],
+                    value=[],
+                    className='abierto-ahora-checklist',
+                ),
+                
                 dcc.Dropdown(
                     id='map-style-dropdown',
                     options=[
@@ -4268,7 +4274,8 @@ app.clientside_callback(
 
 app.clientside_callback(
     """
-    function(barrios, features, rating, dias, nombre, bounds, zoom, store) {
+    function(barrios, features, rating, dias, abiertoAhora, nombre, bounds, zoom, store) {
+                                          // 🆕 nuevo parámetro acá ↑
         if (!store || !store.features) {
             return window.dash_clientside.no_update;
         }
@@ -4315,6 +4322,59 @@ app.clientside_callback(
                     );
                 }
                 
+                // 🆕 FILTRO ABIERTO AHORA
+                if (abiertoAhora?.length) {
+                    const now = new Date();
+                    const fmt = new Intl.DateTimeFormat('es-AR', {
+                        timeZone: 'America/Argentina/Buenos_Aires',
+                        weekday: 'long',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                    const parts = fmt.formatToParts(now);
+                    const weekdayRaw = parts.find(p => p.type === 'weekday').value.toLowerCase();
+                    const hourStr = parts.find(p => p.type === 'hour').value;
+                    const minStr = parts.find(p => p.type === 'minute').value;
+                    
+                    const dayMap = {
+                        'domingo': 'Domingo', 'lunes': 'Lunes', 'martes': 'Martes',
+                        'miércoles': 'Miercoles', 'jueves': 'Jueves',
+                        'viernes': 'Viernes', 'sábado': 'Sabado'
+                    };
+                    const today = dayMap[weekdayRaw];
+                    const nowMinutes = parseInt(hourStr, 10) * 60 + parseInt(minStr, 10);
+                    
+                    const toMinutes = (s) => {
+                        if (!s || s === 'None' || s === 'nan') return null;
+                        const [h, m] = s.split(':').map(Number);
+                        if (isNaN(h) || isNaN(m)) return null;
+                        return h * 60 + m;
+                    };
+                    
+                    const estaAbierta = (openStr, closeStr) => {
+                        if (!openStr || !closeStr || openStr === 'None' || closeStr === 'None') return false;
+                        const opens = openStr.split(',').map(s => s.trim());
+                        const closes = closeStr.split(',').map(s => s.trim());
+                        for (let i = 0; i < opens.length; i++) {
+                            const o = toMinutes(opens[i]);
+                            const c = toMinutes(closes[i]);
+                            if (o === null || c === null) continue;
+                            if (c >= o) {
+                                if (nowMinutes >= o && nowMinutes < c) return true;
+                            } else {
+                                // cruza medianoche (ej: 20:00 - 02:00)
+                                if (nowMinutes >= o || nowMinutes < c) return true;
+                            }
+                        }
+                        return false;
+                    };
+                    
+                    feats = feats.filter(f => 
+                        estaAbierta(f.properties[today + '_open'], f.properties[today + '_close'])
+                    );
+                }
+                
                 // 🔒 CASO NOMBRE: PRIORIDAD ABSOLUTA
                 if (nombre?.length) {
                     resolve({
@@ -4356,14 +4416,13 @@ app.clientside_callback(
         Input('feature-filter', 'value'),
         Input('rating-slider', 'value'),
         Input('dias-apertura-filter', 'value'),
+        Input('abierto-ahora-filter', 'value'),   # 🆕 nuevo Input acá
         Input('nombre-filter', 'value'),
         Input('map', 'bounds'),
         Input('map', 'zoom'),
         Input('clientside-store-data', 'data'),
     ]
 )
-
-
 
 @app.callback(
     Output('nombre-filter', 'options'),
