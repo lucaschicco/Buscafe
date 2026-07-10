@@ -1565,7 +1565,8 @@ def comunidad():
                     );
                     const snapCafes = await getDocs(qCafes);
                     window._comunidadTopCafes = snapCafes.docs.map(d => ({
-                        nombre: d.data().nombre || d.id,  // ← usar nombre del doc, no el id
+                        id: d.id,
+                        nombre: d.data().nombre || d.id,
                         favs: d.data().favCount || 0,
                         dir: window.geoLookup?.[d.id]?.dir || ''  // ← geoLookup ya indexa por id, ok
                     })).filter(c => c.favs > 0);
@@ -1920,6 +1921,87 @@ def comunidad():
                 font-weight: 700;
                 color: var(--verde);
             }
+
+            /* ── Modal perfil público ── */
+            .perfil-modal-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.45);
+                z-index: 1000;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .perfil-modal-overlay.visible { display: flex; }
+            .perfil-modal {
+                background: white;
+                border-radius: 16px;
+                max-width: 420px;
+                width: 100%;
+                max-height: 75vh;
+                overflow-y: auto;
+                padding: 24px;
+                position: relative;
+                box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            }
+            .perfil-modal-close {
+                position: absolute;
+                top: 12px; right: 12px;
+                border: none;
+                background: var(--gris);
+                border-radius: 50%;
+                width: 30px; height: 30px;
+                cursor: pointer;
+                font-size: 14px;
+                color: var(--texto);
+            }
+            .perfil-modal-header {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+            .perfil-modal-avatar {
+                width: 60px; height: 60px;
+                border-radius: 50%;
+                background: var(--verde);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                font-weight: 700;
+            }
+            .perfil-modal-username { font-size: 17px; font-weight: 800; color: var(--texto); }
+            .perfil-modal-stats {
+                display: flex;
+                gap: 24px;
+                justify-content: center;
+                margin-bottom: 16px;
+            }
+            .perfil-modal-stat { text-align: center; }
+            .perfil-modal-stat-num { font-size: 20px; font-weight: 800; color: var(--verde); }
+            .perfil-modal-stat-label { font-size: 11px; color: var(--texto-suave); }
+            .perfil-modal-seccion-titulo {
+                font-size: 13px;
+                font-weight: 800;
+                color: var(--verde);
+                margin: 14px 0 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .perfil-cafe-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 7px 0;
+                border-bottom: 1px solid var(--gris-borde);
+            }
+            .perfil-cafe-item:last-child { border-bottom: none; }
+            .perfil-cafe-nombre { font-size: 13px; font-weight: 600; color: var(--texto); flex: 1; }
+            .perfil-cafe-barrio { font-size: 11px; color: var(--texto-suave); white-space: nowrap; }
     
             /* ── VER MÁS ── */
             .ver-mas-btn {
@@ -2113,6 +2195,14 @@ def comunidad():
             </div>
     
         </div>
+
+        <!-- Modal: perfil público de un explorador -->
+        <div id="perfil-modal-overlay" class="perfil-modal-overlay" onclick="if(event.target===this)cerrarPerfil()">
+            <div class="perfil-modal">
+                <button class="perfil-modal-close" onclick="cerrarPerfil()">✕</button>
+                <div id="perfil-modal-content"></div>
+            </div>
+        </div>
     
         <!-- Navbar -->
         <div class="bottom-navbar">
@@ -2174,7 +2264,7 @@ def comunidad():
                         ${podioIndices.map(idx => {
                             const e = top3[idx];
                             return `
-                                <div class="podio-item">
+                                <div class="podio-item" onclick="verPerfil('${e.uid}')" style="cursor:pointer;">
                                     <div class="podio-corona">${coronas[idx]}</div>
                                     <div class="podio-avatar" style="width:${sizes[idx]};height:${sizes[idx]};font-size:${fontSizes[idx]}">${inicial(e.user)}</div>
                                     <div class="podio-nombre">${e.user.length > 12 ? e.user.substring(0,12)+'…' : e.user}</div>
@@ -2246,21 +2336,23 @@ def comunidad():
             function renderRankingItem(c, i) {
                 const posClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
                 const posLabel = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+                const clickable = c.id && window.geoLookup?.[c.id];
                 return `
-                    <div class="ranking-item">
+                    <div class="ranking-item" ${clickable ? `onclick="window.location.href='/?cafe=${c.id}'" style="cursor:pointer;"` : ''}>
                         <div class="ranking-pos ${posClass}">${posLabel}</div>
                         <div class="ranking-info">
                             <div class="ranking-nombre">${c.nombre}</div>
                             ${c.dir ? `<div class="ranking-barrio">📍 ${c.dir}</div>` : ''}
                         </div>
                         <div class="ranking-count">❤️ ${c.favs}</div>
+                        ${clickable ? '<div style="color:#ccc;font-size:14px;margin-left:6px;">›</div>' : ''}
                     </div>
                 `;
             }
     
-            function renderExploradorItem(e, i, esYo = false) {
-                return `
-                    <div class="explorador-item" style="${esYo ? 'background:#f0f7f7;border-radius:8px;padding:8px;' : ''}">
+                function renderExploradorItem(e, i, esYo = false) {
+                    return `
+                        <div class="explorador-item" onclick="verPerfil('${e.uid}')" style="cursor:pointer;${esYo ? 'background:#f0f7f7;border-radius:8px;padding:8px;' : ''}">
                         <div class="explorador-num" style="${esYo ? 'color:#104547;font-weight:800;' : ''}">${i + 1}</div>
                         <div class="explorador-avatar" style="${esYo ? 'border-color:#104547;color:#104547;' : ''}">${inicial(e.user)}</div>
                         <div class="explorador-nombre" style="${esYo ? 'color:#104547;font-weight:700;' : ''}">${e.user}${esYo ? ' <span style="font-size:10px;background:#104547;color:white;padding:2px 6px;border-radius:10px;">Vos</span>' : ''}</div>
@@ -2269,6 +2361,81 @@ def comunidad():
                 `;
             }
     
+
+            // ══════════════════════════════════════
+            // PERFIL PÚBLICO DE EXPLORADOR
+            // ══════════════════════════════════════
+            window.verPerfil = async function(uid) {
+                if (!uid) return;
+                const exp = (window._comunidadExploradores || []).find(x => x.uid === uid);
+                const username = exp ? exp.user : 'Explorador';
+                const overlay = document.getElementById('perfil-modal-overlay');
+                const content = document.getElementById('perfil-modal-content');
+                overlay.classList.add('visible');
+                content.innerHTML = '<div class="empty-state"><div class="empty-icon">☕</div><p>Cargando perfil...</p></div>';
+            
+                try {
+                    const { collection, getDocs } = window.firebaseUtils;
+                    const snap = await getDocs(collection(window.firebaseDb, 'users', uid, 'cafes'));
+            
+                    const visitados = [], favoritos = [];
+                    snap.forEach(d => {
+                        const data = d.data();
+                        const geo = window.geoLookup?.[d.id] || {};
+                        const cafe = {
+                            nombre: data.nombre || geo.nombre || d.id,
+                            barrio: geo.barrio || ''
+                        };
+                        if (data.isVisited) visitados.push(cafe);
+                        if (data.isFavorite) favoritos.push(cafe);
+                    });
+                    visitados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    favoritos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+            
+                    const renderLista = (cafes) => cafes.map(c => `
+                        <div class="perfil-cafe-item">
+                            <div class="perfil-cafe-nombre">${c.nombre}</div>
+                            ${c.barrio ? `<div class="perfil-cafe-barrio">🏘️ ${c.barrio}</div>` : ''}
+                        </div>
+                    `).join('');
+            
+                    content.innerHTML = `
+                        <div class="perfil-modal-header">
+                            <div class="perfil-modal-avatar">${inicial(username)}</div>
+                            <div class="perfil-modal-username">@${username}</div>
+                        </div>
+                        <div class="perfil-modal-stats">
+                            <div class="perfil-modal-stat">
+                                <div class="perfil-modal-stat-num">${visitados.length}</div>
+                                <div class="perfil-modal-stat-label">☕ Visitados</div>
+                            </div>
+                            <div class="perfil-modal-stat">
+                                <div class="perfil-modal-stat-num">${favoritos.length}</div>
+                                <div class="perfil-modal-stat-label">❤️ Favoritos</div>
+                            </div>
+                        </div>
+                        ${visitados.length ? `
+                            <div class="perfil-modal-seccion-titulo">☕ Cafeterías visitadas</div>
+                            ${renderLista(visitados)}
+                        ` : ''}
+                        ${favoritos.length ? `
+                            <div class="perfil-modal-seccion-titulo">❤️ Favoritas</div>
+                            ${renderLista(favoritos)}
+                        ` : ''}
+                        ${!visitados.length && !favoritos.length ? `
+                            <div class="empty-state"><div class="empty-icon">🧭</div><p>Este explorador todavía no marcó cafeterías.</p></div>
+                        ` : ''}
+                    `;
+                } catch (err) {
+                    console.warn('Error cargando perfil:', err);
+                    content.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>No se pudo cargar este perfil.<br>Revisá las reglas de Firestore.</p></div>';
+                }
+            };
+            
+            window.cerrarPerfil = function() {
+                document.getElementById('perfil-modal-overlay').classList.remove('visible');
+            };
+
     
             // ══════════════════════════════════════
             // TOGGLE SECCIÓN
@@ -2334,7 +2501,9 @@ geo_lookup = {
         'nombre': f['properties']['Nombre'],
         'dir':    f['properties']['Dirección'],
         'barrio': f['properties']['Barrio'],
-        'web':    extraer_url(f['properties'].get('Sitio Web', ''))
+        'web':    extraer_url(f['properties'].get('Sitio Web', '')),
+        'lat':    round(f['geometry']['coordinates'][1], 6),
+        'lng':    round(f['geometry']['coordinates'][0], 6)
     }
     for f in geojson_data['features']
 }
@@ -2371,6 +2540,7 @@ app.index_string = r"""
     window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
     plausible.init()
   </script>
+
   
   <!-- CSS Crítico para render inicial -->
   <style>
@@ -2626,6 +2796,51 @@ app.index_string = r"""
   <script>
     window.buscafesLookup = __GEO_LOOKUP__;
 
+    // ── Capturar la instancia del mapa de Leaflet al crearse ──
+    (function captureMap() {
+        if (window.L && L.Map) {
+            L.Map.addInitHook(function() { window._buscafesMap = this; });
+        } else {
+            setTimeout(captureMap, 50);  // L todavía no cargó, reintentar
+        }
+    })();
+
+
+    // ── Deep link: /?cafe=<id> → centrar el mapa y abrir el popup ──
+    (function() {
+        const cafeId = new URLSearchParams(window.location.search).get('cafe');
+        if (!cafeId) return;
+        const info = window.buscafesLookup[cafeId];
+        if (!info || info.lat == null) return;
+    
+        let intentos = 0;
+        const timer = setInterval(function() {
+            intentos++;
+            if (intentos > 40) { clearInterval(timer); return; }  // corta a los ~16s
+    
+            const map = window._buscafesMap;
+            if (!map) return;
+    
+            // Paso 1: centrar en el café (una sola vez)
+            if (!window._deepLinkCentrado) {
+                window._deepLinkCentrado = true;
+                map.setView([info.lat, info.lng], 17, {animate: false});
+            }
+    
+            // Paso 2: cuando el marker exista (los features cargan async), abrir popup
+            let found = null;
+            map.eachLayer(function(l) {
+                if (found || !(l instanceof L.Marker)) return;
+                const ll = l.getLatLng();
+                if (Math.abs(ll.lat - info.lat) < 1e-5 && Math.abs(ll.lng - info.lng) < 1e-5) found = l;
+            });
+            if (found) {
+                clearInterval(timer);
+                found.fire('click');
+            }
+        }, 400);
+    })();
+
     window.getCafeData = function(id) {
         const data = JSON.parse(localStorage.getItem('buscafes_user_data') || '{}');
         return data[id] || {
@@ -2723,25 +2938,36 @@ app.index_string = r"""
       let isProcessingClick = false;
 
       (function initZoomMessage() {
-        const msg = document.getElementById('zoom-message');
-        if (!msg) return;
-    
         const views = parseInt(localStorage.getItem('buscafes_zoom_msg') || '0');
-        if (views >= 3) {
-          msg.style.display = 'none';
-          return;
-        }
     
-       // Esperar a que el loading-div se oculte
-        const loadingDiv = document.getElementById('loading-div');
-        const observer = new MutationObserver(function() {
-          if (loadingDiv.style.display === 'none') {
-            observer.disconnect();
+        let intentos = 0;
+        const timer = setInterval(function() {
+            intentos++;
+            if (intentos > 100) { clearInterval(timer); return; }  // corta a los ~20s
+    
+            // Dash renderiza los componentes DESPUÉS de DOMContentLoaded: hay que esperarlos
+            const msg = document.getElementById('zoom-message');
+            if (!msg) return;
+    
+            // Esperar también a que el spinner de carga se oculte
+            const loading = document.getElementById('loading-div');
+            if (loading && loading.style.display !== 'none') return;
+    
+            clearInterval(timer);
+    
+            if (views >= 3) {
+                msg.style.display = 'none';
+                return;
+            }
             localStorage.setItem('buscafes_zoom_msg', views + 1);
-            setTimeout(() => { msg.style.display = 'none'; }, 4000);
-          }
-        });
-        observer.observe(loadingDiv, { attributes: true, attributeFilter: ['style'] });
+    
+            // Desvanecer a los 5 segundos
+            msg.style.transition = 'opacity 0.6s';
+            setTimeout(function() {
+                msg.style.opacity = '0';
+                setTimeout(function() { msg.style.display = 'none'; }, 600);
+            },10000);
+        }, 200);
       })();
 
       
@@ -2928,15 +3154,6 @@ app.index_string = r"""
             btn.classList.toggle('active', !isVisible);
             updateOverlay();
         }
-    
-        if (id === 'btn-nav-locate') {
-            const locateControl = document.querySelector('.leaflet-control-locate a');
-            if (locateControl) {
-                locateControl.click();
-                btn.classList.add('active');
-                setTimeout(() => btn.classList.remove('active'), 2000);
-            }
-        }
       });
       
       function updateMenuState() {
@@ -3001,10 +3218,10 @@ app.index_string = r"""
                 function(position) {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-                    // Buscar el mapa de Leaflet y centrarlo
-                    const mapEl = document.querySelector('.leaflet-container');
-                    if (mapEl && mapEl._leaflet_map) {
-                        mapEl._leaflet_map.setView([lat, lng], 15, {animate: true});
+                    // Usar la instancia del mapa capturada por el init hook
+                    const map = window._buscafesMap;
+                    if (map) {
+                        map.setView([lat, lng], 15, {animate: true});
                         // Agregar marcador de posición
                         const existing = window._userLocationMarker;
                         if (existing) existing.remove();
@@ -3014,7 +3231,7 @@ app.index_string = r"""
                             color: 'white',
                             weight: 2,
                             fillOpacity: 0.9
-                        }).addTo(mapEl._leaflet_map);
+                        }).addTo(map);
                     }
                     btnLocate.classList.remove('active');
                 },
@@ -3987,8 +4204,8 @@ app.layout = html.Div([
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
                 detectRetina=False
             ),
-            dl.LocateControl(locateOptions={'enableHighAccuracy': True, 'setView': 'once'},
-                             position='topright', showPopup=True),
+            dl.LocateControl(setView='once', locateOptions={'enableHighAccuracy': True},
+                 position='topright', showPopup=True),
             dl.ZoomControl(position='topright'),
             dl.GeoJSON(
                 id="geojson-layer",
@@ -4423,6 +4640,8 @@ app.clientside_callback(
         Input('clientside-store-data', 'data'),
     ]
 )
+
+
 
 @app.callback(
     Output('nombre-filter', 'options'),
