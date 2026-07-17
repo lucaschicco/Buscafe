@@ -2476,7 +2476,7 @@ app._favicon = ("coffee-solid.ico")
 Compress(server)
 
 # Agregar el atributo lang al elemento <html>
-CLIENT_CONN = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
+CLIENT_CONN = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "") 
 
 # URL del archivo JSON comprimido en Azure
 url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data_latest.json'
