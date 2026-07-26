@@ -2476,7 +2476,7 @@ app._favicon = ("coffee-solid.ico")
 Compress(server)
 
 # Agregar el atributo lang al elemento <html>
-CLIENT_CONN = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "") 
+CLIENT_CONN = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
 
 # URL del archivo JSON comprimido en Azure
 url = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/geojson_data_latest.json'
@@ -3338,6 +3338,105 @@ app.index_string = r"""
 
   <!-- Funciones de utilidad para popups y panel -->
   <script>
+
+    // ===== ADMIN: edición de cafés =====
+    window.ADMIN_EMAIL = 'buscafes.ai@gmail.com';
+
+    window.esAdmin = function() {
+        return window.firebaseAuth?.currentUser?.email === window.ADMIN_EMAIL;
+    };
+
+    window.ADMIN_BOOLS = [
+        ['especialidad', 'Café de especialidad'],
+        ['pasteleria_artesanal', 'Pastelería artesanal'],
+        ['permite_mascotas', 'Permite mascotas'],
+        ['comida_vegetariana', 'Comida vegetariana'],
+        ['sin_tacc', 'Opciones sin TACC'],
+        ['brunch', 'Sirve brunch'],
+        ['espacio_afuera', 'Espacio afuera'],
+        ['acceso_silla_ruedas', 'Acceso silla de ruedas'],
+        ['musica_en_vivo', 'Música en vivo'],
+        ['delivery', 'Delivery'],
+        ['takeaway', 'Tiene takeaway'],
+        ['reservable', 'Reservable'],
+        ['popular', 'Popular'],
+        ['es_cadena', 'Es cadena'],
+        ['no_es_cadena', 'No es cadena'],
+        ['tematica_puesto_diario', 'Temática: puesto de diario']
+    ];
+
+    window.openAdminModal = async function(id) {
+        if (!window.esAdmin()) return;
+        const { doc, getDoc } = window.firebaseUtils;
+        let d = {};
+        try {
+            const snap = await getDoc(doc(window.firebaseDb, 'cafes', id));
+            if (!snap.exists()) { window.showToast('No existe en Firestore'); return; }
+            d = snap.data();
+        } catch (e) { window.showToast('Error leyendo Firestore'); console.warn(e); return; }
+
+        const esc = (s) => String(s || '').replace(/"/g, '&quot;');
+        const checks = window.ADMIN_BOOLS.map(([campo, label]) => `
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                <input type="checkbox" data-campo="${campo}" ${d[campo] === true ? 'checked' : ''}>
+                <span>${label}</span>
+            </label>`).join('');
+
+        const overlay = document.createElement('div');
+        overlay.className = 'note-modal-overlay admin-modal-overlay';
+        overlay.innerHTML = `
+            <div class="note-modal" style="max-width:90%;width:520px;max-height:85vh;overflow-y:auto;">
+                <div class="note-modal-header">
+                    <div class="note-modal-title">Editar: ${d.nombre || id}</div>
+                    <button class="note-modal-close" onclick="window.closeAdminModal()">×</button>
+                </div>
+                <div style="padding:8px 0;">
+                    <label style="font-size:12px;font-weight:600;">Dirección</label>
+                    <input id="admin-direccion" type="text" value="${esc(d.direccion)}"
+                           style="width:100%;padding:6px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
+                    <label style="font-size:12px;font-weight:600;">Sitio web</label>
+                    <input id="admin-sitio-web" type="text" value="${esc(d.sitio_web)}"
+                           style="width:100%;padding:6px;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">${checks}</div>
+                </div>
+                <div class="note-modal-footer">
+                    <span style="font-size:11px;color:#777;">${id}</span>
+                    <button class="note-modal-save" onclick="window.saveAdminModal('${id}')">Guardar</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        window._adminHandleEsc = (e) => { if (e.key === 'Escape') window.closeAdminModal(); };
+        document.addEventListener('keydown', window._adminHandleEsc);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) window.closeAdminModal(); });
+    };
+
+    window.closeAdminModal = function() {
+        document.querySelector('.admin-modal-overlay')?.remove();
+        document.removeEventListener('keydown', window._adminHandleEsc);
+    };
+
+    window.saveAdminModal = async function(id) {
+        if (!window.esAdmin()) return;
+        const { doc, setDoc, serverTimestamp } = window.firebaseUtils;
+        const payload = {
+            direccion: document.getElementById('admin-direccion').value.trim(),
+            sitio_web: document.getElementById('admin-sitio-web').value.trim(),
+            editado_manual: true,
+            editado_en: serverTimestamp()
+        };
+        document.querySelectorAll('.admin-modal-overlay input[data-campo]').forEach(cb => {
+            payload[cb.dataset.campo] = cb.checked;
+        });
+        try {
+            await setDoc(doc(window.firebaseDb, 'cafes', id), payload, { merge: true });
+            window.showToast('✓ Guardado. Falta publicar para verlo en el mapa.', 3000);
+            window.closeAdminModal();
+        } catch (e) {
+            window.showToast('Error al guardar');
+            console.warn(e);
+        }
+    };
+    
     // Sistema de mini-modal para notas
     window.openNoteModal = function(id, nombre) {
         if (!nombre) nombre = (window.buscafesLookup[id] && window.buscafesLookup[id].nombre) || id;
@@ -4260,6 +4359,9 @@ app.layout = html.Div([
                                 const esFav = cafeData.isFavorite === true;
                                 const esVist = cafeData.isVisited === true;
                                 const hasNote = cafeData.comment && cafeData.comment.trim();
+                                const btnAdmin = (window.esAdmin && window.esAdmin())
+                                    ? `<button class='popup-action-btn' onclick='window.openAdminModal("${id}")'>✏️ Editar</button>`
+                                    : '';
                                 const popupHTML = `
                                     <p class='popup-nombre'><strong>${nombre}</strong></p>
                                     <p class='popup-rating'><strong>Rating:</strong> ${props.Rating}</p>
@@ -4285,6 +4387,7 @@ app.layout = html.Div([
                                             onclick='window.openNoteModal("${id}")'>
                                             📝 ${hasNote ? 'Ver nota' : 'Nota'}
                                         </button>
+                                        ${btnAdmin}
                                     </div>
                                 `;
                                 
@@ -4727,6 +4830,7 @@ def update_map_style(map_style):
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
+
 
 
 # Ejecuta la aplicación Dash
