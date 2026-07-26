@@ -12,3 +12,4 @@ dash-loading-spinners
 azure-storage-blob
 orjson
 python-dotenv
+firebase-admin
