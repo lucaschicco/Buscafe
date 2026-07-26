@@ -43,6 +43,30 @@ FIREBASE_CONFIG_JSON = json.dumps(FIREBASE_CONFIG)
 app = dash.Dash(__name__, title="Buscafes")
 server = app.server  # Esto expone el servidor de Flask
 
+# --- Firebase Admin (para operaciones de servidor: alta de cafés, etc.) ---
+import firebase_admin
+from firebase_admin import credentials, firestore as admin_firestore
+
+if not firebase_admin._apps:
+    sa_json = os.getenv('FIREBASE_SERVICE_ACCOUNT')
+    if sa_json:
+        cred = credentials.Certificate(json.loads(sa_json))
+        firebase_admin.initialize_app(cred)
+
+def get_admin_db():
+    return admin_firestore.client()
+
+ADMIN_EMAIL = 'buscafes.ai@gmail.com'
+
+def verificar_admin(id_token):
+    """Verifica el ID token de Firebase y confirma que es el admin."""
+    from firebase_admin import auth as admin_auth
+    try:
+        decoded = admin_auth.verify_id_token(id_token)
+        return decoded.get('email') == ADMIN_EMAIL
+    except Exception as e:
+        print(f'Token inválido: {e}')
+        return False
 
 @server.route('/api/geojson')
 def serve_geojson():
@@ -3399,10 +3423,18 @@ app.index_string = r"""
                            style="width:100%;padding:6px;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">${checks}</div>
                 </div>
+
                 <div class="note-modal-footer">
                     <span style="font-size:11px;color:#777;">${id}</span>
-                    <button class="note-modal-save" onclick="window.saveAdminModal('${id}')">Guardar</button>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="window.darDeBajaCafe('${id}')"
+                                style="background:#c0392b;color:#fff;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;">
+                            Dar de baja
+                        </button>
+                        <button class="note-modal-save" onclick="window.saveAdminModal('${id}')">Guardar</button>
+                    </div>
                 </div>
+
             </div>`;
         document.body.appendChild(overlay);
         window._adminHandleEsc = (e) => { if (e.key === 'Escape') window.closeAdminModal(); };
@@ -3436,6 +3468,22 @@ app.index_string = r"""
             console.warn(e);
         }
     };
+
+    window.darDeBajaCafe = async function(id) {
+            if (!window.esAdmin()) return;
+            if (!confirm('¿Dar de baja este café? Dejará de aparecer en el mapa tras la próxima publicación.')) return;
+            const { doc, setDoc, serverTimestamp } = window.firebaseUtils;
+            try {
+                await setDoc(doc(window.firebaseDb, 'cafes', id),
+                    { activo: false, baja_manual: true, editado_en: serverTimestamp() },
+                    { merge: true });
+                window.showToast('✓ Dado de baja. Falta publicar para verlo en el mapa.', 3000);
+                window.closeAdminModal();
+            } catch (e) {
+                window.showToast('Error al dar de baja');
+                console.warn(e);
+            }
+        };
     
     // Sistema de mini-modal para notas
     window.openNoteModal = function(id, nombre) {
@@ -4830,7 +4878,6 @@ def update_map_style(map_style):
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
-
 
 
 # Ejecuta la aplicación Dash
