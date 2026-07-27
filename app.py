@@ -68,6 +68,154 @@ def verificar_admin(id_token):
         print(f'Token inválido: {e}')
         return False
 
+
+
+FIELD_MASK = (
+    "id,displayName,location,formattedAddress,"
+    "rating,userRatingCount,websiteUri,"
+    "currentOpeningHours,servesVegetarianFood,"
+    "allowsDogs,delivery,servesBrunch,outdoorSeating,"
+    "reservable,takeout,accessibilityOptions,"
+    "addressComponents,liveMusic,editorialSummary"
+)
+
+DIAS_ORD = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
+
+
+def _api_key():
+    k = os.getenv("GOOGLE_PLACES_API_KEY")
+    if not k:
+        raise RuntimeError("Falta la variable de entorno GOOGLE_PLACES_API_KEY")
+    return k
+
+
+def obtener_detalles(place_id: str) -> dict | None:
+    url = f'https://places.googleapis.com/v1/places/{place_id}'
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': _api_key(),
+        'X-Goog-FieldMask': FIELD_MASK,
+        'Accept-Language': 'es',
+    }
+    r = requests.get(url, headers=headers, timeout=15)
+    if r.status_code == 200:
+        return r.json()
+    return None
+
+
+def _barrio(d: dict) -> str:
+    for comp in d.get('addressComponents', []):
+        types = comp.get('types', [])
+        if 'sublocality' in types or 'neighborhood' in types:
+            return comp.get('longText', 'Desconocido')
+    return 'Desconocido'
+
+
+def _horarios(d: dict) -> dict:
+    """Mapea currentOpeningHours.periods -> submapa por día (formato Firestore)."""
+    h = {dia.lower(): {'open': None, 'close': None} for dia in DIAS_ORD}
+    for periodo in d.get('currentOpeningHours', {}).get('periods', []):
+        op = periodo.get('open', {})
+        cl = periodo.get('close', {})
+        dia = op.get('day')  # 0=domingo ... 6=sábado (igual que DIAS_ORD)
+        if dia is None:
+            continue
+        clave = DIAS_ORD[dia].lower()
+        h[clave]['open'] = f"{op.get('hour', 0):02d}:{op.get('minute', 0):02d}"
+        h[clave]['close'] = f"{cl.get('hour', 0):02d}:{cl.get('minute', 0):02d}"
+    return h
+
+
+def google_a_firestore(d: dict) -> dict:
+    """Convierte la respuesta de Places Details al esquema de la colección 'cafes'."""
+    acc = d.get('accessibilityOptions', {}) or {}
+    loc = d.get('location', {}) or {}
+    web = d.get('websiteUri')
+    editorial = (d.get('editorialSummary', {}) or {}).get('text')
+
+    return {
+        'nombre': (d.get('displayName') or {}).get('text', ''),
+        'direccion': d.get('formattedAddress', 'Desconocido'),
+        'barrio': _barrio(d),
+        'latitud': loc.get('latitude'),
+        'longitud': loc.get('longitude'),
+        'rating': d.get('rating'),
+        'cantidad_reviews': d.get('userRatingCount'),
+        'sitio_web': web if web else None,
+        'activo': True,
+        # booleanos (mismo mapeo que la migración; ausencia -> False, no 'Desconocido')
+        'permite_mascotas': bool(d.get('allowsDogs', False)),
+        'comida_vegetariana': bool(d.get('servesVegetarianFood', False)),
+        'acceso_silla_ruedas': bool(acc.get('wheelchairAccessibleEntrance', False)),
+        'delivery': bool(d.get('delivery', False)),
+        'espacio_afuera': bool(d.get('outdoorSeating', False)),
+        'reservable': bool(d.get('reservable', False)),
+        'takeaway': bool(d.get('takeout', False)),
+        'musica_en_vivo': bool(d.get('liveMusic', False)),
+        'brunch': bool(d.get('servesBrunch', False)),
+        'especialidad': False,          # se ajusta a mano en el modal admin
+        'pasteleria_artesanal': False,  # idem
+        'sin_tacc': False,
+        'popular': False,
+        'es_cadena': False,
+        'no_es_cadena': True,
+        'tematica_puesto_diario': False,
+        'horarios': _horarios(d),
+        # metadata
+        'resumen_editorial_google': editorial,
+        'alta_manual': True,
+    }
+
+
+def preview_alta(place_id: str) -> dict:
+    """Trae y mapea SIN escribir. Devuelve dict o {'error': ...}."""
+    d = obtener_detalles(place_id)
+    if not d:
+        return {'error': 'No se encontró el place_id en Google Places'}
+    doc = google_a_firestore(d)
+    if doc['latitud'] is None or doc['longitud'] is None:
+        return {'error': 'El lugar no tiene coordenadas'}
+    return {'place_id': place_id, 'doc': doc}
+
+
+
+
+# --- Endpoints de admin: alta de cafés ---
+from flask import request as flask_request, jsonify
+
+@server.route('/admin/preview', methods=['POST'])
+def admin_preview():
+    body = flask_request.get_json(silent=True) or {}
+    if not verificar_admin(body.get('token', '')):
+        return jsonify({'error': 'No autorizado'}), 403
+    place_id = (body.get('place_id') or '').strip()
+    if not place_id:
+        return jsonify({'error': 'Falta el place_id'}), 400
+    return jsonify(preview_alta(place_id))
+
+
+@server.route('/admin/alta', methods=['POST'])
+def admin_alta_endpoint():
+    body = flask_request.get_json(silent=True) or {}
+    if not verificar_admin(body.get('token', '')):
+        return jsonify({'error': 'No autorizado'}), 403
+    place_id = (body.get('place_id') or '').strip()
+    if not place_id:
+        return jsonify({'error': 'Falta el place_id'}), 400
+
+    resultado = preview_alta(place_id)
+    if 'error' in resultado:
+        return jsonify(resultado), 400
+
+    db = get_admin_db()
+    ref = db.collection('cafes').document(place_id)
+    if ref.get().exists:
+        return jsonify({'error': 'Ese café ya existe en la base'}), 409
+
+    ref.set(resultado['doc'], merge=True)
+    return jsonify({'ok': True, 'nombre': resultado['doc']['nombre']})
+
+
 @server.route('/api/geojson')
 def serve_geojson():
     return Response(
@@ -3484,6 +3632,102 @@ app.index_string = r"""
                 console.warn(e);
             }
         };
+
+
+    window.openAltaModal = function() {
+        if (!window.esAdmin()) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'note-modal-overlay alta-modal-overlay';
+        overlay.innerHTML = `
+            <div class="note-modal" style="max-width:90%;width:480px;">
+                <div class="note-modal-header">
+                    <div class="note-modal-title">Alta de café</div>
+                    <button class="note-modal-close" onclick="window.closeAltaModal()">×</button>
+                </div>
+                <div style="padding:8px 0;">
+                    <label style="font-size:12px;font-weight:600;">Place ID de Google</label>
+                    <input id="alta-place-id" type="text" placeholder="ChIJ..."
+                           style="width:100%;padding:6px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
+                    <button onclick="window.previewAlta()"
+                            style="padding:8px 12px;border:1px solid #888;background:#f5f5f5;border-radius:4px;cursor:pointer;">
+                        Ver preview
+                    </button>
+                    <div id="alta-preview" style="margin-top:12px;font-size:13px;"></div>
+                </div>
+                <div class="note-modal-footer">
+                    <button id="alta-confirmar" class="note-modal-save" style="display:none;"
+                            onclick="window.confirmarAlta()">Confirmar alta</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) window.closeAltaModal(); });
+    };
+
+    window.closeAltaModal = function() {
+        document.querySelector('.alta-modal-overlay')?.remove();
+    };
+
+    window.previewAlta = async function() {
+        const placeId = document.getElementById('alta-place-id').value.trim();
+        const cont = document.getElementById('alta-preview');
+        if (!placeId) { cont.innerHTML = 'Pegá un place_id.'; return; }
+        cont.innerHTML = 'Buscando...';
+        try {
+            const token = await window.firebaseAuth.currentUser.getIdToken();
+            const r = await fetch('/admin/preview', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token, place_id: placeId })
+            });
+            const data = await r.json();
+            if (data.error) { cont.innerHTML = '⚠️ ' + data.error; return; }
+            const d = data.doc;
+            cont.innerHTML = `
+                <b>${d.nombre}</b><br>
+                ${d.direccion}<br>
+                Barrio: ${d.barrio} · Rating: ${d.rating ?? '—'} (${d.cantidad_reviews ?? 0} reviews)<br>
+                <span style="color:#777;">Especialidad, pastelería y demás etiquetas propias se marcan después con Editar.</span>`;
+            document.getElementById('alta-confirmar').style.display = 'inline-block';
+        } catch (e) {
+            cont.innerHTML = 'Error de conexión';
+            console.warn(e);
+        }
+    };
+
+    window.confirmarAlta = async function() {
+        const placeId = document.getElementById('alta-place-id').value.trim();
+        try {
+            const token = await window.firebaseAuth.currentUser.getIdToken();
+            const r = await fetch('/admin/alta', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token, place_id: placeId })
+            });
+            const data = await r.json();
+            if (data.error) { window.showToast('⚠️ ' + data.error, 3000); return; }
+            window.showToast(`✓ ${data.nombre} dado de alta. Falta publicar.`, 3500);
+            window.closeAltaModal();
+        } catch (e) {
+            window.showToast('Error de conexión');
+            console.warn(e);
+        }
+    };
+
+
+    // Botón flotante de alta (solo admin, aparece al detectar sesión)
+    setInterval(function() {
+        if (window.esAdmin() && !document.getElementById('btn-alta-flotante')) {
+            const b = document.createElement('button');
+            b.id = 'btn-alta-flotante';
+            b.textContent = '➕';
+            b.title = 'Alta de café';
+            b.onclick = window.openAltaModal;
+            b.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:9999;' +
+                'width:44px;height:44px;border-radius:50%;border:none;background:#2c3e50;' +
+                'color:#fff;font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+            document.body.appendChild(b);
+        }
+    }, 2000);
     
     // Sistema de mini-modal para notas
     window.openNoteModal = function(id, nombre) {
@@ -4878,6 +5122,7 @@ def update_map_style(map_style):
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
+
 
 
 # Ejecuta la aplicación Dash
