@@ -225,6 +225,149 @@ def serve_geojson():
     )
 
 
+# --- Publicación server-side del geojson ---
+from azure.storage.blob import ContentSettings
+import gzip as _gzip
+import time as _time
+
+PUB_MAPEO_BOOLS = {
+    'Permite mascotas': 'permite_mascotas',
+    'Comida vegetariana': 'comida_vegetariana',
+    'Acceso silla de ruedas': 'acceso_silla_ruedas',
+    'Delivery': 'delivery',
+    'Espacio afuera': 'espacio_afuera',
+    'Reservable': 'reservable',
+    'Tiene takeaway': 'takeaway',
+    'Musica en vivo': 'musica_en_vivo',
+    'Brunch': 'brunch',
+    'No es una cadena': 'no_es_cadena',
+    'Es una cadena': 'es_cadena',
+    'Popular': 'popular',
+    'Tiene opciones sin tacc': 'sin_tacc',
+    'Cafe de especialidad': 'especialidad',
+    'Pasteleria Artesanal': 'pasteleria_artesanal',
+    'Temática: Puesto de diario': 'tematica_puesto_diario',
+}
+PUB_DIAS = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
+PUB_DAY_COLUMNS = [f'{d}_{s}' for d in PUB_DIAS for s in ('open', 'close')]
+PUB_MAPEO_INVERSO = {v: k for k, v in PUB_MAPEO_BOOLS.items()}
+
+
+def _pub_firestore_a_df():
+    db = get_admin_db()
+    filas = []
+    for snap in db.collection('cafes').where('activo', '==', True).stream():
+        d = snap.to_dict()
+        fila = {
+            'ID': snap.id, 'Nombre': d.get('nombre'), 'Dirección': d.get('direccion'),
+            'Barrio': d.get('barrio'), 'Latitud': d.get('latitud'), 'Longitud': d.get('longitud'),
+            'Rating': d.get('rating'), 'Cantidad Reviews': d.get('cantidad_reviews'),
+            'Sitio Web': d.get('sitio_web'),
+        }
+        for campo, col in PUB_MAPEO_INVERSO.items():
+            fila[col] = d.get(campo)
+        horarios = d.get('horarios') or {}
+        for dia in PUB_DIAS:
+            h = horarios.get(dia.lower()) or {}
+            fila[f'{dia}_open'] = h.get('open')
+            fila[f'{dia}_close'] = h.get('close')
+        filas.append(fila)
+    return pd.DataFrame(filas).sort_values('ID').reset_index(drop=True)
+
+
+def _pub_map_df(df_sub, fn):
+    """Compatibilidad pandas: .map (>=2.1) o .applymap (viejas)."""
+    try:
+        return df_sub.map(fn)
+    except AttributeError:
+        return df_sub.applymap(fn)
+
+
+def _pub_preprocesar(data):
+    data = data.dropna(subset=['Latitud', 'Longitud'])
+    data['Dirección'] = data['Dirección'].fillna('Desconocido')
+    data['Barrio'] = data['Barrio'].apply(lambda x: x.split(',')[0] if isinstance(x, str) else 'Desconocido')
+    data = data.replace({pd.NA: ''})
+    data.fillna(0, inplace=True)
+    data[PUB_DAY_COLUMNS] = _pub_map_df(data[PUB_DAY_COLUMNS], lambda x: str(x) if pd.notna(x) else None)
+    data[PUB_DAY_COLUMNS] = data[PUB_DAY_COLUMNS].apply(
+        lambda x: x.map(lambda y: None if pd.isna(y) or y == '' else y))
+    return data
+
+
+def _pub_icono(rating):
+    base = 'https://jsonbuscafe.blob.core.windows.net/contbuscafe/'
+    if 0 <= rating <= 0.9: return base + 'markrojo.svg'
+    if 1 <= rating <= 1.9: return base + 'markvioleta.svg'
+    if 2 <= rating <= 2.9: return base + 'markceleste.svg'
+    if 3 <= rating <= 3.9: return base + 'markbeige.svg'
+    if 4 <= rating <= 5:   return base + 'markverde.svg'
+    return base + 'markdefault.svg'
+
+
+def _pub_df_a_geojson(df):
+    feats = []
+    for _, row in df.iterrows():
+        rating = row['Rating'] if pd.notna(row['Rating']) else 0
+        props = {
+            'id': str(row['ID']),
+            'Nombre': row['Nombre'] if pd.notna(row['Nombre']) else 'Sin datos',
+            'Rating': rating,
+            'Cantidad Reviews': row['Cantidad Reviews'] if pd.notna(row['Cantidad Reviews']) else 0,
+            'Sitio Web': row['Sitio Web'] if row['Sitio Web'] != '' else '',
+            'Dirección': row['Dirección'] if pd.notna(row['Dirección']) else 'Sin datos',
+            'iconUrl': _pub_icono(rating),
+            'Barrio': row['Barrio'],
+        }
+        for c in PUB_DAY_COLUMNS:
+            props[c] = row[c]
+        props['Permite mascotas'] = row['Permite mascotas']
+        props['El café es de especialidad'] = row['Cafe de especialidad']
+        props['Tiene pastelería artesanal'] = row['Pasteleria Artesanal']
+        props['Tiene comida vegetariana'] = row['Comida vegetariana']
+        props['Acceso silla de ruedas'] = row['Acceso silla de ruedas']
+        props['Es cadena'] = row['Es una cadena']
+        props['No es cadena'] = row['No es una cadena']
+        props['Popular'] = row['Popular']
+        props['Delivery'] = row['Delivery']
+        props['Sirve brunch'] = row['Brunch']
+        props['Tiene opciones sin tacc'] = row['Tiene opciones sin tacc']
+        props['Espacio afuera'] = row['Espacio afuera']
+        props['Musica en vivo'] = row['Musica en vivo']
+        props['Temática: Puesto de diario'] = row['Temática: Puesto de diario']
+        props['Reservable'] = row['Reservable']
+        props['Tiene takeaway'] = row['Tiene takeaway']
+        feats.append({
+            'type': 'Feature',
+            'geometry': {'type': 'Point', 'coordinates': [row['Longitud'], row['Latitud']]},
+            'properties': props
+        })
+    return {'type': 'FeatureCollection', 'features': feats}
+
+
+@server.route('/admin/publicar', methods=['POST'])
+def admin_publicar():
+    body = flask_request.get_json(silent=True) or {}
+    if not verificar_admin(body.get('token', '')):
+        return jsonify({'error': 'No autorizado'}), 403
+    t0 = _time.time()
+    try:
+        df = _pub_firestore_a_df()
+        gj = _pub_df_a_geojson(_pub_preprocesar(df))
+        payload = _gzip.compress(orjson.dumps(gj))
+        service = BlobServiceClient.from_connection_string(os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
+        blob = service.get_blob_client('contbuscafe', 'geojson_data_latest.json')
+        blob.upload_blob(payload, overwrite=True, content_settings=ContentSettings(
+            content_type='application/json', content_encoding='gzip',
+            cache_control='public, max-age=300'))
+        return jsonify({'ok': True, 'features': len(gj['features']),
+                        'kb': round(len(payload) / 1024),
+                        'segundos': round(_time.time() - t0, 1)})
+    except Exception as e:
+        print(f'Error publicando: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
 
 # ════════════════════════════════════════════════════════════
 # PÁGINAS LEGALES (para Google OAuth verification)
@@ -3714,20 +3857,40 @@ app.index_string = r"""
     };
 
 
-    // Botón flotante de alta (solo admin, aparece al detectar sesión)
+    // Botón flotante de publicar (solo admin)
     setInterval(function() {
-        if (window.esAdmin() && !document.getElementById('btn-alta-flotante')) {
+        if (window.esAdmin() && !document.getElementById('btn-publicar-flotante')) {
             const b = document.createElement('button');
-            b.id = 'btn-alta-flotante';
-            b.textContent = '➕';
-            b.title = 'Alta de café';
-            b.onclick = window.openAltaModal;
-            b.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:9999;' +
-                'width:44px;height:44px;border-radius:50%;border:none;background:#2c3e50;' +
-                'color:#fff;font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+            b.id = 'btn-publicar-flotante';
+            b.textContent = '📤';
+            b.title = 'Publicar cambios al mapa';
+            b.onclick = window.publicarCambios;
+            b.style.cssText = 'position:fixed;bottom:132px;right:16px;z-index:9999;' +
+                'width:44px;height:44px;border-radius:50%;border:none;background:#27ae60;' +
+                'color:#fff;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);';
             document.body.appendChild(b);
         }
     }, 2000);
+
+    window.publicarCambios = async function() {
+        if (!window.esAdmin()) return;
+        if (!confirm('¿Publicar todos los cambios pendientes al mapa?')) return;
+        window.showToast('Publicando... (tarda ~15 segundos)', 4000);
+        try {
+            const token = await window.firebaseAuth.currentUser.getIdToken();
+            const r = await fetch('/admin/publicar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token })
+            });
+            const data = await r.json();
+            if (data.error) { window.showToast('⚠️ ' + data.error, 4000); return; }
+            window.showToast(`✓ Publicado: ${data.features} cafés (${data.segundos}s). Falta el restart en Azure.`, 5000);
+        } catch (e) {
+            window.showToast('Error de conexión');
+            console.warn(e);
+        }
+    };
     
     // Sistema de mini-modal para notas
     window.openNoteModal = function(id, nombre) {
@@ -5122,6 +5285,7 @@ def update_map_style(map_style):
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
+
 
 
 
