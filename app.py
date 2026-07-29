@@ -3856,6 +3856,21 @@ app.index_string = r"""
         }
     };
 
+    // Botón flotante de alta (solo admin)
+    setInterval(function() {
+        if (window.esAdmin() && !document.getElementById('btn-alta-flotante')) {
+            const b = document.createElement('button');
+            b.id = 'btn-alta-flotante';
+            b.textContent = '➕';
+            b.title = 'Alta de café';
+            b.onclick = window.openAltaModal;
+            b.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:9999;' +
+                'width:44px;height:44px;border-radius:50%;border:none;background:#2c3e50;' +
+                'color:#fff;font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+            document.body.appendChild(b);
+        }
+    }, 2000);
+
 
     // Botón flotante de publicar (solo admin)
     setInterval(function() {
