@@ -48,7 +48,7 @@ def nombre_base(nombre: str) -> str:
 
 # ==================== CARGA DE DATA (testeo local) ====================
 
-def cargar_data_local(ruta_tags="tags_cafes_limpio.json", ruta_base="basenueva45.xlsx"):
+def cargar_data_local(ruta_tags="tags_cafes_limpio.json", ruta_base="basenueva46.xlsx"):
     """Devuelve el universo de cafés como lista de dicts homogéneos."""
     import pandas as pd
 
