@@ -23,6 +23,12 @@ import unicodedata
 from datetime import datetime
 
 MAX_RESULTADOS = 3
+# Constantes del score bayesiano CONGELADAS para que los benchmarks entre versiones sean
+# comparables (auditoría, punto 10). Recalcular deliberadamente (y re-correr el replay de
+# regresión) solo cuando la base crezca en forma significativa: C = mean(Rating),
+# m = quantile(0.75) de Cantidad Reviews.
+BAYES_C = 4.42
+BAYES_M = 906
 MIN_REVIEWS_VAGAS = 50   # piso de reviews cuando la consulta es vaga (evita 5.0 con 12 reviews)
 N_ESPECIFICOS = 2        # primeros N keywords de producto = intención específica; el resto, fallback
 
@@ -41,6 +47,14 @@ def matchea(keyword: str, texto: str) -> bool:
     return all(re.search(rf"\b{re.escape(p)}\b", t) for p in palabras)
 
 
+def matchea_prefijo(keyword: str, texto: str) -> bool:
+    """Match por PREFIJO de palabra: 'instagram' matchea 'instagrameable'.
+    Solo para EXCLUSIONES: sobre-excluir es seguro, sub-excluir rompe la negación."""
+    palabras = norm(keyword).split()
+    t = norm(texto)
+    return all(re.search(rf"\b{re.escape(p)}\w*", t) for p in palabras)
+
+
 def nombre_base(nombre: str) -> str:
     """'Rita Specialty - Palermo' -> 'Rita Specialty' (para dedupe de marca)."""
     return re.split(r" - | \(", str(nombre))[0].strip()
@@ -48,7 +62,7 @@ def nombre_base(nombre: str) -> str:
 
 # ==================== CARGA DE DATA (testeo local) ====================
 
-def cargar_data_local(ruta_tags="tags_cafes_limpio.json", ruta_base="basenueva46.xlsx"):
+def cargar_data_local(ruta_tags="tags_cafes_limpio.json", ruta_base="basenueva45.xlsx"):
     """Devuelve el universo de cafés como lista de dicts homogéneos."""
     import pandas as pd
 
@@ -57,8 +71,7 @@ def cargar_data_local(ruta_tags="tags_cafes_limpio.json", ruta_base="basenueva46
     df = pd.read_excel(ruta_base).drop_duplicates("ID", keep="first")
     df = df[df["ID"].isin(tags.keys())]
 
-    C = df["Rating"].mean()
-    m = df["Cantidad Reviews"].quantile(0.75)
+    C, m = BAYES_C, BAYES_M
 
     cafes = []
     for _, r in df.iterrows():
@@ -104,7 +117,10 @@ def _esta_abierto(cafe, ahora=None):
         return False
     try:
         hhmm = ahora.strftime("%H:%M")
-        return str(ap) <= hhmm <= str(ci)
+        ap, ci = str(ap), str(ci)
+        if ci < ap:  # cierra pasada la medianoche (ej. 09:00 a 02:00)
+            return hhmm >= ap or hhmm <= ci
+        return ap <= hhmm <= ci
     except (TypeError, ValueError):
         return False
 
@@ -136,7 +152,7 @@ def evaluar_cafe(cafe, filtros, ahora=None):
     # exclusiones: si CUALQUIER keyword de exclusión matchea tags o alertas -> afuera
     todos = _textos_producto(t) + _textos_ambiente(t) + [a["alerta"] for a in t["alertas_recurrentes"]]
     for k in filtros.get("keywords_excluir", []):
-        hit = next((tx for tx in todos if matchea(k, tx)), None)
+        hit = next((tx for tx in todos if matchea_prefijo(k, tx)), None)
         if hit:
             evidencia["excluido_por"] = f"{k} -> '{hit}'"
             return False, evidencia
@@ -237,14 +253,14 @@ def buscar(traduccion, cafes, ahora=None):
     """Punto de entrada del motor.
     traduccion: el JSON completo que devolvió el modelo (con modo, filtros, nota).
     cafes: universo cargado (lista de dicts).
-    Devuelve: dict con modo, resultados [(cafe, evidencia)], resultado_parcial, keywords_soltados, nota.
+    Devuelve: dict con modo, resultados [(cafe, evidencia)], resultado_parcial, keywords_sin_match, nota.
     """
     modo = traduccion.get("modo", "busqueda")
     nota = traduccion.get("nota_para_respuesta", "")
 
     if modo in ("favorita", "off_topic", "comparacion"):
         return {"modo": modo, "resultados": [], "resultado_parcial": False,
-                "keywords_soltados": [], "nota": nota}
+                "keywords_sin_match": [], "nota": nota}
 
     filtros = dict(traduccion.get("filtros", {}))
     consulta_vaga = not any([filtros.get("keywords_productos"), filtros.get("keywords_ambiente"),
@@ -264,7 +280,7 @@ def buscar(traduccion, cafes, ahora=None):
         resultados = _rankear(candidatos, f_especifico, consulta_vaga)
         if resultados:
             return {"modo": modo, "resultados": resultados, "resultado_parcial": False,
-                    "keywords_soltados": [], "nota": nota}
+                    "keywords_sin_match": [], "nota": nota}
 
     # PASADA 2 — filtro completo con fallbacks; si esto responde, es resultado PARCIAL
     # (no hubo match de lo específico, se ofrece lo más cercano)
@@ -278,7 +294,7 @@ def buscar(traduccion, cafes, ahora=None):
         parcial = len(kp) > N_ESPECIFICOS  # si hubo pasada 1 y falló, esto es "lo más cercano"
         soltados = kp[:N_ESPECIFICOS] if parcial else []
         return {"modo": modo, "resultados": resultados, "resultado_parcial": parcial,
-                "keywords_soltados": soltados, "nota": nota}
+                "keywords_sin_match": soltados, "nota": nota}
 
     # relajación progresiva
     soltados = []
@@ -295,17 +311,17 @@ def buscar(traduccion, cafes, ahora=None):
         resultados = _rankear(candidatos, f, False)
         if resultados:
             return {"modo": modo, "resultados": resultados, "resultado_parcial": True,
-                    "keywords_soltados": soltados, "nota": nota}
+                    "keywords_sin_match": soltados, "nota": nota}
 
     # nada, ni relajado
     return {"modo": "sin_resultados", "resultados": [], "resultado_parcial": False,
-            "keywords_soltados": soltados, "nota": nota}
+            "keywords_sin_match": soltados, "nota": nota}
 
 
 # ==================== FICHA (para debug / armar respuesta) ====================
 
 def imprimir_resultado(res):
-    print(f"modo: {res['modo']}" + (f" | PARCIAL, soltó: {res['keywords_soltados']}" if res["resultado_parcial"] else ""))
+    print(f"modo: {res['modo']}" + (f" | PARCIAL, soltó: {res['keywords_sin_match']}" if res["resultado_parcial"] else ""))
     if res["nota"]:
         print(f"nota: {res['nota']}")
     for cafe, ev in res["resultados"]:
