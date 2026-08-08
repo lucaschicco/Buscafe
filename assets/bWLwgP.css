@@ -78,6 +78,9 @@ body {
   height: 18px;
   filter: brightness(0) invert(1);
 }
+.app-header-contact a.cafecito-link img {
+  filter: none;
+}
 
 .bottom-navbar {
   position: fixed;
@@ -1138,6 +1141,12 @@ body {
   top: 60px;
 }
 
+.leaflet-bottom.leaflet-right {
+  bottom: auto;
+  top: 25%;
+  transform: translateY(-50%);
+}
+
 #zoom-message {
   position: fixed;
   bottom: 75px;
@@ -1617,4 +1626,181 @@ body {
 
 .filters-body .abierto-ahora-checklist label:has(input:checked) input[type="checkbox"]::after {
   border-color: #104547;
+}
+
+/* ============================================
+   BUSCADOR — barra flotante + bottom sheet
+   ============================================ */
+.buscador-bar {
+  position: fixed;
+  top: 65px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 82%;
+  max-width: 340px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1500;
+  cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.buscador-bar-icon {
+  font-size: 12px;
+  color: #104547;
+  flex-shrink: 0;
+}
+
+.buscador-bar-placeholder {
+  font-size: 11px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 0.3s ease;
+}
+
+.buscador-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 65px;
+  max-width: 480px;
+  margin: 0 auto;
+  background: #fffff5;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+  z-index: 2600;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.buscador-sheet.visible {
+  transform: translateY(0);
+}
+
+.buscador-sheet-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.buscador-sheet-input {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: 'Montserrat', sans-serif;
+  outline: none;
+}
+
+.buscador-sheet-input:focus {
+  border-color: #104547;
+}
+
+.buscador-sheet-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #888;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.buscador-sheet-body {
+  padding: 14px 16px 20px;
+  overflow-y: auto;
+}
+
+.buscador-ejemplos-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.buscador-ejemplo-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #f1efe8;
+  color: #104547;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: none;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.buscador-ejemplo-chip:hover {
+  background: #e5e2d8;
+}
+
+.buscador-mensaje {
+  font-size: 13px;
+  color: #104547;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.buscador-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #888;
+  font-size: 13px;
+  padding: 20px 0;
+  justify-content: center;
+}
+
+.buscador-resultado-card {
+  background: #ffffff;
+  border: 1px solid #e5e5e0;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.buscador-resultado-nombre {
+  font-weight: 600;
+  font-size: 14px;
+  color: #104547;
+}
+
+.buscador-resultado-meta {
+  font-size: 12px;
+  color: #888;
+  margin: 2px 0 8px;
+}
+
+.buscador-chip-evidencia {
+  display: inline-block;
+  background: #e1f5ee;
+  color: #085041;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin: 2px 4px 2px 0;
+}
+
+.buscador-error {
+  background: #faece7;
+  color: #712b13;
+  font-size: 13px;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
 }
