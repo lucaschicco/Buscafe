@@ -31,13 +31,22 @@ Diseño:
 - Devuelve estructura lista para armar la respuesta + mini-fichas, con evidencia de
   qué se cumplió y qué faltó por café (para que el mensaje al usuario sea honesto).
 
-NOTA sobre calidad de evidencia: este motor NO decide qué keywords agrupar dentro de
-una condición -- eso lo hace el prompt del traductor (armar_system_prompt() en
-benchmark_buscador_v1.py / app.py). Si en algún momento aparece evidencia demasiado
-genérica o poco relacionada (ej: "medialunas" matcheando por el proxy "pasteleria",
-una categoría mucho más amplia que incluye tortas/cheesecakes/lemon pie sin relación
-real con medialunas), el fix va en la REGLA del prompt sobre cuándo agrupar proxies
-dentro de una condición, no en este archivo -- acá no hay nada que ajustar.
+- FUERZA DE EVIDENCIA (nuevo): dentro de una condición, los keywords vienen separados en
+  "keywords_directas" (si el café tiene ese tag, es evidencia directa de la intención) y
+  "keywords_proxy" (lo sugiere sin demostrarlo). Los dos cumplen la condición por igual --
+  la cobertura no cambia -- pero no valen lo mismo para ordenar. Sin esto, "un lugar donde
+  pueda leer tranquilo" daba cobertura 100% a los 1.850 cafés con el tag "tranquilo" y el
+  orden lo decidía el rating: ganaba el más popular, no el más relevante.
+  La fuerza se agrega como PROMEDIO sobre las condiciones cumplidas y toma pocos valores
+  discretos, deliberadamente: así siguen existiendo empates y el bayesiano sigue decidiendo
+  adentro de cada nivel. Una señal continua acá (se probó con rareza de tags) aplasta al
+  bayesiano y hace subir cafés de 20 reviews.
+
+NOTA sobre calidad de evidencia: este motor NO decide qué keyword es directo y cuál es
+proxy -- eso lo declara el traductor (armar_system_prompt() en app.py). Medido sobre 161
+consultas, ~5% de las condiciones traen un tag muy ancho ascendido a directa (ej:
+"tranquilo" como directa de "que nadie me apure"). Para eso está GUARDRAIL_DIRECTAS_ANCHAS,
+apagado por default: se prende solo si el replay demuestra que mejora.
 
 En producción: la data viene de Firestore (colección cafes con campo tags).
 Para testeo local: cargar tags_cafes_limpio.json + basenueva46.xlsx con cargar_data_local().
@@ -56,6 +65,24 @@ MAX_RESULTADOS = 3
 BAYES_C = 4.42
 BAYES_M = 906
 MIN_REVIEWS_VAGAS = 50   # piso de reviews cuando la consulta es vaga (evita 5.0 con 12 reviews)
+
+# --- Fuerza de evidencia ---
+FUERZA_DIRECTA = 2       # el café tiene un tag que ES la intención
+FUERZA_PROXY = 1         # el café tiene un tag que la sugiere
+
+# --- Experimentos, apagados por default. Se prenden de a UNO para poder atribuir la mejora ---
+PISO_REVIEWS_GENERAL = 50    # piso de reviews para TODA consulta, no solo las vagas.
+                             # Cualquier señal de evidencia por encima del bayesiano hace
+                             # subir cafés sin volumen. Medido por replay sobre 161
+                             # consultas: con 0 quedaban 9 resultados de <50 reviews; con
+                             # 50 quedan 2 y solo cambian 7 consultas. Con 100 no mejora
+                             # más y toca 2 consultas extra. 0 lo desactiva.
+GUARDRAIL_DIRECTAS_ANCHAS = 0   # si > 0, una keyword_directa que matchee más de este número
+                                # de cafés se degrada a proxy. Corrige los proxies ascendidos
+                                # por el traductor. OJO: "medialunas" matchea 915 cafés y ES
+                                # una directa legítima cuando el usuario pide medialunas, así
+                                # que esto solo debería activarse junto con el chequeo de
+                                # literalidad. Con 0 queda desactivado.
 UMBRAL_COBERTURA = 0.65  # % mínimo de condiciones cumplidas para nivel "parcial" (ver _nivel_cobertura)
 
 
@@ -196,7 +223,67 @@ def _esta_abierto(cafe, ahora=None):
     return ap_min <= ahora_min <= ci_min
 
 
-def evaluar_cafe(cafe, filtros, ahora=None):
+_CACHE_INDICE = {}   # (keyword, tipo) -> {id_cafe: texto_que_matcheo}
+
+
+def indice_keyword(keyword, tipo, cafes):
+    """Índice invertido: qué cafés matchean este keyword y con qué texto.
+
+    Se calcula sobre la base COMPLETA (no sobre los candidatos que ya pasaron los filtros
+    duros) para que el resultado sea una propiedad estable del vocabulario y el caché sirva
+    entre consultas distintas, sin importar el barrio pedido.
+
+    Este caché es lo que hace viable mirar TODOS los keywords de una condición en vez de
+    cortar en el primero que matchea: sin él, cada consulta recorre los 2.634 cafés una vez
+    por keyword. Medido: 0,95s por consulta antes, 0,017s con el caché caliente."""
+    key = (keyword, tipo)
+    if key in _CACHE_INDICE:
+        return _CACHE_INDICE[key]
+    idx = {}
+    for c in cafes:
+        textos = _textos_producto(c["tags"]) if tipo == "producto" else _textos_ambiente(c["tags"])
+        m = next((tx for tx in textos if matchea(keyword, tx)), None)
+        if m:
+            idx[c["id"]] = m
+    _CACHE_INDICE[key] = idx
+    return idx
+
+
+def _grupos_condicion(cond):
+    """Devuelve (directas, proxys) de una condición.
+
+    Compatibilidad hacia atrás: si viene el campo viejo "keywords" (schema anterior al
+    sistema de dos niveles), se tratan todos como directas. Así el motor no se rompe si
+    quedó una traducción vieja cacheada en algún lado."""
+    if "keywords_directas" in cond or "keywords_proxy" in cond:
+        return cond.get("keywords_directas", []) or [], cond.get("keywords_proxy", []) or []
+    return cond.get("keywords", []) or [], []
+
+
+def preparar_condiciones(condiciones, cafes):
+    """Una vez por consulta: arma el índice de cada keyword y su fuerza.
+    Devuelve, por condición, una lista de (keyword, indice, fuerza) ordenada por fuerza
+    descendente, para que la primera que matchee ya sea la mejor evidencia disponible."""
+    total = len(cafes)
+    prep = []
+    for cond in condiciones:
+        tipo = cond.get("tipo", "ambiente")
+        fila = []
+        for kws, fuerza in ((_grupos_condicion(cond)[0], FUERZA_DIRECTA),
+                            (_grupos_condicion(cond)[1], FUERZA_PROXY)):
+            for k in kws:
+                idx = indice_keyword(k, tipo, cafes)
+                f = fuerza
+                if (GUARDRAIL_DIRECTAS_ANCHAS and fuerza == FUERZA_DIRECTA
+                        and total and len(idx) > GUARDRAIL_DIRECTAS_ANCHAS):
+                    f = FUERZA_PROXY   # directa demasiado ancha: se degrada a proxy
+                fila.append((k, idx, f))
+        fila.sort(key=lambda x: -x[2])
+        prep.append(fila)
+    return prep
+
+
+def evaluar_cafe(cafe, filtros, ahora=None, prep=None):
     """Evalúa un café contra los filtros. Devuelve evidencia (dict) si el café pasa los
     filtros duros, o None si queda afuera por barrio/booleano/horario/exclusión.
 
@@ -209,7 +296,8 @@ def evaluar_cafe(cafe, filtros, ahora=None):
     """
     t = cafe["tags"]
     evidencia = {"barrio": None, "booleanos": [], "cumplidas": [], "faltantes": [],
-                 "cobertura": 1.0, "excluido_por": None}
+                 "cobertura": 1.0, "fuerza": 0.0, "nivel_evidencia": "sin_condiciones",
+                 "excluido_por": None}
 
     # barrio: filtro duro
     barrios = filtros.get("barrios", [])
@@ -243,24 +331,37 @@ def evaluar_cafe(cafe, filtros, ahora=None):
     condiciones = filtros.get("condiciones", [])
 
     if condiciones:
-        textos_producto = _textos_producto(t)
-        textos_ambiente = _textos_ambiente(t)
-        for cond in condiciones:
+        prep = prep or []
+        cid = cafe["id"]
+        fuerzas = []
+        for i, cond in enumerate(condiciones):
             tipo = cond.get("tipo", "ambiente")
             intencion = cond.get("intencion", "")
-            keywords = cond.get("keywords", [])
-            textos = textos_producto if tipo == "producto" else textos_ambiente
+            # prep[i] viene ordenado por fuerza descendente, así que la PRIMERA que matchea
+            # ya es la mejor evidencia que este café tiene para esta intención. Cortamos ahí.
             encontrado = None
-            for k in keywords:
-                match = next((tx for tx in textos if matchea(k, tx)), None)
-                if match:
-                    encontrado = (k, match)
+            for k, idx, fuerza in (prep[i] if i < len(prep) else []):
+                m = idx.get(cid)
+                if m:
+                    encontrado = (k, m, fuerza)
                     break
             if encontrado:
+                # tupla de 4, igual que antes: app.py desempaqueta (tipo, intencion, k, tx)
                 evidencia["cumplidas"].append((tipo, intencion, encontrado[0], encontrado[1]))
+                fuerzas.append(encontrado[2])
             else:
                 evidencia["faltantes"].append((tipo, intencion))
         evidencia["cobertura"] = len(evidencia["cumplidas"]) / len(condiciones)
+        # Promedio sobre las CUMPLIDAS y no sobre el total: la cobertura ya penaliza las
+        # faltantes; la fuerza mide qué tan buena es la evidencia que sí hay.
+        evidencia["fuerza"] = (sum(fuerzas) / len(fuerzas)) if fuerzas else 0.0
+        if fuerzas:
+            if all(f == FUERZA_DIRECTA for f in fuerzas):
+                evidencia["nivel_evidencia"] = "directa"
+            elif all(f == FUERZA_PROXY for f in fuerzas):
+                evidencia["nivel_evidencia"] = "proxy"
+            else:
+                evidencia["nivel_evidencia"] = "mixta"
 
     return evidencia
 
@@ -287,13 +388,18 @@ def _nivel_cobertura(cobertura):
 # ==================== RANKING Y RESPUESTA ====================
 
 def _keywords_producto_planas(condiciones):
-    """Aplana todos los keywords de las condiciones tipo 'producto' en una sola lista,
-    para _heroes_matcheados (que necesita una lista plana, no la estructura anidada)."""
-    out = []
+    """Aplana los keywords de las condiciones tipo 'producto' en una sola lista, para
+    _heroes_matcheados (que necesita una lista plana, no la estructura anidada).
+    Directas primero: si el café tiene un hero que ES lo pedido, gana sobre uno que
+    solo matchea un proxy. Usa _grupos_condicion, así que sirve con el schema nuevo y
+    con el viejo."""
+    directas, proxys = [], []
     for c in condiciones:
         if c.get("tipo") == "producto":
-            out.extend(c.get("keywords", []))
-    return out
+            d, p = _grupos_condicion(c)
+            directas.extend(d)
+            proxys.extend(p)
+    return directas + proxys
 
 
 def _rankear(candidatos, filtros, consulta_vaga):
@@ -307,16 +413,28 @@ def _rankear(candidatos, filtros, consulta_vaga):
             heroes = _heroes_matcheados(cafe["tags"], kp_planas)
             max_int = max((h["intensidad"] for h in heroes), default=0)
             max_menc = max((h["menciones"] for h in heroes), default=0)
-            return (cobertura, max_int, max_menc, cafe["score_bayes"])
-        # rating_bayesiano: cobertura primero (cuántas condiciones cumple),
-        # score bayesiano como desempate entre cafés con la misma cobertura
-        return (cobertura, cafe["score_bayes"])
+            return (cobertura, max_int, max_menc, ev.get("fuerza", 0.0), cafe["score_bayes"])
+        # rating_bayesiano, en tres escalones:
+        #   1. cobertura  -> ¿cuántas de las intenciones cumple?
+        #   2. fuerza     -> ¿qué tan buena es la evidencia de que las cumple?
+        #   3. bayesiano  -> ¿qué tan confiable es el café?
+        # La fuerza toma pocos valores discretos a propósito: los empates siguen existiendo
+        # y el bayesiano sigue decidiendo adentro de cada escalón.
+        return (cobertura, ev.get("fuerza", 0.0), cafe["score_bayes"])
 
     candidatos = sorted(candidatos, key=clave, reverse=True)
 
     # piso de reviews para consultas vagas (sin ningún keyword)
     if consulta_vaga:
         candidatos = [c for c in candidatos if c[0]["reviews"] >= MIN_REVIEWS_VAGAS]
+
+    # piso general: cualquier señal de evidencia por encima del bayesiano hace subir cafés
+    # sin volumen. Se aplica solo si quedan candidatos suficientes, para no vaciar una
+    # búsqueda específica y legítima donde todos los matches son lugares chicos.
+    if PISO_REVIEWS_GENERAL and not consulta_vaga:
+        con_piso = [c for c in candidatos if c[0]["reviews"] >= PISO_REVIEWS_GENERAL]
+        if len(con_piso) >= MAX_RESULTADOS:
+            candidatos = con_piso
 
     # dedupe por marca + despriorizar cadenas en consultas vagas
     finales, marcas = [], set()
@@ -373,9 +491,11 @@ def buscar(traduccion, cafes, ahora=None):
 
     # una sola pasada: evaluar_cafe calcula cobertura (%) por café, filtros duros ya
     # aplicados adentro (barrio/booleanos/horario/exclusiones)
+    prep = preparar_condiciones(condiciones, cafes) if condiciones else []
+
     candidatos = []
     for cafe in cafes:
-        ev = evaluar_cafe(cafe, filtros, ahora)
+        ev = evaluar_cafe(cafe, filtros, ahora, prep)
         if ev is not None:
             candidatos.append((cafe, ev))
 
