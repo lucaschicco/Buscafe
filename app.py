@@ -350,28 +350,28 @@ independiente. Formato de cada elemento:
 
 Ejemplo 1 (una condición con sinónimos/variantes):
 "Quiero una cafetería con patio." -> condiciones: [
-  {"tipo": "ambiente", "intencion": "patio", "keywords": ["patio", "patio interno", "patio al aire libre", "patio trasero"]}
+  {{"tipo": "ambiente", "intencion": "patio", "keywords": ["patio", "patio interno", "patio al aire libre", "patio trasero"]}}
 ]
 
 Ejemplo 2 (varias condiciones, cada una independiente):
 "Quiero croissants y un patio tranquilo, cerca de Plaza Italia." -> condiciones: [
-  {"tipo": "producto", "intencion": "croissant", "keywords": ["croissant", "croissants"]},
-  {"tipo": "ambiente", "intencion": "patio", "keywords": ["patio", "patio interno", "patio al aire libre"]},
-  {"tipo": "ambiente", "intencion": "tranquilo", "keywords": ["tranquilo", "ambiente tranquilo"]}
+  {{"tipo": "producto", "intencion": "croissant", "keywords": ["croissant", "croissants"]}},
+  {{"tipo": "ambiente", "intencion": "patio", "keywords": ["patio", "patio interno", "patio al aire libre"]}},
+  {{"tipo": "ambiente", "intencion": "tranquilo", "keywords": ["tranquilo", "ambiente tranquilo"]}}
 ]
 (barrio va aparte, en "barrios", no como condición)
 
 Ejemplo 3 (deseo funcional/subjetivo = una sola condición amplia, no fragmentar):
 "Un café para estudiar." -> condiciones: [
-  {"tipo": "ambiente", "intencion": "estudiar", "keywords": ["ideal para estudiar", "wifi", "enchufes", "ideal para trabajar", "tranquilo", "silencioso"]}
+  {{"tipo": "ambiente", "intencion": "estudiar", "keywords": ["ideal para estudiar", "wifi", "enchufes", "ideal para trabajar", "tranquilo", "silencioso"]}}
 ]
 (el usuario pidió UNA cosa -- estudiar -- wifi/enchufes/tranquilo son señales observables que ayudan a inferirlo, no pedidos separados)
 
 Ejemplo 4 (contraste con el 3: acá SÍ nombró las cosas por separado):
 "Un café tranquilo para estudiar, con wifi y enchufes." -> condiciones: [
-  {"tipo": "ambiente", "intencion": "estudiar", "keywords": ["ideal para estudiar", "ideal para trabajar"]},
-  {"tipo": "ambiente", "intencion": "tranquilo", "keywords": ["tranquilo", "silencioso"]},
-  {"tipo": "ambiente", "intencion": "wifi", "keywords": ["wifi", "enchufes"]}
+  {{"tipo": "ambiente", "intencion": "estudiar", "keywords": ["ideal para estudiar", "ideal para trabajar"]}},
+  {{"tipo": "ambiente", "intencion": "tranquilo", "keywords": ["tranquilo", "silencioso"]}},
+  {{"tipo": "ambiente", "intencion": "wifi", "keywords": ["wifi", "enchufes"]}}
 ]
 
 REGLA CLAVE para decidir qué keywords van dentro de una condición -- hay DOS tipos de
