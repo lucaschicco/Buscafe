@@ -55,6 +55,7 @@ Para testeo local: cargar tags_cafes_limpio.json + basenueva46.xlsx con cargar_d
 import json
 import re
 import unicodedata
+from functools import lru_cache
 from datetime import datetime, time as dtime
 
 MAX_RESULTADOS = 3
@@ -93,6 +94,31 @@ def norm(s: str) -> str:
     return unicodedata.normalize("NFD", str(s).lower().strip()).encode("ascii", "ignore").decode()
 
 
+# Nombres propios que contienen una palabra común buscable. Sin esto, "patio" matchea
+# "Patio Bullrich" (un shopping) y "jardin" matchea "Jardín Botánico" (un café DE FRENTE al
+# Botánico no tiene jardín). Caso real de producción: "cafe con jardin en retiro" devolvió
+# Starbucks y Le Pain Quotidien, los dos por el tag de ubicación en Patio Bullrich.
+# Se eliminan del texto ANTES de matchear: el resto del tag sigue siendo matcheable
+# ("brunch en Patio Bullrich" pierde el patio pero conserva el brunch).
+NOMBRES_PROPIOS = [
+    "patio bullrich",
+    "jardin botanico",
+    "mercado pago",
+    "alto palermo",
+    "galeria belgrano",
+    "mercado uriarte",
+]
+
+
+@lru_cache(maxsize=8192)
+def _sin_nombres_propios(texto_normalizado: str) -> str:
+    """Saca los nombres propios de un texto YA normalizado. Cacheado porque el mismo tag
+    se compara contra muchos keywords distintos a lo largo de una consulta."""
+    for np_ in NOMBRES_PROPIOS:
+        texto_normalizado = texto_normalizado.replace(np_, " ")
+    return re.sub(r"\s+", " ", texto_normalizado).strip()
+
+
 def _normalizar_frase(s: str) -> str:
     """Puntuación -> espacios, espacios múltiples colapsados. Para que 'flat-white' y
     'flat white' se traten como la misma frase al matchear."""
@@ -106,7 +132,7 @@ def matchea(keyword: str, texto: str) -> bool:
     tipo 'flat-white' -> 'flat white', pero el orden y la adyacencia de las palabras
     del keyword se respetan tal cual."""
     k = _normalizar_frase(keyword)
-    t = _normalizar_frase(texto)
+    t = _sin_nombres_propios(_normalizar_frase(texto))
     return re.search(rf"\b{re.escape(k)}\b", t) is not None
 
 
@@ -225,6 +251,25 @@ def _esta_abierto(cafe, ahora=None):
 
 _CACHE_INDICE = {}   # (keyword, tipo) -> {id_cafe: texto_que_matcheo}
 
+# Tope de keywords cacheados. Cada entrada guarda hasta un id + texto por café, así que sin
+# tope el caché crece con cada keyword nuevo que escriba un usuario y no se libera nunca:
+# en un proceso que corre semanas sin reiniciar, eso se acumula. Al pasarse se descartan las
+# entradas más viejas (los dicts conservan el orden de inserción), que son las de consultas
+# que ya nadie repite.
+MAX_CACHE_INDICE = 3000
+
+
+def limpiar_cache_indice():
+    """Vacía el índice invertido. HAY QUE LLAMARLA CADA VEZ QUE SE RECARGAN LOS CAFÉS SIN
+    REINICIAR EL PROCESO.
+
+    El índice se arma una sola vez por keyword sobre la lista de cafés que había en ese
+    momento. Si después los datos se recargan en caliente y el caché queda, un café nuevo o
+    uno cuyos tags se editaron nunca va a matchear ese keyword hasta el próximo restart: el
+    motor no lo vuelve a mirar, lee el índice viejo. La falla es silenciosa -- no hay error,
+    simplemente el café no aparece."""
+    _CACHE_INDICE.clear()
+
 
 def indice_keyword(keyword, tipo, cafes):
     """Índice invertido: qué cafés matchean este keyword y con qué texto.
@@ -245,6 +290,8 @@ def indice_keyword(keyword, tipo, cafes):
         m = next((tx for tx in textos if matchea(keyword, tx)), None)
         if m:
             idx[c["id"]] = m
+    if len(_CACHE_INDICE) >= MAX_CACHE_INDICE:
+        _CACHE_INDICE.pop(next(iter(_CACHE_INDICE)), None)
     _CACHE_INDICE[key] = idx
     return idx
 
@@ -385,6 +432,45 @@ def _nivel_cobertura(cobertura):
     return "sin_resultados"
 
 
+# Orden de menor a mayor exigencia, para poder tomar el mínimo entre lo que dice la
+# cobertura y lo que dice la calidad de la evidencia.
+_ORDEN_NIVEL = ["sin_resultados", "aproximado", "parcial", "completo"]
+
+# Techo que la calidad de la evidencia le pone al nivel reportado.
+# Sacar la clave "mixta" si se prefiere que un café que cumple TODAS las condiciones se
+# reporte como "completo" aunque alguna la cumpla por proxy (son ~3 consultas de 139).
+TECHO_POR_EVIDENCIA = {
+    "proxy": "aproximado",   # ninguna condición se cumplió con evidencia directa
+    "mixta": "parcial",      # algunas sí y otras no
+}
+
+
+def _nivel_final(cobertura, nivel_evidencia):
+    """Combina CUÁNTO se cumplió (cobertura) con QUÉ TAN BIEN se cumplió (evidencia).
+
+    Sin esto, un café que cumple la única condición pedida gracias a un proxy genérico se
+    reporta como match "completo". Caso real de producción: "Cafe para ir con amigas"
+    devolvió los tres cafés con mejor score bayesiano de toda la base, ninguno con un solo
+    tag sobre amigas, y los presentó como coincidencia exacta. La consulta era respondible
+    (610 cafés tienen tags de amigas) y el sistema degradó en silencio a popularidad.
+
+    Regla: la evidencia pone un techo al nivel.
+      - toda la evidencia es proxy  -> como mucho "aproximado"
+      - mezcla de directa y proxy   -> como mucho "parcial"
+      - toda directa                -> sin techo
+
+    No hace falta un caso especial para consultas de entidad específica ("japonés",
+    "medialunas", "patio"): en esas el traductor emite keywords_proxy vacío, así que solo
+    pueden cumplirse con evidencia directa y nunca caen en este techo. Las únicas que caen
+    son las funcionales/subjetivas, que es exactamente donde "aproximado" es la etiqueta
+    honesta."""
+    nivel = _nivel_cobertura(cobertura)
+    techo = TECHO_POR_EVIDENCIA.get(nivel_evidencia)
+    if techo is None:
+        return nivel
+    return min(nivel, techo, key=_ORDEN_NIVEL.index)
+
+
 # ==================== RANKING Y RESPUESTA ====================
 
 def _keywords_producto_planas(condiciones):
@@ -517,8 +603,9 @@ def buscar(traduccion, cafes, ahora=None):
         return {"modo": "sin_resultados", "resultados": [], "resultado_parcial": False,
                 "nivel_cobertura": "sin_resultados", "keywords_sin_match": [], "nota": nota}
 
-    mejor_cobertura = resultados[0][1]["cobertura"]
-    nivel = "completo" if consulta_vaga else _nivel_cobertura(mejor_cobertura)
+    mejor = resultados[0][1]
+    nivel = ("completo" if consulta_vaga
+             else _nivel_final(mejor["cobertura"], mejor.get("nivel_evidencia")))
     resultado_parcial = nivel != "completo"
 
     return {"modo": modo, "resultados": resultados, "resultado_parcial": resultado_parcial,
