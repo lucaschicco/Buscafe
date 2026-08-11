@@ -110,18 +110,41 @@ NOMBRES_PROPIOS = [
 ]
 
 
-@lru_cache(maxsize=8192)
 def _sin_nombres_propios(texto_normalizado: str) -> str:
-    """Saca los nombres propios de un texto YA normalizado. Cacheado porque el mismo tag
-    se compara contra muchos keywords distintos a lo largo de una consulta."""
+    """Saca los nombres propios de un texto YA normalizado."""
     for np_ in NOMBRES_PROPIOS:
         texto_normalizado = texto_normalizado.replace(np_, " ")
     return re.sub(r"\s+", " ", texto_normalizado).strip()
 
 
+# Memoización de la preparación de textos. La base tiene ~21.000 textos únicos (tags,
+# señas, ideal_para, productos) y cada uno se compara contra todos los keywords de la
+# consulta: sin caché, normalizar el MISMO texto se repite cientos de miles de veces por
+# consulta. Un dict simple y no lru_cache porque el universo de textos es chico, fijo y
+# conocido: acotarlo por debajo de ese número hace que el caché se desborde y no sirva
+# para nada (con maxsize=8192 medimos 109.971 misses en una sola consulta).
+_CACHE_TEXTO = {}
+MAX_CACHE_TEXTO = 60000
+
+
+def _preparar_texto(texto: str) -> str:
+    """Normaliza un texto y le saca los nombres propios, una sola vez por texto."""
+    listo = _CACHE_TEXTO.get(texto)
+    if listo is None:
+        listo = _sin_nombres_propios(_normalizar_frase(texto))
+        if len(_CACHE_TEXTO) < MAX_CACHE_TEXTO:
+            _CACHE_TEXTO[texto] = listo
+    return listo
+
+
+@lru_cache(maxsize=4096)
 def _normalizar_frase(s: str) -> str:
     """Puntuación -> espacios, espacios múltiples colapsados. Para que 'flat-white' y
-    'flat white' se traten como la misma frase al matchear."""
+    'flat white' se traten como la misma frase al matchear.
+
+    Cacheada porque matchea() la llama sobre el MISMO keyword una vez por cada texto de
+    cada café: con 7 keywords y 3.000 cafés son ~150.000 llamadas por consulta para
+    normalizar 7 strings distintos."""
     s = re.sub(r"[^\w\s]", " ", norm(s))
     return re.sub(r"\s+", " ", s).strip()
 
@@ -132,7 +155,7 @@ def matchea(keyword: str, texto: str) -> bool:
     tipo 'flat-white' -> 'flat white', pero el orden y la adyacencia de las palabras
     del keyword se respetan tal cual."""
     k = _normalizar_frase(keyword)
-    t = _sin_nombres_propios(_normalizar_frase(texto))
+    t = _preparar_texto(texto)
     return re.search(rf"\b{re.escape(k)}\b", t) is not None
 
 
