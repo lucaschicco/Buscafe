@@ -72,12 +72,18 @@ FUERZA_DIRECTA = 2       # el café tiene un tag que ES la intención
 FUERZA_PROXY = 1         # el café tiene un tag que la sugiere
 
 # --- Experimentos, apagados por default. Se prenden de a UNO para poder atribuir la mejora ---
-PISO_REVIEWS_GENERAL = 50    # piso de reviews para TODA consulta, no solo las vagas.
-                             # Cualquier señal de evidencia por encima del bayesiano hace
-                             # subir cafés sin volumen. Medido por replay sobre 161
-                             # consultas: con 0 quedaban 9 resultados de <50 reviews; con
-                             # 50 quedan 2 y solo cambian 7 consultas. Con 100 no mejora
-                             # más y toca 2 consultas extra. 0 lo desactiva.
+PISO_REVIEWS_GENERAL = 20    # piso de reviews para TODA consulta, no solo las vagas.
+                             # Red de seguridad contra ruido puro, NO un criterio de
+                             # calidad: de eso ya se encarga score_bayes, que para eso
+                             # tiene m=906. Estuvo en 50 y se bajó tras medir QUÉ cafés
+                             # eliminaba: de los 7 que sacaba, 6 tenían evidencia DIRECTA
+                             # (ej: Las Heliconias 4.9/24rv con el tag "café 100%
+                             # colombiano", la mejor respuesta posible a "cafeterías con
+                             # granos colombianos"). Un piso alto contradice el principio
+                             # del sistema -- evidencia por encima de popularidad -- justo
+                             # donde la evidencia es más fuerte. Con 20 desaparecen igual
+                             # los resultados de <20 reviews, pero cambian 2 consultas de
+                             # 161 en vez de 7. 0 lo desactiva.
 GUARDRAIL_DIRECTAS_ANCHAS = 0   # si > 0, una keyword_directa que matchee más de este número
                                 # de cafés se degrada a proxy. Corrige los proxies ascendidos
                                 # por el traductor. OJO: "medialunas" matchea 915 cafés y ES
@@ -600,6 +606,16 @@ def buscar(traduccion, cafes, ahora=None):
 
     # una sola pasada: evaluar_cafe calcula cobertura (%) por café, filtros duros ya
     # aplicados adentro (barrio/booleanos/horario/exclusiones)
+    # Defensa: una condición sin ningún keyword no se puede cumplir nunca y hundiría la
+    # cobertura de todos los cafés. El prompt tiene instrucción de no generarlas, pero es
+    # largo y a veces igual aparece una (visto en consultas de negación, donde lo rechazado
+    # debería ir a keywords_excluir y termina como condición vacía). Se descartan acá.
+    validas = [c for c in condiciones if any(_grupos_condicion(c))]
+    if len(validas) != len(condiciones):
+        # copia: no mutamos el dict de filtros que nos pasaron
+        filtros = {**filtros, "condiciones": validas}
+        condiciones = validas
+
     prep = preparar_condiciones(condiciones, cafes) if condiciones else []
 
     candidatos = []
