@@ -244,6 +244,24 @@ def _heroes_matcheados(t, keywords):
     return [h for h in t["productos_hero"] if any(matchea(k, h["producto"]) for k in keywords)]
 
 
+def _nivel_producto(t, keywords):
+    """Dónde aparece el producto pedido: 2 = productos_hero, 1 = productos_destacados,
+    0 = en ninguno de los dos.
+
+    productos_hero tiene menciones e intensidad; productos_destacados es una lista de
+    strings pelados. Sin este escalón, un café que tiene el producto en destacados entra
+    al ranking con intensidad 0 y menciones 0, o sea indistinguible de uno que no lo tiene
+    en ningún lado: el orden lo termina decidiendo el bayesiano.
+
+    Toma tres valores discretos a propósito. Adentro de cada escalón sigue habiendo
+    empates y el bayesiano sigue decidiendo, que es la propiedad que hace falta preservar."""
+    if _heroes_matcheados(t, keywords):
+        return 2
+    if any(matchea(k, d) for d in t["productos_destacados"] for k in keywords):
+        return 1
+    return 0
+
+
 def _a_minutos(v):
     """Convierte un horario a minutos desde medianoche, sin importar el formato de origen
     (datetime.time de Excel/pandas, o string '18:30' / '18:30:00'). Comparar en minutos
@@ -525,10 +543,16 @@ def _rankear(candidatos, filtros, consulta_vaga):
         cafe, ev = item
         cobertura = ev["cobertura"]
         if orden == "producto":
+            # nivel_producto va primero: separa hero de destacados antes de mirar
+            # intensidad y menciones, que solo existen para los hero. Sin él, los cafés
+            # que tienen el producto solo en destacados quedaban todos en cero y el orden
+            # caía al bayesiano sin aviso.
+            nivel = _nivel_producto(cafe["tags"], kp_planas)
             heroes = _heroes_matcheados(cafe["tags"], kp_planas)
-            max_int = max((h["intensidad"] for h in heroes), default=0)
-            max_menc = max((h["menciones"] for h in heroes), default=0)
-            return (cobertura, max_int, max_menc, ev.get("fuerza", 0.0), cafe["score_bayes"])
+            max_int = max((h["intensidad"] or 0 for h in heroes), default=0)
+            max_menc = max((h["menciones"] or 0 for h in heroes), default=0)
+            return (cobertura, nivel, max_int, max_menc,
+                    ev.get("fuerza", 0.0), cafe["score_bayes"])
         # rating_bayesiano, en tres escalones:
         #   1. cobertura  -> ¿cuántas de las intenciones cumple?
         #   2. fuerza     -> ¿qué tan buena es la evidencia de que las cumple?
@@ -577,6 +601,109 @@ def _rankear(candidatos, filtros, consulta_vaga):
     return finales
 
 
+# ==================== LIMPIEZA DE LA TRADUCCIÓN ====================
+
+# Keywords tan comunes que matchean a media base: si aparecen junto a una variante más
+# específica, la que sobra es la genérica, no la larga.
+KEYWORDS_DEMASIADO_ANCHAS = {
+    "cafe", "café", "lugar", "comida", "especialidad", "bebida", "local",
+}
+
+TOPE_DIRECTAS = 4
+TOPE_PROXY = 6
+TOPE_PROXY_SIN_DIRECTAS = 10
+TOPE_CONDICIONES = 5
+
+
+def _sacar_contenidas(keywords):
+    """Saca las keywords que otra del mismo grupo ya encuentra.
+
+    matchea() busca la frase completa dentro del tag, así que si están "plantas" y
+    "lleno de plantas", la primera sola ya encuentra todo lo que encontraría la segunda:
+    la larga no puede aportar ni un café. No es una preferencia de estilo, es aritmética.
+
+    Se queda con la más corta, salvo que la corta sea de las demasiado anchas
+    ("cafe" junto a "cafe de especialidad"): ahí la genérica es la que sobra, porque
+    matchea a media base y vuelve la condición trivial.
+
+    No toca variantes morfológicas: "torta" no encuentra "tortas" (el \b lo impide),
+    así que ese par sobrevive entero, que es lo correcto.
+    """
+    if not keywords:
+        return []
+    sobran = set()
+    for i, a in enumerate(keywords):
+        for j, b in enumerate(keywords):
+            if i == j or a in sobran or b in sobran:
+                continue
+            if matchea(a, b):  # a aparece entera dentro de b -> b es redundante
+                if norm(a) in KEYWORDS_DEMASIADO_ANCHAS:
+                    sobran.add(a)
+                else:
+                    sobran.add(b)
+    return [k for k in keywords if k not in sobran]
+
+
+def limpiar_traduccion(traduccion, reporte=None):
+    """Aplica en código las reglas que el prompt pide pero el modelo no siempre cumple.
+
+    Es red de seguridad, no reemplazo del prompt: el prompt sigue haciendo falta porque
+    cada keyword de más son tokens que el modelo igual escribió (y latencia que el usuario
+    igual esperó). Esto sólo garantiza que lo que llega al motor esté limpio.
+
+    Hace tres cosas: saca keywords contenidas en otras, recorta los topes, y descarta
+    condiciones que quedaron sin ningún keyword. No inventa nada ni cambia intenciones.
+
+    reporte: lista opcional donde se anotan los cambios, para diagnóstico.
+    """
+    def anotar(txt):
+        if reporte is not None:
+            reporte.append(txt)
+
+    f = traduccion.get("filtros") or {}
+    conds = f.get("condiciones") or []
+    limpias = []
+
+    for c in conds:
+        intencion = c.get("intencion", "?")
+        dr = c.get("keywords_directas") or []
+        px = c.get("keywords_proxy") or []
+
+        dr2 = _sacar_contenidas(dr)
+        px2 = _sacar_contenidas(px)
+        for k in set(dr) - set(dr2):
+            anotar(f'[{intencion}] directa redundante: "{k}"')
+        for k in set(px) - set(px2):
+            anotar(f'[{intencion}] proxy redundante: "{k}"')
+
+        if len(dr2) > TOPE_DIRECTAS:
+            anotar(f"[{intencion}] {len(dr2)} directas -> recortadas a {TOPE_DIRECTAS}")
+            dr2 = dr2[:TOPE_DIRECTAS]
+        tope_px = TOPE_PROXY_SIN_DIRECTAS if not dr2 else TOPE_PROXY
+        if len(px2) > tope_px:
+            anotar(f"[{intencion}] {len(px2)} proxy -> recortados a {tope_px}")
+            px2 = px2[:tope_px]
+
+        if not dr2 and not px2:
+            anotar(f"[{intencion}] condición sin keywords -> descartada")
+            continue
+
+        c = dict(c)
+        c["keywords_directas"] = dr2
+        c["keywords_proxy"] = px2
+        limpias.append(c)
+
+    if len(limpias) > TOPE_CONDICIONES:
+        anotar(f"{len(limpias)} condiciones -> recortadas a {TOPE_CONDICIONES}")
+        limpias = limpias[:TOPE_CONDICIONES]
+
+    if limpias != conds:
+        traduccion = dict(traduccion)
+        traduccion["filtros"] = dict(f)
+        traduccion["filtros"]["condiciones"] = limpias
+    return traduccion
+
+
 def buscar(traduccion, cafes, ahora=None):
     """Punto de entrada del motor.
     traduccion: el JSON completo que devolvió el modelo (con modo, filtros, nota).
@@ -593,6 +720,7 @@ def buscar(traduccion, cafes, ahora=None):
     NOTA para app.py: "keywords_sin_match" (top-level) ya NO se usa — queda vacío por
     compatibilidad. La info de qué faltó vive POR CAFÉ en evidencia["faltantes"].
     """
+    traduccion = limpiar_traduccion(traduccion)
     modo = traduccion.get("modo", "busqueda")
     nota = traduccion.get("nota_para_respuesta", "")
 
