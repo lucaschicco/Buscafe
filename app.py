@@ -341,7 +341,10 @@ Los keywords van separados en DOS grupos según qué tan buena evidencia son de 
   las cuatro mejores y descartá el resto. Tres bien elegidas valen más que seis, porque cada
   formulación floja que entra acá diluye la señal justo en el grupo que tiene que quedar
   limpio. Una variante que combina la intención con OTRA cosa ("calido y familiar" para
-  "acogedor") no es una variante: es otra intención, y va en proxy o no va.
+  "acogedor") no es una variante: es otra intención, y va en proxy o no va. 
+  Y una variante que solo le agrega palabras alrededor de la misma
+   palabra ("lleno de plantas" para "plantas") tampoco es una variante: es la misma keyword
+   con adornos, y el matching ya la cubre. Ver regla 15.
 - "keywords_proxy": señales más amplias o asociadas que SUGIEREN la intención sin
   demostrarla. Son la red amplia para no quedarse sin resultados cuando no hay evidencia
   directa. Puede quedar vacío, y para entidades o atributos específicos DEBE quedar vacío
@@ -394,14 +397,17 @@ responder, porque una condición imposible de cumplir hunde la cobertura de todo
 
 Ejemplo 1 (una condición, entidad específica -> proxy vacío):
 "Quiero una cafetería con patio." -> condiciones: [
-  {{"tipo": "ambiente", "intencion": "patio", "keywords_directas": ["patio", "patio interno", "patio al aire libre", "patio trasero"], "keywords_proxy": []}}
+  {{"tipo": "ambiente", "intencion": "patio", "keywords_directas": ["patio"], "keywords_proxy": []}}
 ]
+(una sola keyword no es quedarse corto: "patio" ya encuentra "patio interno", "patio
+trasero" y "patio al aire libre", así que agregarlas no suma ningún café. Llenar hasta 4
+cuando no hay sinónimos verdaderos es un error, no una virtud)
 
 Ejemplo 2 (varias condiciones, cada una independiente):
 "Quiero croissants y un patio tranquilo, cerca de Plaza Italia." -> condiciones: [
   {{"tipo": "producto", "intencion": "croissant", "keywords_directas": ["croissant", "croissants"], "keywords_proxy": []}},
-  {{"tipo": "ambiente", "intencion": "patio", "keywords_directas": ["patio", "patio interno", "patio al aire libre"], "keywords_proxy": []}},
-  {{"tipo": "ambiente", "intencion": "tranquilo", "keywords_directas": ["tranquilo", "ambiente tranquilo"], "keywords_proxy": []}}
+  {{"tipo": "ambiente", "intencion": "patio", "keywords_directas": ["patio"], "keywords_proxy": []}},
+  {{"tipo": "ambiente", "intencion": "tranquilo", "keywords_directas": ["tranquilo", "silencioso"], "keywords_proxy": []}}
 ]
 (barrio va aparte, en "barrios", no como condición)
 
@@ -440,9 +446,10 @@ intención y se tratan distinto:
      amplia: tortas, cheesecakes, lemon pie, sin relación específica con medialunas).
    - "japonés" -> directas: japonesa, estilo japones. NO minimalista, zen, asiatico
      (estéticas sueltas que no son evidencia de nacionalidad específica).
-   - "patio" -> directas: patio interno, patio al aire libre, patio trasero (variantes
-     cercanas del mismo lugar físico). NO terraza, balcón (espacios relacionados pero
-     distintos).
+   - "patio" -> directas: patio, y nada más. "patio interno", "patio al aire libre" y
+     "patio trasero" ya los encuentra "patio" sola (ver regla 15), y terraza o balcón son
+     espacios distintos, no variantes. Cuando la palabra pedida no tiene sinónimos reales,
+     la traducción correcta es UNA sola keyword directa.
    Si el café no tiene el tag literal (o variante muy cercana) de lo que se pidió, la
    condición debe quedar SIN cumplir para ese café -- no se satisface con algo "parecido".
    Poner esas cosas "parecidas" como proxy sería exactamente el error que esta regla evita.
@@ -481,7 +488,25 @@ REGLAS:
 12. Si piden más de 3 resultados o listas largas ("todas las de capital", "nombrame 10"): modo "busqueda" normal, y en nota_para_respuesta: "aclarar que el buscador muestra máximo 3".
 13. BOOLEANOS = SOLO PEDIDOS EXPLÍCITOS Y LITERALES: usalos únicamente cuando el usuario pide ese atributo puntual con esas palabras (ej: "que acepte mascotas", "con delivery", "acceso para silla de ruedas"). NUNCA infieras un booleano a partir de un deseo de calidad o estilo (ej: "buenas tortas", "rico café", "lugar lindo") — esos deseos van como condición de producto/ambiente, nunca en booleanos, porque un booleano es un filtro duro sin relajación y un dato incompleto puede dejar afuera resultados válidos. En particular, "Pasteleria Artesanal" tiene datos incompletos en la base: nunca la agregues por inferencia, y si el usuario la pide explícitamente, agregá también keywords de producto equivalentes ("pasteleria", "tortas caseras") DENTRO de esa misma condición para no perder resultados por falta de dato.
 14. HORARIOS más allá de "abierto ahora": si piden algo sobre horarios que no sea el momento actual (ej: "abre temprano", "cierra tarde", "abre los domingos", "qué días abre"), modo "sin_data" — no filtramos ni ordenamos por ese criterio de horario específico, solo por "abierto ahora" en este instante. Completá igual las condiciones respondibles si las hay (para no perder la parte respondible de la consulta), y en nota_para_respuesta aclarar que no filtramos por ese horario puntual pero el horario completo de cada café está disponible en su ficha.
-
+15. NUNCA PONGAS UN KEYWORD QUE CONTENGA A OTRO DEL MISMO GRUPO. El matching busca la frase
+   completa adentro del tag: si ya pusiste "plantas", esa sola keyword YA encuentra los tags
+   "lleno de plantas", "muchas plantas" y "plantas naturales". Agregarlas no suma ni un café
+   más -- ocupan lugar del tope y no cambian nada. Antes de responder, revisá cada grupo por
+   separado (directas por un lado, proxy por el otro) y borrá toda keyword que contenga a otra
+   del mismo grupo palabra por palabra.
+   Pares típicos a evitar: "lindo" + "lindo lugar", "tranquilo" + "ambiente tranquilo",
+   "latte" + "cafe latte", "con amigas" + "merendar con amigas". En todos, la corta sola hace
+   el mismo trabajo que las dos.
+   Cuál dejar: normalmente la más corta, porque encuentra todo lo que encuentra la larga.
+   EXCEPCIÓN: si la corta es un término tan general que lo tendría casi cualquier cafetería
+   ("cafe", "lugar", "comida"), esa es la que hay que borrar, y te quedás con la específica.
+   Una keyword que matchea a media base no es evidencia de nada.
+   NO APLICA a variantes morfológicas ni a palabras parecidas pero distintas: "torta" no
+   encuentra "tortas" (ni al revés), "planta" no encuentra "plantitas", "croissant" no
+   encuentra "croissants". Esos pares SÍ suman y hay que mantenerlos. La regla se activa
+   solo cuando una keyword aparece entera, como frase, adentro de otra.
+   Los lugares que liberes usalos para sinónimos realmente distintos, o dejalos sin usar:
+   quedarse corto es mejor que llenar con repeticiones.
 
 BARRIOS OFICIALES:
 {json.dumps(vocab['barrios'], ensure_ascii=False)}
@@ -6011,6 +6036,8 @@ def update_map_style(map_style):
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
+
+
 
 
 # Ejecuta la aplicación Dash
