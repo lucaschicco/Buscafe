@@ -25,6 +25,8 @@ import re
 # En Azure esto no hace nada porque las variables ya vienen del sistema
 load_dotenv()
 
+CARTO_KEY = os.getenv('CARTO_KEY', '')
+
 # Configuración de Firebase desde variables de entorno
 FIREBASE_CONFIG = {
     'apiKey': os.getenv('FIREBASE_API_KEY'),
@@ -649,7 +651,7 @@ def buscar_endpoint():
     except Exception as e:
         print(f'buscador_logs error: {e}')  # el log nunca rompe la búsqueda
         
-    return jsonify(armar_respuesta(res))
+    return jsonify(armar_respuesta(res, tr))
 
 
 # --- Buscador: plantillas de respuesta (todo texto visible al usuario sale de acá) ---
@@ -707,17 +709,47 @@ def _ficha(cafe, ev):
         },
     }
 
-def armar_respuesta(res):
+def _hubo_filtros(tr):
+    """True si la traducción trae algún filtro real (no solo un modo y una nota).
+
+    Espeja el criterio de consulta_vaga del motor, incluido el descarte de
+    condiciones sin keywords que buscar() hace en 'validas': una condición vacía
+    no la evalúa nadie, así que no cuenta como filtro. Contempla el campo viejo
+    "keywords" por si quedó una traducción cacheada del schema anterior.
+
+    Diferencia deliberada con el motor: acá abierto_ahora SÍ cuenta. El motor lo
+    excluye de consulta_vaga porque no afecta la cobertura, pero para elegir el
+    mensaje sí importa: filtrar por horario es una parte respondible de verdad.
+    """
+    f = (tr or {}).get('filtros') or {}
+    conds = [c for c in (f.get('condiciones') or [])
+             if (c.get('keywords_directas') or c.get('keywords_proxy') or c.get('keywords'))]
+    return bool(conds or f.get('barrios') or f.get('booleanos') or f.get('abierto_ahora'))
+
+
+def armar_respuesta(res, tr=None):
     modo = res['modo']
     nivel = res.get('nivel_cobertura')
     hay_resultados = bool(res['resultados'])
+    resultados = res['resultados']
+    suprimido = False
 
     if modo in ('favorita', 'off_topic', 'comparacion'):
         mensaje = PLANTILLAS_BUSCADOR[modo]
     elif modo == 'sin_resultados':
         mensaje = PLANTILLAS_BUSCADOR['sin_resultados']
     elif modo == 'sin_data':
-        mensaje = PLANTILLAS_BUSCADOR['sin_data'] if hay_resultados else PLANTILLAS_BUSCADOR['sin_data_vacio']
+        # Sin filtros reales, el motor devuelve el top bayesiano de TODA la base:
+        # los mismos 3 cafés para cualquier consulta. Mostrarlos bajo "con lo que
+        # sí sé" promete una relación con la consulta que no existe.
+        # Sin tr no se puede distinguir -> se conserva el comportamiento viejo.
+        filtros_reales = _hubo_filtros(tr) if tr is not None else hay_resultados
+        if hay_resultados and filtros_reales:
+            mensaje = PLANTILLAS_BUSCADOR['sin_data']
+        else:
+            mensaje = PLANTILLAS_BUSCADOR['sin_data_vacio']
+            resultados = []
+            suprimido = True
     else:  # busqueda
         if nivel == 'aproximado':
             mensaje = PLANTILLAS_BUSCADOR['aproximado']
@@ -726,18 +758,21 @@ def armar_respuesta(res):
         else:  # completo (o consulta vaga, que siempre es "completo")
             mensaje = PLANTILLAS_BUSCADOR['busqueda']
 
-    # aviso de precios: la nota del modelo dispara la plantilla, pero NUNCA se muestra cruda
-    if 'precio' in norm_buscador(res.get('nota', '')):
-        mensaje = PLANTILLAS_BUSCADOR['aviso_precios'] + ' ' + mensaje
-        
-    if 'barrio' in norm_buscador(res.get('nota', '')):
-        mensaje = 'Decime el barrio y afino la búsqueda. ' + mensaje
+    # avisos derivados de la nota: la disparan, pero NUNCA se muestra cruda.
+    # No aplican si suprimimos los resultados: pedir un barrio o avisar de precios
+    # contradice un mensaje que ya dijo que no hay datos.
+    if not suprimido:
+        if 'precio' in norm_buscador(res.get('nota', '')):
+            mensaje = PLANTILLAS_BUSCADOR['aviso_precios'] + ' ' + mensaje
+
+        if 'barrio' in norm_buscador(res.get('nota', '')):
+            mensaje = 'Decime el barrio y afino la búsqueda. ' + mensaje
 
     return {
         'modo': modo,
         'nivel_cobertura': nivel,
         'mensaje': mensaje,
-        'resultados': [_ficha(c, ev) for c, ev in res['resultados']],
+        'resultados': [_ficha(c, ev) for c, ev in resultados],
     }
 
 
@@ -5530,7 +5565,7 @@ app.layout = html.Div([
         children=[
             dl.TileLayer(
                 id="base-layer",
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=" + CARTO_KEY,
                 detectRetina=False
             ),
             dl.LocateControl(setView='once', locateOptions={'enableHighAccuracy': True},
@@ -6030,14 +6065,12 @@ def toggle_login_signup(n_signup, n_login):
 def update_map_style(map_style):
     style_urls = {
         'osm': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'carto-positron': 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        'carto-positron': 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=' + CARTO_KEY,
+        'carto-darkmatter': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=' + CARTO_KEY
     }
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
-
-
 
 
 # Ejecuta la aplicación Dash
