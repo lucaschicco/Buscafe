@@ -5204,6 +5204,7 @@ barrios_unicos = sorted(
 
 app.layout = html.Div([
     dcc.Store(id='initial-load', data=True),
+    dcc.Store(id='nombres-store', data=nombres_unicos),
     dcc.Store(id='clientside-store-data', data=None),
     dcc.Store(id='info-visible', data=False),
 
@@ -5489,7 +5490,7 @@ app.layout = html.Div([
 
                 dcc.Dropdown(
                     id='nombre-filter',
-                    options=[{'label': n, 'value': n} for n in nombres_unicos],
+                    options=[],
                     value=None,
                     multi=True,
                     labels={'select_all': '', 'deselect_all': ''},
@@ -6013,6 +6014,26 @@ app.clientside_callback(
 )
 
 
+app.clientside_callback(
+    """
+    function(search_value, nombres) {
+        if (!search_value || search_value.length < 2) return [];
+        var q = search_value.toLowerCase();
+        var out = [];
+        for (var i = 0; i < nombres.length && out.length < 50; i++) {
+            if (nombres[i].toLowerCase().indexOf(q) !== -1) {
+                out.push({label: nombres[i], value: nombres[i]});
+            }
+        }
+        return out;
+    }
+    """,
+    Output('nombre-filter', 'options'),
+    Input('nombre-filter', 'search_value'),
+    State('nombres-store', 'data'),
+    prevent_initial_call=True
+)
+
 
 
 @app.callback(
@@ -6074,6 +6095,7 @@ def update_map_style(map_style):
 
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
+
 
 
 # Ejecuta la aplicación Dash
