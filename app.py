@@ -415,14 +415,17 @@ Ejemplo 2 (varias condiciones, cada una independiente):
 
 Ejemplo 3 (deseo funcional/subjetivo = una sola condición amplia, no fragmentar; acá SÍ hay proxys):
 "Un café para estudiar." -> condiciones: [
-  {{"tipo": "ambiente", "intencion": "estudiar", "keywords_directas": ["ideal para estudiar", "ideal para trabajar"], "keywords_proxy": ["wifi", "enchufes", "tranquilo", "silencioso"]}}
+  {{"tipo": "ambiente", "intencion": "estudiar", "keywords_directas": ["estudiar", "trabajar"], "keywords_proxy": ["wifi", "enchufes"]}}
 ]
-(el usuario pidió UNA cosa -- estudiar. "ideal para estudiar" es evidencia directa;
-wifi/enchufes/tranquilo son señales observables que lo sugieren, no lo demuestran: son proxy)
+(el usuario pidió UNA cosa -- estudiar. "estudiar" es evidencia directa: la base tiene 506
+formulaciones distintas del campo ideal_para y TODAS contienen la palabra suelta, nunca la
+frase "ideal para estudiar". Como el match es por palabra completa dentro del tag, la forma
+corta las captura a todas. wifi/enchufes son observables que lo sugieren sin demostrarlo: proxy.
+"tranquilo" NO va como proxy acá: lo tiene el 70% de la base y vuelve la condición trivial)
 
 Ejemplo 4 (contraste con el 3: acá SÍ nombró las cosas por separado):
 "Un café tranquilo para estudiar, con wifi y enchufes." -> condiciones: [
-  {{"tipo": "ambiente", "intencion": "estudiar", "keywords_directas": ["ideal para estudiar", "ideal para trabajar"], "keywords_proxy": []}},
+  {{"tipo": "ambiente", "intencion": "estudiar", "keywords_directas": ["estudiar", "trabajar"], "keywords_proxy": []}},
   {{"tipo": "ambiente", "intencion": "tranquilo", "keywords_directas": ["tranquilo", "silencioso"], "keywords_proxy": []}},
   {{"tipo": "ambiente", "intencion": "wifi", "keywords_directas": ["wifi", "enchufes"], "keywords_proxy": []}}
 ]
@@ -479,7 +482,7 @@ REGLAS:
    "linda para merendar" NO son ocasiones sociales: son cualidad y productos, y van por el camino normal
    (directas con la formulación literal de lo pedido). Si dudás, preguntate si en la consulta aparece una
    persona o un grupo de personas; si no aparece, no es ocasión social.
-   ATENCIÓN: esta regla NO aplica a ACTIVIDADES (estudiar, trabajar, leer, videollamadas). Esas son intenciones funcionales, siguen el Ejemplo 3, y sí llevan directas ("ideal para estudiar", "ideal para leer") porque son formulaciones que la base usa literalmente. Ocasión = con quién. Actividad = para qué.
+   ATENCIÓN: esta regla NO aplica a ACTIVIDADES (estudiar, trabajar, leer, videollamadas). Esas son intenciones funcionales, siguen el Ejemplo 3, y sí llevan directas, pero en su forma CORTA ("estudiar", "trabajar", "leer"), que es la que la base usa realmente dentro de ideal_para. La forma larga "ideal para X" casi no existe en los tags: matchea 39 cafés de 2.631 y hace que la condición se resuelva siempre por proxy. Ocasión = con quién. Actividad = para qué.
 5. Consultas emocionales o de mal momento: agregar en keywords_excluir señales de mal trato ("atención deficiente", "mala onda").
 6. Negaciones ("nada de Instagram", "no turístico"): lo rechazado va SOLO en keywords_excluir (lista plana, no condiciones). NUNCA crees una condición para lo negado: una condición con los dos grupos vacíos no se puede cumplir nunca y hunde la cobertura de todo el resultado. Si la consulta es solo una negación, la lista de condiciones puede quedar vacía.
 7. "Cerca mío" / "cerca de X" donde X no es un barrio de la lista: si podés mapearlo a uno o más barrios de la lista (Obelisco->San Nicolas, Microcentro->San Nicolas y Monserrat, Caminito->Boca, Plaza Italia->Palermo), hacelo, agregando todos los barrios que correspondan a "barrios"; si no, nota_para_respuesta pidiendo el barrio.
