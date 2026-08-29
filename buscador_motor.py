@@ -42,6 +42,13 @@ Diseño:
   adentro de cada nivel. Una señal continua acá (se probó con rareza de tags) aplasta al
   bayesiano y hace subir cafés de 20 reviews.
 
+- RIQUEZA DE EVIDENCIA (ver TOPE_KW_DESEMPATE): la fuerza toma el MÁXIMO por condición
+  (corta en la mejor keyword que matchea), así que no distingue entre un café con una sola
+  keyword y otro con tres. Con directas anchas eso deja miles de cafés empatados en
+  cobertura Y fuerza, y el desempate vuelve a caer en el bayesiano. riqueza_kw cuenta
+  cuántas keywords distintas matchean (topeadas) y se intercala como escalón previo al
+  bayesiano. No toca cobertura, fuerza ni nivel_evidencia: solo ordena adentro de un empate.
+
 NOTA sobre calidad de evidencia: este motor NO decide qué keyword es directo y cuál es
 proxy -- eso lo declara el traductor (armar_system_prompt() en app.py). Medido sobre 161
 consultas, ~5% de las condiciones traen un tag muy ancho ascendido a directa (ej:
@@ -91,6 +98,20 @@ GUARDRAIL_DIRECTAS_ANCHAS = 0   # si > 0, una keyword_directa que matchee más d
                                 # que esto solo debería activarse junto con el chequeo de
                                 # literalidad. Con 0 queda desactivado.
 UMBRAL_COBERTURA = 0.65  # % mínimo de condiciones cumplidas para nivel "parcial" (ver _nivel_cobertura)
+
+# --- Desempate por cantidad de evidencia ---
+# Cuántos TAGS DISTINTOS del café respaldan una condición. Desempata entre cafés que ya
+# empataron en cobertura y fuerza: un café con un tag de trabajar MÁS uno de wifi tiene más
+# evidencia que uno con un solo tag de trabajar, aunque la fuerza máxima de ambos sea igual
+# (fuerza toma el máximo por condición, no la suma).
+# Se cuentan tags y no keywords: "trabajar o estudiar" matchea dos directas pero es UNA
+# evidencia sola. Contar keywords premiaría a los tags ambiguos (91 cafés en la base).
+# Motivo concreto: la base tiene 1.324 cafés (50%) con algún tag de trabajar/estudiar. Sin
+# este escalón todos empatan y decide score_bayes, o sea popularidad presentada como match.
+# Se topea a propósito: con pocos valores discretos los empates SIGUEN existiendo y el
+# bayesiano sigue decidiendo adentro de cada escalón (misma lógica que FUERZA_*).
+# 0 lo desactiva (vuelve al comportamiento anterior).
+TOPE_KW_DESEMPATE = 3
 
 
 # ==================== NORMALIZACIÓN ====================
@@ -390,8 +411,8 @@ def evaluar_cafe(cafe, filtros, ahora=None, prep=None):
     """
     t = cafe["tags"]
     evidencia = {"barrio": None, "booleanos": [], "cumplidas": [], "faltantes": [],
-                 "cobertura": 1.0, "fuerza": 0.0, "nivel_evidencia": "sin_condiciones",
-                 "excluido_por": None}
+                 "cobertura": 1.0, "fuerza": 0.0, "riqueza_kw": 0,
+                 "nivel_evidencia": "sin_condiciones", "excluido_por": None}
 
     # barrio: filtro duro
     barrios = filtros.get("barrios", [])
@@ -428,17 +449,32 @@ def evaluar_cafe(cafe, filtros, ahora=None, prep=None):
         prep = prep or []
         cid = cafe["id"]
         fuerzas = []
+        riqueza_total = 0
         for i, cond in enumerate(condiciones):
             tipo = cond.get("tipo", "ambiente")
             intencion = cond.get("intencion", "")
             # prep[i] viene ordenado por fuerza descendente, así que la PRIMERA que matchea
-            # ya es la mejor evidencia que este café tiene para esta intención. Cortamos ahí.
+            # ya es la mejor evidencia que este café tiene para esta intención: esa es la que
+            # se guarda en "cumplidas" y la que define la fuerza (máximo, no suma).
+            # Antes cortábamos ahí. Ahora seguimos recorriendo SOLO para contar cuántos TAGS
+            # DISTINTOS respaldan la condición (ver TOPE_KW_DESEMPATE). Se cuentan tags y no
+            # keywords a propósito: el tag "trabajar o estudiar" matchea las DOS directas
+            # pero sigue siendo UNA sola evidencia, y contarlo doble lo empataría con un café
+            # que tiene un tag de trabajar MÁS uno de wifi. El índice guarda el texto del tag
+            # matcheado, así que alcanza con juntarlos en un set.
+            # Esta cuenta no cambia la fuerza ni la cobertura: solo desempata en el ranking.
+            # Con TOPE_KW_DESEMPATE = 0 se corta en la primera, como antes de este cambio.
             encontrado = None
+            tags_match = set()
             for k, idx, fuerza in (prep[i] if i < len(prep) else []):
                 m = idx.get(cid)
                 if m:
-                    encontrado = (k, m, fuerza)
-                    break
+                    if encontrado is None:
+                        encontrado = (k, m, fuerza)
+                    tags_match.add(m)
+                    if not TOPE_KW_DESEMPATE or len(tags_match) >= TOPE_KW_DESEMPATE:
+                        break
+            riqueza_total += len(tags_match)
             if encontrado:
                 # tupla de 4, igual que antes: app.py desempaqueta (tipo, intencion, k, tx)
                 evidencia["cumplidas"].append((tipo, intencion, encontrado[0], encontrado[1]))
@@ -449,6 +485,10 @@ def evaluar_cafe(cafe, filtros, ahora=None, prep=None):
         # Promedio sobre las CUMPLIDAS y no sobre el total: la cobertura ya penaliza las
         # faltantes; la fuerza mide qué tan buena es la evidencia que sí hay.
         evidencia["fuerza"] = (sum(fuerzas) / len(fuerzas)) if fuerzas else 0.0
+        # Suma sobre condiciones (no promedio): todos los cafés de una misma consulta se
+        # comparan contra la misma lista de condiciones, así que el denominador es igual
+        # para todos y la suma mantiene el valor entero (más empates, que es lo buscado).
+        evidencia["riqueza_kw"] = riqueza_total
         if fuerzas:
             if all(f == FUERZA_DIRECTA for f in fuerzas):
                 evidencia["nivel_evidencia"] = "directa"
@@ -552,14 +592,17 @@ def _rankear(candidatos, filtros, consulta_vaga):
             max_int = max((h["intensidad"] or 0 for h in heroes), default=0)
             max_menc = max((h["menciones"] or 0 for h in heroes), default=0)
             return (cobertura, nivel, max_int, max_menc,
-                    ev.get("fuerza", 0.0), cafe["score_bayes"])
-        # rating_bayesiano, en tres escalones:
+                    ev.get("fuerza", 0.0), ev.get("riqueza_kw", 0),
+                    cafe["score_bayes"])
+        # rating_bayesiano, en cuatro escalones:
         #   1. cobertura  -> ¿cuántas de las intenciones cumple?
-        #   2. fuerza     -> ¿qué tan buena es la evidencia de que las cumple?
-        #   3. bayesiano  -> ¿qué tan confiable es el café?
-        # La fuerza toma pocos valores discretos a propósito: los empates siguen existiendo
-        # y el bayesiano sigue decidiendo adentro de cada escalón.
-        return (cobertura, ev.get("fuerza", 0.0), cafe["score_bayes"])
+        #   2. fuerza     -> ¿qué tan buena es la MEJOR evidencia de cada intención?
+        #   3. riqueza_kw -> ¿CUÁNTA evidencia hay? (desempata dentro del mismo nivel)
+        #   4. bayesiano  -> ¿qué tan confiable es el café?
+        # Fuerza y riqueza toman pocos valores discretos a propósito: los empates siguen
+        # existiendo y el bayesiano sigue decidiendo adentro de cada escalón.
+        return (cobertura, ev.get("fuerza", 0.0), ev.get("riqueza_kw", 0),
+                cafe["score_bayes"])
 
     candidatos = sorted(candidatos, key=clave, reverse=True)
 
