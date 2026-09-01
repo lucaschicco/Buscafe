@@ -3387,12 +3387,6 @@ app.index_string = r"""
   }});
   </script>
 
-  <!-- Plausible Analytics -->
-  <script async src="https://plausible.io/js/pa-O3G5p9yqP3LqneR-vxxCU.js"></script>
-  <script>
-    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-    plausible.init()
-  </script>
 
   
   <!-- CSS Crítico para render inicial -->
@@ -3465,9 +3459,18 @@ app.index_string = r"""
 
     if (esInstagram && esIOS) {
       var banner = document.getElementById('ig-webview-banner');
+      function moverHeader(px) {
+        var h = document.querySelector('.app-header');
+        if (h) { h.style.top = px; return; }
+        document.addEventListener('DOMContentLoaded', function() {
+          var h2 = document.querySelector('.app-header');
+          if (h2) h2.style.top = px;
+        });
+      }
+
       banner.style.display = 'flex';
       document.body.style.paddingTop = '55px';
-      document.querySelector('.app-header').style.top = '55px';
+      moverHeader('55px');
 
       function trackear(nombre) {
         if (window.appInsights && typeof window.appInsights.trackEvent === 'function') {
@@ -3486,7 +3489,7 @@ app.index_string = r"""
         trackear('ig_webview_banner_descartado');
         banner.style.display = 'none';
         document.body.style.paddingTop = '';
-        document.querySelector('.app-header').style.top = '0';
+        moverHeader('0');
       });
     }
   })();
@@ -5104,8 +5107,16 @@ app.index_string = r"""
     body.innerHTML = '';
     var loading = document.createElement('div');
     loading.className = 'buscador-loading';
-    loading.textContent = 'Pensando...';
+    loading.textContent = 'Pensando';
     body.appendChild(loading);
+
+    var _msgsCarga = ['Pensando', 'Buscando entre 3.000 cafeterias', 'Ordenando resultados'];
+    var _iCarga = 0;
+    clearInterval(window._buscadorTimer);
+    window._buscadorTimer = setInterval(function() {
+      _iCarga = (_iCarga + 1) % _msgsCarga.length;
+      loading.textContent = _msgsCarga[_iCarga];
+    }, 1600);
 
     window._buscadorEnCurso = true;
     try {
@@ -5130,6 +5141,7 @@ app.index_string = r"""
       mostrarErrorBuscador('No se pudo conectar. Revisá tu conexión y probá de nuevo.');
     } finally {
       window._buscadorEnCurso = false;
+      clearInterval(window._buscadorTimer);
     }
   };
 
