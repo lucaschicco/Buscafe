@@ -1759,11 +1759,39 @@ body {
 .buscador-loading {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   color: #888;
   font-size: 13px;
   padding: 20px 0;
   justify-content: center;
+  animation: bc-pulso 1.8s ease-in-out infinite;
+}
+
+.buscador-loading::after {
+  content: '';
+  display: inline-block;
+  width: 1.1em;
+  text-align: left;
+  animation: bc-puntos 1.4s steps(1, end) infinite;
+}
+
+@keyframes bc-puntos {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+
+@keyframes bc-pulso {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buscador-loading,
+  .buscador-loading::after { animation: none; }
+  .buscador-loading::after { content: '...'; }
 }
 
 .buscador-resultado-card {
