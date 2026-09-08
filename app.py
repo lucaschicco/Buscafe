@@ -576,9 +576,35 @@ def traducir_consulta(consulta: str) -> dict | None:
 
 
 # --- Buscador: endpoint /buscar ---
-LIMITE_BUSQUEDAS_DIA = 5    # por usuario (ajustable)
-LIMITE_IP_DIA = 30          # anti-scraping por conexión
+LIMITE_BUSQUEDAS_DIA = 10    # por usuario logueado (ajustable)
+LIMITE_ANON = 2             # búsquedas sin cuenta, por navegador
+LIMITE_IP_DIA = 60          # anti-scraping por conexión (logueados)
+LIMITE_IP_ANON_DIA = 10     # anti-scraping por conexión (anónimos, tolera CGNAT)
+PRESUPUESTO_TRADUCCIONES_DIA = 400   # kill-switch de costo global
 _usos_ip = {}               # en memoria: alcanza con 1 worker, se resetea al reiniciar
+_gasto_global = {'fecha': None, 'n': 0}
+
+_COOKIE_ANON = 'bc_anon'
+_SECRET_ANON = (os.environ.get('BUSCADOR_COOKIE_SECRET') or '').encode() or os.urandom(32)
+
+def _firmar_anon(fecha, n):
+    import hmac, hashlib, base64
+    msg = f'{fecha}|{n}'.encode()
+    mac = hmac.new(_SECRET_ANON, msg, hashlib.sha256).digest()[:12]
+    return f'{fecha}|{n}|' + base64.urlsafe_b64encode(mac).decode().rstrip('=')
+
+def _leer_anon(valor, hoy):
+    """Devuelve el contador de hoy. Cookie inválida, vieja o ausente -> 0."""
+    import hmac
+    try:
+        fecha, n, _ = (valor or '').split('|')
+        if fecha != hoy:
+            return 0
+        if not hmac.compare_digest(_firmar_anon(fecha, n), valor):
+            return 0
+        return int(n)
+    except Exception:
+        return 0
 
 def _hoy_ba():
     """Fecha actual en hora argentina (UTC-3), para cortar el día donde corresponde."""
@@ -596,10 +622,9 @@ def verificar_usuario(id_token):
 def buscar_endpoint():
     body = flask_request.get_json(silent=True) or {}
 
-    # 1. auth
+    # 1. auth (opcional: sin token se permiten LIMITE_ANON búsquedas)
     uid = verificar_usuario(body.get('token', ''))
-    if not uid:
-        return jsonify({'error': 'Tenés que iniciar sesión para usar el buscador.'}), 401
+    anonimo = uid is None
 
     # 2. validación de input
     consulta = (body.get('consulta') or '').strip()
@@ -610,22 +635,38 @@ def buscar_endpoint():
 
     hoy = _hoy_ba()
 
-    # 3. anti-scraping por IP
+    # 3. anti-scraping por IP (más estricto para anónimos)
     ip = (flask_request.headers.get('X-Forwarded-For') or flask_request.remote_addr or '?').split(',')[0].strip()
+    tope_ip = LIMITE_IP_ANON_DIA if anonimo else LIMITE_IP_DIA
     fecha_ip, n_ip = _usos_ip.get(ip, (hoy, 0))
     if fecha_ip != hoy:
         n_ip = 0
-    if n_ip >= LIMITE_IP_DIA:
+    if n_ip >= tope_ip:
         return jsonify({'error': 'Demasiadas búsquedas desde esta conexión. Probá mañana.'}), 429
     _usos_ip[ip] = (hoy, n_ip + 1)
 
-    # 4. límite diario por usuario (Firestore)
+    # 3b. presupuesto global: garantía dura de costo
+    if _gasto_global['fecha'] != hoy:
+        _gasto_global['fecha'], _gasto_global['n'] = hoy, 0
+    if _gasto_global['n'] >= PRESUPUESTO_TRADUCCIONES_DIA:
+        return jsonify({'error': 'El buscador está descansando por hoy. Volvé mañana ☕'}), 429
+
+    # 4. límite por usuario
     db = get_admin_db()
-    ref = db.collection('buscador_usos').document(uid)
-    doc = ref.get().to_dict() or {}
-    usos = doc.get('usos', 0) if doc.get('fecha') == hoy else 0
-    if usos >= LIMITE_BUSQUEDAS_DIA:
-        return jsonify({'error': f'Llegaste al límite de {LIMITE_BUSQUEDAS_DIA} búsquedas por hoy. Volvé mañana ☕'}), 429
+    if anonimo:
+        usos = _leer_anon(flask_request.cookies.get(_COOKIE_ANON), hoy)
+        if usos >= LIMITE_ANON:
+            return jsonify({
+                'error': f'Usaste tus {LIMITE_ANON} búsquedas de prueba. Iniciá sesión gratis y tenés {LIMITE_BUSQUEDAS_DIA} por día ☕',
+                'requiere_login': True
+            }), 401
+        ref = None
+    else:
+        ref = db.collection('buscador_usos').document(uid)
+        doc = ref.get().to_dict() or {}
+        usos = doc.get('usos', 0) if doc.get('fecha') == hoy else 0
+        if usos >= LIMITE_BUSQUEDAS_DIA:
+            return jsonify({'error': f'Llegaste al límite de {LIMITE_BUSQUEDAS_DIA} búsquedas por hoy. Volvé mañana ☕'}), 429
 
     # 5. recién acá gastamos: traducción con Sonnet
     tr = traducir_consulta(consulta)
@@ -634,7 +675,9 @@ def buscar_endpoint():
         return jsonify({'error': 'El buscador tuvo un problema. Probá de nuevo en un rato.'}), 502
 
     # traducción exitosa -> ahora sí cuenta como uso
-    ref.set({'fecha': hoy, 'usos': usos + 1}, merge=True)
+    _gasto_global['n'] += 1
+    if ref is not None:
+        ref.set({'fecha': hoy, 'usos': usos + 1}, merge=True)
 
     # 6. motor, con hora argentina explícita
     res = motor_buscar(tr, CAFES_BUSCADOR, ahora=datetime.utcnow() - timedelta(hours=3))
@@ -642,7 +685,8 @@ def buscar_endpoint():
     # 7. log de la búsqueda (analítica / cache futuro / regresiones)
     try:
         db.collection('buscador_logs').add({
-            'uid': uid,
+            'uid': uid or 'anon',
+            'anonimo': anonimo,
             'ts': datetime.utcnow(),
             'consulta': consulta,
             'modo': res['modo'],
@@ -654,7 +698,16 @@ def buscar_endpoint():
     except Exception as e:
         print(f'buscador_logs error: {e}')  # el log nunca rompe la búsqueda
         
-    return jsonify(armar_respuesta(res, tr))
+    payload = armar_respuesta(res, tr)
+    if anonimo:
+        payload['busquedas_anon_restantes'] = max(0, LIMITE_ANON - (usos + 1))
+    resp = jsonify(payload)
+    if anonimo:
+        resp.set_cookie(
+            _COOKIE_ANON, _firmar_anon(hoy, usos + 1),
+            max_age=60 * 60 * 24 * 2, httponly=True, samesite='Lax', secure=True
+        )
+    return resp
 
 
 # --- Buscador: plantillas de respuesta (todo texto visible al usuario sale de acá) ---
@@ -3387,6 +3440,120 @@ app.index_string = r"""
   }});
   </script>
 
+  <!-- ===== FUNNEL: helper de tracking + hitos de sesion ===== -->
+  <script>
+  (function() {
+    var t0 = Date.now();
+    var enviado = false;
+
+    window.bcHitos = {
+      mapa_listo: false,
+      mapa_movido: false,
+      pin_click: false,
+      buscador_abierto: false,
+      login_requerido: false,
+      busqueda_enviada: false,
+      resultado_click: false
+    };
+    window.bcPines = 0;
+
+    window.bcTrack = function(nombre, props) {
+      try {
+        if (!window.appInsights || typeof window.appInsights.trackEvent !== 'function') return;
+        var base = { segundos_desde_carga: Math.round((Date.now() - t0) / 1000) };
+        if (props) { for (var k in props) { if (props.hasOwnProperty(k)) base[k] = props[k]; } }
+        window.appInsights.trackEvent({ name: nombre, properties: base });
+      } catch (e) { /* el tracking nunca rompe la app */ }
+    };
+
+    window.bcHito = function(nombre, props) {
+      if (window.bcHitos[nombre]) return;
+      window.bcHitos[nombre] = true;
+      window.bcTrack(nombre, props);
+    };
+
+    // --- mapa_listo: primera aparicion de marcadores en el DOM ---
+    function observarMapa() {
+      if (!document.body) { setTimeout(observarMapa, 100); return; }
+      var sel = '.leaflet-marker-icon, .leaflet-marker-pane img, .leaflet-interactive';
+      if (document.querySelector(sel)) { window.bcHito('mapa_listo'); return; }
+      var obs = new MutationObserver(function() {
+        if (document.querySelector(sel)) {
+          window.bcHito('mapa_listo');
+          obs.disconnect();
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+      setTimeout(function() {
+        if (!window.bcHitos.mapa_listo) {
+          window.bcTrack('mapa_nunca_cargo');
+          obs.disconnect();
+        }
+      }, 25000);
+    }
+    observarMapa();
+
+    // --- interaccion con el mapa: click en pin + primer paneo/zoom ---
+    document.addEventListener('click', function(e) {
+      try {
+        var t = e.target;
+        if (!t || !t.closest) return;
+        if (t.closest('.leaflet-marker-icon, .leaflet-marker-pane, .leaflet-popup')) {
+          window.bcPines++;
+          window.bcHito('pin_click');
+        }
+      } catch (err) {}
+    }, true);
+
+    function marcarMapaMovido() {
+      if (window.bcHitos.mapa_movido) return;
+      window.bcHito('mapa_movido');
+    }
+    ['wheel', 'touchmove'].forEach(function(ev) {
+      document.addEventListener(ev, function(e) {
+        try {
+          if (e.target && e.target.closest && e.target.closest('.leaflet-container')) {
+            marcarMapaMovido();
+          }
+        } catch (err) {}
+      }, { capture: true, passive: true });
+    });
+    document.addEventListener('click', function(e) {
+      try {
+        if (e.target && e.target.closest && e.target.closest('.leaflet-control-zoom')) {
+          marcarMapaMovido();
+        }
+      } catch (err) {}
+    }, true);
+
+    // --- sesion_fin: resumen al salir ---
+    function enviarFin() {
+      if (enviado) return;
+      enviado = true;
+      var h = window.bcHitos;
+      window.bcTrack('sesion_fin', {
+        segundos_total: Math.round((Date.now() - t0) / 1000),
+        vio_mapa: h.mapa_listo,
+        movio_mapa: h.mapa_movido,
+        toco_pin: h.pin_click,
+        pines_tocados: window.bcPines,
+        abrio_buscador: h.buscador_abierto,
+        freno_en_login: h.login_requerido,
+        busco: h.busqueda_enviada,
+        clickeo_resultado: h.resultado_click,
+        interactuo: (h.mapa_movido || h.pin_click || h.buscador_abierto ||
+                     h.busqueda_enviada || h.resultado_click)
+      });
+      try { if (window.appInsights.flush) window.appInsights.flush(); } catch (e) {}
+    }
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'hidden') enviarFin();
+    });
+    window.addEventListener('pagehide', enviarFin);
+  })();
+  </script>
+
 
   
   <!-- CSS Crítico para render inicial -->
@@ -4980,7 +5147,7 @@ app.index_string = r"""
 
     var aviso = document.createElement('div');
     aviso.id = 'buscador-aviso-login';
-    aviso.textContent = 'Para usar el buscador tenés que iniciar sesión';
+    aviso.textContent = 'Probá 2 búsquedas gratis. Con tu cuenta tenés 10 por día ☕';
     aviso.style.cssText = 'display:none;margin-bottom:10px;padding:8px 12px;' +
                           'border-radius:8px;background:#FFF4E5;color:#8A5A00;' +
                           'font-size:13px;line-height:1.35;';
@@ -5023,9 +5190,16 @@ app.index_string = r"""
     msg.textContent = data.mensaje;
     body.appendChild(msg);
 
-    (data.resultados || []).forEach(function(r) {
+    (data.resultados || []).forEach(function(r, _idx) {
       var card = document.createElement('div');
       card.className = 'buscador-resultado-card';
+      card.addEventListener('click', function(e) {
+        var esWeb = !!(e.target && e.target.closest && e.target.closest('a'));
+        if (window.bcHito) window.bcHito('resultado_click');
+        if (window.bcTrack) window.bcTrack(esWeb ? 'resultado_click_web' : 'resultado_click_card', {
+          posicion: _idx + 1
+        });
+      });
 
       var nombre = document.createElement('div');
       nombre.className = 'buscador-resultado-nombre';
@@ -5082,6 +5256,7 @@ app.index_string = r"""
   }
 
   window.abrirBuscador = function() {
+    if (window.bcHito) window.bcHito('buscador_abierto');
     document.getElementById('buscador-sheet').classList.add('visible');
     var input = document.getElementById('buscador-input');
     if (!input.value.trim()) mostrarEjemplosBuscador();
@@ -5098,10 +5273,6 @@ app.index_string = r"""
     if (!texto) return;
     document.getElementById('buscador-input').value = texto;
 
-    if (!window.firebaseAuth || !window.firebaseAuth.currentUser) {
-      document.getElementById('btn-login')?.click();
-      return;
-    }
 
     var body = document.getElementById('buscador-sheet-body');
     body.innerHTML = '';
@@ -5119,25 +5290,49 @@ app.index_string = r"""
     }, 1600);
 
     window._buscadorEnCurso = true;
+    if (window.bcHito) window.bcHito('busqueda_enviada', { largo_consulta: texto.length });
+    if (window.bcTrack) window.bcTrack('busqueda_intento', { largo_consulta: texto.length });
+    var _tBusq = Date.now();
+
     try {
-      var token = await window.firebaseAuth.currentUser.getIdToken();
+      var token = '';
+      try {
+        if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+          token = await window.firebaseAuth.currentUser.getIdToken();
+        }
+      } catch (e) { token = ''; }
+
       var r = await fetch('/buscar', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
         body: JSON.stringify({token: token, consulta: texto})
       });
       var data = await r.json();
 
       if (!r.ok) {
+        if (window.bcTrack) window.bcTrack('busqueda_error', {
+          status: r.status,
+          ms: Date.now() - _tBusq
+        });
         mostrarErrorBuscador(data.error || 'Algo salió mal. Probá de nuevo.');
         if (r.status === 401) document.getElementById('btn-login')?.click();
         return;
       }
+      if (window.bcTrack) window.bcTrack('busqueda_ok', {
+        ms: Date.now() - _tBusq,
+        n_resultados: (data.resultados || []).length,
+        sin_resultados: (data.resultados || []).length === 0
+      });
       mostrarResultadosBuscador(data);
       var ph = document.getElementById('buscador-bar-placeholder');
       if (ph) ph.textContent = texto;
     } catch (e) {
       console.warn('buscador error:', e);
+      if (window.bcTrack) window.bcTrack('busqueda_error', {
+        status: 'red',
+        ms: Date.now() - _tBusq
+      });
       mostrarErrorBuscador('No se pudo conectar. Revisá tu conexión y probá de nuevo.');
     } finally {
       window._buscadorEnCurso = false;
