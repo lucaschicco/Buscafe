@@ -172,17 +172,56 @@ def google_a_firestore(d: dict) -> dict:
         'alta_manual': True,
     }
 
+from math import radians, sin, cos, asin, sqrt
+
+def haversine_m(lat1, lon1, lat2, lon2):
+    dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
+    a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
+    return 2 * 6371000 * asin(sqrt(a))
+
+# Campos que se refrescan desde Google cuando un café se muda.
+# Deliberadamente NO incluye especialidad, pasteleria_artesanal, sin_tacc,
+# popular, es_cadena, no_es_cadena ni tematica_puesto_diario: esos son tuyos.
+CAMPOS_MUDANZA = (
+    'nombre', 'direccion', 'barrio', 'latitud', 'longitud',
+    'rating', 'cantidad_reviews', 'sitio_web', 'horarios',
+    'resumen_editorial_google',
+)
+
 
 def preview_alta(place_id: str) -> dict:
-    """Trae y mapea SIN escribir. Devuelve dict o {'error': ...}."""
+    """Trae y mapea SIN escribir. Si ya existe, informa qué cambió."""
     d = obtener_detalles(place_id)
     if not d:
         return {'error': 'No se encontró el place_id en Google Places'}
     doc = google_a_firestore(d)
     if doc['latitud'] is None or doc['longitud'] is None:
         return {'error': 'El lugar no tiene coordenadas'}
-    return {'place_id': place_id, 'doc': doc}
 
+    snap = get_admin_db().collection('cafes').document(place_id).get()
+    if not snap.exists:
+        return {'place_id': place_id, 'doc': doc, 'existe': False}
+
+    actual = snap.to_dict() or {}
+    cambios = {
+        c: {'antes': actual.get(c), 'ahora': doc.get(c)}
+        for c in ('nombre', 'direccion', 'barrio')
+        if (actual.get(c) or None) != (doc.get(c) or None)
+    }
+    dist = None
+    if actual.get('latitud') is not None and actual.get('longitud') is not None:
+        dist = haversine_m(actual['latitud'], actual['longitud'],
+                           doc['latitud'], doc['longitud'])
+    return {
+        'place_id': place_id,
+        'doc': doc,
+        'existe': True,
+        'activo': actual.get('activo', True),
+        'baja_manual': actual.get('baja_manual', False),
+        'cambios': cambios,
+        'distancia_m': round(dist) if dist is not None else None,
+        'mudanza': bool(dist is not None and dist > 150),
+    }
 
 
 
@@ -212,14 +251,41 @@ def admin_alta_endpoint():
     resultado = preview_alta(place_id)
     if 'error' in resultado:
         return jsonify(resultado), 400
-
-    db = get_admin_db()
-    ref = db.collection('cafes').document(place_id)
-    if ref.get().exists:
+    if resultado['existe']:
         return jsonify({'error': 'Ese café ya existe en la base'}), 409
 
-    ref.set(resultado['doc'], merge=True)
+    get_admin_db().collection('cafes').document(place_id).set(
+        resultado['doc'], merge=True)
     return jsonify({'ok': True, 'nombre': resultado['doc']['nombre']})
+
+
+@server.route('/admin/actualizar-ubicacion', methods=['POST'])
+def admin_actualizar_ubicacion():
+    """Mismo place_id, nueva sede: refresca ubicación sin tocar etiquetas propias."""
+    body = flask_request.get_json(silent=True) or {}
+    if not verificar_admin(body.get('token', '')):
+        return jsonify({'error': 'No autorizado'}), 403
+    place_id = (body.get('place_id') or '').strip()
+    if not place_id:
+        return jsonify({'error': 'Falta el place_id'}), 400
+
+    resultado = preview_alta(place_id)
+    if 'error' in resultado:
+        return jsonify(resultado), 400
+    if not resultado['existe']:
+        return jsonify({'error': 'No existe todavía: usá alta normal'}), 404
+
+    doc = resultado['doc']
+    parche = {c: doc.get(c) for c in CAMPOS_MUDANZA}
+    parche.update({
+        'activo': True,
+        'baja_manual': False,
+        'editado_en': admin_firestore.SERVER_TIMESTAMP,
+        'ubicacion_actualizada_en': admin_firestore.SERVER_TIMESTAMP,
+    })
+    get_admin_db().collection('cafes').document(place_id).set(parche, merge=True)
+    return jsonify({'ok': True, 'nombre': doc['nombre'],
+                    'direccion': doc['direccion'], 'barrio': doc['barrio']})
 
 
 @server.route('/api/geojson')
@@ -4580,12 +4646,42 @@ app.index_string = r"""
             const data = await r.json();
             if (data.error) { cont.innerHTML = '⚠️ ' + data.error; return; }
             const d = data.doc;
+            const btn = document.getElementById('alta-confirmar');
+
+            let extra = '<span style="color:#777;">Especialidad, pastelería y demás etiquetas propias se marcan después con Editar.</span>';
+
+            if (data.existe) {
+                const cambios = Object.entries(data.cambios || {}).map(
+                    ([k, v]) => `${k}: <s>${v.antes ?? '—'}</s> → <b>${v.ahora ?? '—'}</b>`
+                ).join('<br>');
+
+                if (data.mudanza || cambios) {
+                    window._altaModo = 'actualizar';
+                    btn.textContent = 'Actualizar ubicación';
+                    btn.style.display = 'inline-block';
+                    extra = `<div style="color:#b35;margin-top:6px;">
+                        Ya está en la base con el mismo place_id.
+                        ${data.distancia_m != null ? `Se movió ~${data.distancia_m} m.<br>` : ''}
+                        ${cambios}
+                        ${data.baja_manual ? '<br>Estaba dado de baja: se va a reactivar.' : ''}
+                        <br><span style="color:#777;">Tus etiquetas propias no se tocan.</span>
+                    </div>`;
+                } else {
+                    window._altaModo = null;
+                    btn.style.display = 'none';
+                    extra = '<span style="color:#b35;">Ya existe en la base y no cambió nada.</span>';
+                }
+            } else {
+                window._altaModo = 'alta';
+                btn.textContent = 'Confirmar alta';
+                btn.style.display = 'inline-block';
+            }
+
             cont.innerHTML = `
                 <b>${d.nombre}</b><br>
                 ${d.direccion}<br>
                 Barrio: ${d.barrio} · Rating: ${d.rating ?? '—'} (${d.cantidad_reviews ?? 0} reviews)<br>
-                <span style="color:#777;">Especialidad, pastelería y demás etiquetas propias se marcan después con Editar.</span>`;
-            document.getElementById('alta-confirmar').style.display = 'inline-block';
+                ${extra}`;
         } catch (e) {
             cont.innerHTML = 'Error de conexión';
             console.warn(e);
@@ -4594,16 +4690,22 @@ app.index_string = r"""
 
     window.confirmarAlta = async function() {
         const placeId = document.getElementById('alta-place-id').value.trim();
+        const modo = window._altaModo || 'alta';
+        const url = modo === 'actualizar' ? '/admin/actualizar-ubicacion' : '/admin/alta';
         try {
             const token = await window.firebaseAuth.currentUser.getIdToken();
-            const r = await fetch('/admin/alta', {
+            const r = await fetch(url, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ token, place_id: placeId })
             });
             const data = await r.json();
             if (data.error) { window.showToast('⚠️ ' + data.error, 3000); return; }
-            window.showToast(`✓ ${data.nombre} dado de alta. Falta publicar.`, 3500);
+            const msg = modo === 'actualizar'
+                ? `✓ ${data.nombre} actualizado: ${data.direccion}. Falta publicar.`
+                : `✓ ${data.nombre} dado de alta. Falta publicar.`;
+            window.showToast(msg, 3500);
+            window._altaModo = null;
             window.closeAltaModal();
         } catch (e) {
             window.showToast('Error de conexión');
@@ -6072,6 +6174,9 @@ app.clientside_callback(
     """
     function(barrios, features, rating, dias, abiertoAhora, nombre, bounds, zoom, store) {
                                           // 🆕 nuevo parámetro acá ↑
+        const _ctxDbg = dash_clientside.callback_context;
+        console.log('[FILTRO]', 'trigger=', _ctxDbg.triggered[0]?.prop_id, '| nombre=', JSON.stringify(nombre), '| barrios=', JSON.stringify(barrios));
+
         if (!store || !store.features) {
             return window.dash_clientside.no_update;
         }
@@ -6305,6 +6410,10 @@ def update_map_style(map_style):
 
 
 
+# Ejecutar la aplicación
+if __name__ == '__main__':
+    app.run(debug=True,port=3010) 
+    
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
     app.run_server(debug=False)
