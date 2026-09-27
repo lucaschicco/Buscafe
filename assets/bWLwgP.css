@@ -1115,6 +1115,91 @@ body {
   border-color: #104547;
 }
 
+/* ===== POPUP COMPACTO (agregar debajo de LEAFLET (MAPA Y POPUPS)) ===== */
+.popup-card {
+  min-width: 210px;
+}
+
+.leaflet-popup-content .popup-meta {
+  text-align: center;
+  font-size: 13px;
+  color: #333;
+  margin: 0 0 3px;
+}
+
+.popup-meta .popup-reviews-n {
+  font-size: 12px;
+  color: #777;
+}
+
+.leaflet-popup-content .popup-estado {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.popup-estado.abierto       { color: #1e7d4f; }
+.popup-estado.cierra-pronto { color: #b86e00; }
+.popup-estado.cerrado       { color: #b3261e; }
+
+.popup-vermas {
+  display: block;
+  margin: 6px auto 0;
+  padding: 4px 10px;
+  background: none;
+  border: none;
+  color: #104547;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.popup-vermas:focus-visible {
+  outline: 2px solid #64b6ac;
+  outline-offset: 2px;
+}
+
+.popup-detalle {
+  display: none;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #eee;
+  font-size: 12px;
+  color: #555;
+}
+
+.popup-detalle.visible {
+  display: block;
+}
+
+.leaflet-popup-content .popup-detalle p {
+  margin: 0 0 4px;
+}
+
+.popup-horarios-tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.popup-horarios-tabla td {
+  padding: 1px 0;
+  vertical-align: top;
+}
+
+.popup-horarios-tabla td:last-child {
+  text-align: right;
+  padding-left: 8px;
+}
+
+.popup-horarios-tabla tr.hoy td {
+  font-weight: 700;
+  color: #104547;
+}
+
+
 /* ============================================
    UTILIDADES
    ============================================ */
