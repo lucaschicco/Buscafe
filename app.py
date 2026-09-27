@@ -3522,6 +3522,7 @@ app.index_string = r"""
       resultado_click: false
     };
     window.bcPines = 0;
+    window.bcVerMas = 0;
 
     window.bcTrack = function(nombre, props) {
       try {
@@ -3603,6 +3604,7 @@ app.index_string = r"""
         movio_mapa: h.mapa_movido,
         toco_pin: h.pin_click,
         pines_tocados: window.bcPines,
+        ver_mas_tocados: window.bcVerMas,
         abrio_buscador: h.buscador_abierto,
         freno_en_login: h.login_requerido,
         busco: h.busqueda_enviada,
@@ -4475,6 +4477,137 @@ app.index_string = r"""
   <!-- Funciones de utilidad para popups y panel -->
   <script>
 
+    // ===== POPUP COMPACTO: horarios y "ver más" =====
+    
+    window.bcHorarios = (function() {
+        const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+        const ORDEN = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
+        const LABEL = { Miercoles: 'Miércoles', Sabado: 'Sábado' };
+        const nombreDia = d => LABEL[d] || d;
+
+        const toMin = s => {
+            if (s == null) return null;
+            const [h, m] = String(s).trim().split(':').map(Number);
+            return (isNaN(h) || isNaN(m)) ? null : h * 60 + m;
+        };
+        const fmt = min => String(Math.floor(min / 60) % 24).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+
+        // "08:00,16:00" / "12:00,20:00" -> [[480,720],[960,1200]]
+        function intervalos(props, dia) {
+            const o = props[dia + '_open'], c = props[dia + '_close'];
+            const vacio = v => !v || v === 'None' || v === 'nan';
+            if (vacio(o) || vacio(c)) return [];
+            const os = String(o).split(','), cs = String(c).split(',');
+            const out = [];
+            for (let i = 0; i < os.length; i++) {
+                const a = toMin(os[i]), b = toMin(cs[i]);
+                if (a !== null && b !== null) out.push([a, b]);
+            }
+            return out;
+        }
+
+        function ahoraBA() {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/Argentina/Buenos_Aires',
+                weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+            }).formatToParts(new Date());
+            const get = t => parts.find(p => p.type === t).value;
+            return {
+                dia: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday')),
+                min: parseInt(get('hour'), 10) * 60 + parseInt(get('minute'), 10)
+            };
+        }
+
+        const abierto = (cierre, faltan) => faltan <= 60
+            ? { texto: 'Cierra a las ' + fmt(cierre), clase: 'cierra-pronto' }
+            : { texto: 'Abierto hasta las ' + fmt(cierre), clase: 'abierto' };
+
+        // Devuelve {texto, clase} o null si no hay horarios cargados.
+        function estado(props) {
+            if (!DIAS.some(d => intervalos(props, d).length)) return null;
+            const { dia, min: now } = ahoraBA();
+
+            // 1) Intervalo de ayer que cruza medianoche (ej. vie 20:00-02:00, ahora sáb 01:00)
+            for (const [o, c] of intervalos(props, DIAS[(dia + 6) % 7])) {
+                if (c < o && now < c) return abierto(c, c - now);
+            }
+            // 2) Intervalos de hoy
+            const hoy = intervalos(props, DIAS[dia]);
+            for (const [o, c] of hoy) {
+                if (o === c) return { texto: 'Abierto las 24 hs', clase: 'abierto' };
+                if (c > o && now >= o && now < c) return abierto(c, c - now);
+                if (c < o && now >= o) return abierto(c, c + 1440 - now);
+            }
+            // 3) Próxima apertura
+            const resto = hoy.map(x => x[0]).filter(o => o > now).sort((a, b) => a - b);
+            if (resto.length) return { texto: 'Abre a las ' + fmt(resto[0]), clase: 'cerrado' };
+            for (let k = 1; k <= 7; k++) {
+                const d = DIAS[(dia + k) % 7];
+                const ints = intervalos(props, d);
+                if (ints.length) {
+                    const o = Math.min(...ints.map(x => x[0]));
+                    const cuando = k === 1 ? 'mañana' : 'el ' + nombreDia(d).toLowerCase();
+                    return { texto: 'Abre ' + cuando + ' a las ' + fmt(o), clase: 'cerrado' };
+                }
+            }
+            return null;
+        }
+
+        const abiertoAhora = props => {
+            const e = estado(props);
+            return !!e && e.clase !== 'cerrado';
+        };
+
+        function grilla(props) {
+            if (!ORDEN.some(d => intervalos(props, d).length)) {
+                return "<p><strong>Horarios:</strong> sin datos</p>";
+            }
+            const hoy = DIAS[ahoraBA().dia];
+            const filas = ORDEN.map(d => {
+                const ints = intervalos(props, d);
+                const txt = ints.length
+                    ? ints.map(([o, c]) => o === c ? '24 hs' : fmt(o) + '–' + fmt(c)).join(' / ')
+                    : 'Cerrado';
+                return "<tr class='" + (d === hoy ? 'hoy' : '') + "'><td>" + nombreDia(d) + "</td><td>" + txt + "</td></tr>";
+            }).join('');
+            return "<p><strong>Horarios</strong></p><table class='popup-horarios-tabla'>" + filas + "</table>";
+        }
+
+        return { estado, abiertoAhora, grilla };
+    })();
+
+    // Arma el detalle recién en el primer "Ver más" y lo alterna.
+    window.togglePopupDetalle = function(btn) {
+        const card = btn.closest('.popup-card');
+        const det = card && card.querySelector('.popup-detalle');
+        const props = window._popupProps;
+        if (!det || !props) return;
+
+        if (!det.dataset.cargado) {
+            const raw = props['Sitio Web'] || '';
+            let web = 'Sin datos';
+            if (raw && raw !== 'Sin datos') {
+                let corto = raw.replace('https://', '').replace('http://', '');
+                if (corto.endsWith('/')) corto = corto.slice(0, -1);
+                web = "<a href='" + raw + "' target='_blank' rel='noopener' style='color:#104547;'>" + corto + "</a>";
+            }
+            det.innerHTML =
+                "<p><strong>Dirección:</strong> " + (props['Dirección'] || 'Sin datos') + "</p>" +
+                "<p><strong>Sitio web:</strong> " + web + "</p>" +
+                window.bcHorarios.grilla(props);
+            det.dataset.cargado = '1';
+            window.bcVerMas = (window.bcVerMas || 0) + 1;
+            if (window.bcTrack) window.bcTrack('popup_ver_mas', { cafe_id: props.id });
+        }
+
+        const abrir = !det.classList.contains('visible');
+        det.classList.toggle('visible', abrir);
+        btn.textContent = abrir ? 'Ver menos' : 'Ver más';
+        // El contenido es un nodo DOM (no string), así que update() no pisa el estado expandido
+        if (window._popupActual) window._popupActual.update();
+    };
+
+    
     // ===== ADMIN: edición de cafés =====
     window.ADMIN_EMAIL = 'buscafes.ai@gmail.com';
 
@@ -5891,48 +6024,29 @@ app.layout = html.Div([
                     pointToLayer=assign("""
                         function(feature, latlng){
                             const props = feature.properties;
-                            let iconUrl = props.iconUrl;
-                            
+                            // Alto del header/buscador que tapa el mapa arriba: ajustar si el popup queda debajo
+                            const POPUP_PAD_TOP = 90;
+
                             let marker = L.marker(latlng, {
                                 icon: L.icon({
-                                    iconUrl: iconUrl,
+                                    iconUrl: props.iconUrl,
                                     iconSize: [18, 27],
                                     iconAnchor: [12, 23],
                                     popupAnchor: [1, -34],
                                     shadowSize: [0, 0]
                                 })
                             });
-                            
-                            const tooltipHTML = `
-                                <p class='nombre'>${props.Nombre}</p>
-                                <p><span class='bold-text'>Rating: </span>${props.Rating}</p>
-                                <p><span class='bold-text'>Dirección: </span>${props['Dirección']}</p>
-                            `;
-                            marker.bindTooltip(tooltipHTML, {className: 'marker-tooltip'});
-                    
-                            marker.on('click', function(){
-                                const days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-                                let horariosHTML = '<strong style="text-decoration: underline;">Horarios:</strong><br>';
-                                
-                                days.forEach(day => {
-                                    const open = props[day + '_open'];
-                                    const close = props[day + '_close'];
-                                    if (open && close && open !== 'None' && close !== 'None') {
-                                        horariosHTML += day + ': ' + open + ' - ' + close + '<br>';
-                                    } else {
-                                        horariosHTML += day + ': No abre<br>';
-                                    }
-                                });
 
-                                                                
-                                const sitioWebRaw = props['Sitio Web'] || '';
-                                const sitioWeb = sitioWebRaw && sitioWebRaw !== 'Sin datos' 
-                                    ? `<a href="${sitioWebRaw}" target="_blank" style="color:#104547;">${sitioWebRaw.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a>`
-                                    : 'Sin datos';
-                    
+                            // Tooltip solo con el nombre, y solo en desktop (en mobile el tap lo abre junto al popup)
+                            if (!L.Browser.mobile) {
+                                marker.bindTooltip(`<p class='nombre'>${props.Nombre}</p>`, {className: 'marker-tooltip'});
+                            }
+
+                            marker.on('click', function(){
+                                marker.closeTooltip();
+
                                 const id = props.id;
                                 const nombre = props.Nombre;
-                                const safeNombre = nombre.replace(/'/g, "\\\\'");
                                 const cafeData = window.getCafeData(id);
                                 const esFav = cafeData.isFavorite === true;
                                 const esVist = cafeData.isVisited === true;
@@ -5940,45 +6054,48 @@ app.layout = html.Div([
                                 const btnAdmin = (window.esAdmin && window.esAdmin())
                                     ? `<button class='popup-action-btn' onclick='window.openAdminModal("${id}")'>✏️ Editar</button>`
                                     : '';
-                                const popupHTML = `
+
+                                const n = Number(props['Cantidad Reviews']);
+                                const reviewsTxt = isNaN(n) ? '' : ` <span class='popup-reviews-n'>(${n.toLocaleString('es-AR')} reseñas)</span>`;
+                                const estado = window.bcHorarios ? window.bcHorarios.estado(props) : null;
+
+                                const card = L.DomUtil.create('div', 'popup-card');
+                                card.innerHTML = `
                                     <p class='popup-nombre'><strong>${nombre}</strong></p>
-                                    <p class='popup-rating'><strong>Rating:</strong> ${props.Rating}</p>
-                                    <p class='popup-reviews'><strong>Reviews:</strong> ${props['Cantidad Reviews']}</p>
-                                    <p class='popup-web'><strong>Sitio Web:</strong> ${sitioWeb}</p>
-                                    <p class='popup-direccion'><strong>Dirección:</strong> ${props['Dirección']}</p>
-                                    <p class='popup-horarios'>${horariosHTML}</p>
+                                    <p class='popup-meta'>⭐ ${props.Rating}${reviewsTxt}</p>
+                                    ${estado ? `<p class='popup-estado ${estado.clase}'>${estado.texto}</p>` : ''}
                                     <div class='popup-actions'>
-                                        <button 
-                                            id='btn-fav-${id}' 
-                                            class='popup-action-btn ${esFav ? "active" : ""}' 
+                                        <button id='btn-fav-${id}' class='popup-action-btn ${esFav ? "active" : ""}'
                                             onclick='window.toggleFavorito("${id}")'>
                                             ${esFav ? '❤️' : '🤍'} Favorito
                                         </button>
-                                        <button 
-                                            id='btn-vist-${id}' 
-                                            class='popup-action-btn ${esVist ? "active" : ""}' 
+                                        <button id='btn-vist-${id}' class='popup-action-btn ${esVist ? "active" : ""}'
                                             onclick='window.toggleVisitado("${id}")'>
                                             ${esVist ? '✅' : '📍'} Visitado
                                         </button>
-                                        <button 
-                                            class='popup-action-btn ${hasNote ? "active" : ""}' 
+                                        <button class='popup-action-btn ${hasNote ? "active" : ""}'
                                             onclick='window.openNoteModal("${id}")'>
                                             📝 ${hasNote ? 'Ver nota' : 'Nota'}
                                         </button>
                                         ${btnAdmin}
                                     </div>
+                                    <button class='popup-vermas' onclick='window.togglePopupDetalle(this)'>Ver más</button>
+                                    <div class='popup-detalle'></div>
                                 `;
-                                
-                                var popup = L.popup({closeOnMove: false})
+
+                                window._popupProps = props;
+                                window._popupActual = L.popup({
+                                        closeOnMove: false,
+                                        maxWidth: 280,
+                                        autoPan: true,
+                                        autoPanPaddingTopLeft: L.point(20, POPUP_PAD_TOP),
+                                        autoPanPaddingBottomRight: L.point(20, 20)
+                                    })
                                     .setLatLng(latlng)
-                                    .setContent(popupHTML)
+                                    .setContent(card)
                                     .openOn(marker._map);
-                    
-                                var zoomLevel = marker._map.getZoom();
-                                var latOffset = 0.05 / Math.pow(2, zoomLevel - 12);
-                                marker._map.panTo([latlng.lat + latOffset, latlng.lng], {animate: true});
                             });
-                            
+
                             return marker;
                         }
                     """)
@@ -6223,57 +6340,8 @@ app.clientside_callback(
                     );
                 }
                 
-                // 🆕 FILTRO ABIERTO AHORA
                 if (abiertoAhora?.length) {
-                    const now = new Date();
-                    const fmt = new Intl.DateTimeFormat('es-AR', {
-                        timeZone: 'America/Argentina/Buenos_Aires',
-                        weekday: 'long',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                    });
-                    const parts = fmt.formatToParts(now);
-                    const weekdayRaw = parts.find(p => p.type === 'weekday').value.toLowerCase();
-                    const hourStr = parts.find(p => p.type === 'hour').value;
-                    const minStr = parts.find(p => p.type === 'minute').value;
-                    
-                    const dayMap = {
-                        'domingo': 'Domingo', 'lunes': 'Lunes', 'martes': 'Martes',
-                        'miércoles': 'Miercoles', 'jueves': 'Jueves',
-                        'viernes': 'Viernes', 'sábado': 'Sabado'
-                    };
-                    const today = dayMap[weekdayRaw];
-                    const nowMinutes = parseInt(hourStr, 10) * 60 + parseInt(minStr, 10);
-                    
-                    const toMinutes = (s) => {
-                        if (!s || s === 'None' || s === 'nan') return null;
-                        const [h, m] = s.split(':').map(Number);
-                        if (isNaN(h) || isNaN(m)) return null;
-                        return h * 60 + m;
-                    };
-                    
-                    const estaAbierta = (openStr, closeStr) => {
-                        if (!openStr || !closeStr || openStr === 'None' || closeStr === 'None') return false;
-                        const opens = openStr.split(',').map(s => s.trim());
-                        const closes = closeStr.split(',').map(s => s.trim());
-                        for (let i = 0; i < opens.length; i++) {
-                            const o = toMinutes(opens[i]);
-                            const c = toMinutes(closes[i]);
-                            if (o === null || c === null) continue;
-                            if (c >= o) {
-                                if (nowMinutes >= o && nowMinutes < c) return true;
-                            } else {
-                                // cruza medianoche (ej: 20:00 - 02:00)
-                                if (nowMinutes >= o || nowMinutes < c) return true;
-                            }
-                        }
-                        return false;
-                    };
-                    
-                    feats = feats.filter(f => 
-                        estaAbierta(f.properties[today + '_open'], f.properties[today + '_close'])
-                    );
+                    feats = feats.filter(f => window.bcHorarios.abiertoAhora(f.properties));
                 }
                 
                 // 🔒 CASO NOMBRE: PRIORIDAD ABSOLUTA
@@ -6408,11 +6476,6 @@ def update_map_style(map_style):
     # Default
     return style_urls.get(map_style, style_urls['carto-positron'])
 
-
-
-# Ejecutar la aplicación
-if __name__ == '__main__':
-    app.run(debug=True,port=3010) 
     
 # Ejecuta la aplicación Dash
 if __name__ == "__main__":
