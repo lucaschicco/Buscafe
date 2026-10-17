@@ -327,25 +327,29 @@ PUB_MAPEO_INVERSO = {v: k for k, v in PUB_MAPEO_BOOLS.items()}
 
 # --- Buscador: universo de cafés en memoria ---
 from buscador_motor import buscar as motor_buscar, BAYES_C, BAYES_M, norm as norm_buscador
+from buscador_nombres import construir_indice, buscar_por_nombre, parece_nombre, terminos_desde_vocab
 
 BUSCADOR_DIAS = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
 
 def cargar_data_buscador():
-    """Lee de Firestore los cafés activos CON tags y los adapta a la estructura del motor.
-    Se llama una sola vez al arrancar la app (misma filosofía que el geojson)."""
+    """Lee de Firestore los cafés activos y los adapta a la estructura del motor.
+    Se llama una sola vez al arrancar la app (misma filosofía que el geojson).
+
+    Devuelve (con_tags, todos):
+      con_tags -> universo del motor (sin tags no hay evidencia que buscar)
+      todos    -> índice de búsqueda por nombre: un café publicado tiene que
+                  encontrarse por su nombre aunque todavía no tenga tags.
+    Es el mismo .stream(): no suma lecturas."""
     db = get_admin_db()
-    cafes = []
+    cafes, todos = [], []
     sin_tags = 0
     for snap in db.collection('cafes').where('activo', '==', True).stream():
         d = snap.to_dict()
         t = d.get('tags')
-        if not t:
-            sin_tags += 1
-            continue
         v = d.get('cantidad_reviews') or 0
         R = d.get('rating') or 0
         horarios_fs = d.get('horarios') or {}
-        cafes.append({
+        cafe = {
             'id': snap.id,
             'nombre': d.get('nombre', ''),
             'barrio': d.get('barrio', 'Desconocido'),
@@ -360,16 +364,31 @@ def cargar_data_buscador():
             'direccion': d.get('direccion', ''),
             'sitio_web': d.get('sitio_web', ''),
             'tags': t,
-        })
-    print(f'Buscador: {len(cafes)} cafés cargados ({sin_tags} sin tags, excluidos)')
-    return cafes
+        }
+        todos.append(cafe)
+        if t:
+            cafes.append(cafe)
+        else:
+            sin_tags += 1
+    print(f'Buscador: {len(cafes)} cafés cargados ({sin_tags} sin tags, excluidos del motor; '
+          f'{len(todos)} en el índice de nombres)')
+    return cafes, todos
 
-CAFES_BUSCADOR = cargar_data_buscador()
+CAFES_BUSCADOR, CAFES_NOMBRES = cargar_data_buscador()
 
 
 # --- Buscador: traducción de consultas con Sonnet ---
 with open('vocabulario_buscador.json', encoding='utf-8') as _f:
     _VOCAB_BUSCADOR = json.load(_f)
+
+# --- Buscador: índice de nombres (búsqueda tipo Google Maps, sin Sonnet) ---
+IDX_NOMBRES = construir_indice(
+    CAFES_NOMBRES,
+    barrios=set(_VOCAB_BUSCADOR.get('barrios', [])) | {c['barrio'] for c in CAFES_NOMBRES if c.get('barrio')},
+    terminos_vocab=terminos_desde_vocab(_VOCAB_BUSCADOR),
+)
+MAX_CAFES_NOMBRE = 5   # cadenas: Martinelli tiene 4 sucursales
+print(f"Buscador: índice de nombres con {len(IDX_NOMBRES['por_nucleo'])} núcleos")
 
 def armar_system_prompt(vocab: dict) -> str:
     return f"""Sos el traductor de consultas del buscador de buscafes.com.ar, una app de cafeterías de Buenos Aires.
@@ -699,6 +718,27 @@ def buscar_endpoint():
     if len(consulta) > 200:
         return jsonify({'error': 'Máximo 200 caracteres.'}), 400
 
+    # 2b. búsqueda por nombre: índice local, sin Sonnet y sin descontar uso.
+    #     Va antes de los límites a propósito: devuelve datos que ya son públicos
+    #     en el mapa, no cuesta nada, y un anónimo sin búsquedas puede igual
+    #     encontrar el café que tipeó.
+    r_nom = buscar_por_nombre(consulta, IDX_NOMBRES)
+    if r_nom['tipo'] == 'cafe':
+        cafes = r_nom['cafes'][:MAX_CAFES_NOMBRE]
+        _log_buscador({
+            'uid': uid or 'anon', 'anonimo': anonimo, 'ts': datetime.utcnow(),
+            'consulta': consulta, 'modo': 'cafe', 'modo_respuesta': 'cafe',
+            'nivel_cobertura': None, 'traduccion': None,
+            'resultados_ids': [c['id'] for c in cafes], 'parcial': False,
+            'nombre_lookup': _resumen_lookup(r_nom),
+        })
+        return jsonify({
+            'modo': 'cafe',
+            'nivel_cobertura': None,
+            'mensaje': PLANTILLAS_BUSCADOR['cafe' if len(cafes) == 1 else 'cafe_varios'],
+            'resultados': [_ficha_cafe(c) for c in cafes],
+        })
+
     hoy = _hoy_ba()
 
     # 3. anti-scraping por IP (más estricto para anónimos)
@@ -748,23 +788,26 @@ def buscar_endpoint():
     # 6. motor, con hora argentina explícita
     res = motor_buscar(tr, CAFES_BUSCADOR, ahora=datetime.utcnow() - timedelta(hours=3))
 
-    # 7. log de la búsqueda (analítica / cache futuro / regresiones)
-    try:
-        db.collection('buscador_logs').add({
-            'uid': uid or 'anon',
-            'anonimo': anonimo,
-            'ts': datetime.utcnow(),
-            'consulta': consulta,
-            'modo': res['modo'],
-            'nivel_cobertura': res.get('nivel_cobertura'),
-            'traduccion': tr,
-            'resultados_ids': [c['id'] for c, _ in res['resultados']],
-            'parcial': res['resultado_parcial'],
-        })
-    except Exception as e:
-        print(f'buscador_logs error: {e}')  # el log nunca rompe la búsqueda
-        
+    # 7. respuesta + lo que aporte el lookup por nombre (sugerencia / café que no tenemos)
     payload = armar_respuesta(res, tr)
+    payload = _aplicar_lookup_nombre(payload, r_nom, consulta)
+
+    # 8. log de la búsqueda (analítica / cache futuro / regresiones)
+    #    'modo' sigue siendo el del motor (series comparables); lo que vio el
+    #    usuario cuando el lookup lo cambia queda en 'modo_respuesta'.
+    _log_buscador({
+        'uid': uid or 'anon',
+        'anonimo': anonimo,
+        'ts': datetime.utcnow(),
+        'consulta': consulta,
+        'modo': res['modo'],
+        'modo_respuesta': payload['modo'],
+        'nivel_cobertura': res.get('nivel_cobertura'),
+        'traduccion': tr,
+        'resultados_ids': [c['id'] for c, _ in res['resultados']],
+        'parcial': res['resultado_parcial'],
+        'nombre_lookup': _resumen_lookup(r_nom),
+    })
     if anonimo:
         payload['busquedas_anon_restantes'] = max(0, LIMITE_ANON - (usos + 1))
     resp = jsonify(payload)
@@ -788,6 +831,14 @@ PLANTILLAS_BUSCADOR = {
     'favorita':       'No tengo favorita: yo laburo de buscador, el paladar lo ponés vos. Si querés te muestro las mejor valoradas: probá "las mejores cafeterías".',
     'off_topic':      'De eso no sé nada, yo solo entiendo de cafeterías de Buenos Aires ☕',
     'aviso_precios':  'Ojo: datos de precios todavía no manejo, esto es por lo que dicen las reseñas.',
+    # búsqueda por nombre
+    'cafe':                  'Encontré esta cafetería:',
+    'cafe_varios':           'Encontré estas cafeterías con ese nombre:',
+    'sugerencia':            '¿Buscabas esta cafetería?',
+    'sugerencia_varios':     '¿Buscabas alguna de estas cafeterías?',
+    'tambien_nombre':        'También hay una cafetería que se llama así:',
+    'tambien_nombre_varios': 'También hay cafeterías que se llaman así:',
+    'cafe_no_encontrado':    'Esa cafetería todavía no la tengo en el mapa. Si la conocés, sugerila y la sumo ☕',
 }
 
 def _ficha(cafe, ev):
@@ -830,6 +881,142 @@ def _ficha(cafe, ev):
             'faltantes': faltantes,
         },
     }
+
+def _log_buscador(doc):
+    """El log nunca rompe la búsqueda."""
+    try:
+        get_admin_db().collection('buscador_logs').add(doc)
+    except Exception as e:
+        print(f'buscador_logs error: {e}')
+
+
+def _resumen_lookup(r_nom):
+    """Qué hizo el lookup por nombre, para el log (None si no matcheó nada)."""
+    if not r_nom or not r_nom.get('tipo'):
+        return None
+    return {'tipo': r_nom['tipo'], 'via': r_nom['via'], 'matcheo': r_nom['matcheo'],
+            'ids': [c['id'] for c in r_nom['cafes'][:MAX_CAFES_NOMBRE]]}
+
+
+def _tags_ordenados(valor, limite):
+    """Lista de tags -> textos, los más mencionados primero si hay conteo.
+    Acepta strings sueltos o dicts ({'tag'|'producto'|'ambiente': ..., 'menciones': n})."""
+    items = []
+    for i, x in enumerate(valor or []):
+        if isinstance(x, str):
+            items.append((x, None, i))
+        elif isinstance(x, dict):
+            txt = next((x.get(k) for k in ('tag', 'producto', 'ambiente', 'nombre')
+                        if isinstance(x.get(k), str)), None)
+            if txt:
+                items.append((txt, x.get('menciones'), i))
+    items.sort(key=lambda t: (-(t[1] or 0), t[2]))
+    vistos, out = set(), []
+    for txt, men, _ in items:
+        if txt not in vistos:
+            vistos.add(txt)
+            out.append((txt, men))
+        if len(out) == limite:
+            break
+    return out
+
+
+def _a_minutos(hhmm):
+    try:
+        h, m = str(hhmm).split(':')[:2]
+        return int(h) * 60 + int(m)
+    except Exception:
+        return None
+
+
+def _horario_hoy(cafe):
+    """('Abierto ahora · hoy 08:00–20:00', True) / (..., False) / (None, None) sin datos."""
+    horarios = cafe.get('horarios') or {}
+    if not any(o or c for o, c in horarios.values()):
+        return None, None
+    ahora = datetime.utcnow() - timedelta(hours=3)
+    dia = BUSCADOR_DIAS[(ahora.weekday() + 1) % 7]   # weekday(): lunes=0; BUSCADOR_DIAS arranca en domingo
+    o, c = horarios.get(dia) or (None, None)
+    mo, mc = _a_minutos(o), _a_minutos(c)
+    if mo is None or mc is None:
+        return 'Hoy cerrado', False
+    t = ahora.hour * 60 + ahora.minute
+    abierto = (mo <= t < mc) if mc > mo else (t >= mo or t < mc)   # cierre después de medianoche
+    return f"{'Abierto ahora' if abierto else 'Cerrado ahora'} · hoy {o}–{c}", abierto
+
+
+def _ficha_cafe(cafe):
+    """Ficha de un café encontrado por nombre. Mismo formato que _ficha() para que el
+    frontend la dibuje igual; los chips acá son 'lo que más destacan' de sus tags,
+    no evidencia de una consulta."""
+    tags = cafe.get('tags') or {}
+    # productos: los hero (con menciones) primero; si son pocos, completa con destacados
+    prod = _tags_ordenados(tags.get('productos_hero'), 3)
+    vistos = {t for t, _ in prod}
+    for txt, _ in _tags_ordenados(tags.get('productos_destacados'), 3):
+        if len(prod) >= 3:
+            break
+        if txt not in vistos:
+            prod.append((txt, None))
+            vistos.add(txt)
+    productos = [{'tag': txt, 'menciones': men} for txt, men in prod]
+    # ambiente: lo distintivo del lugar primero, después sus tags de ambiente.
+    # alertas_recurrentes NO: la ficha muestra lo que destaca, no las quejas.
+    amb = [t for t, _ in _tags_ordenados(tags.get('señas_distintivas'), 2)]
+    for txt, _ in _tags_ordenados(tags.get('ambiente_tags'), 4):
+        if len(amb) >= 4:
+            break
+        if txt not in amb:
+            amb.append(txt)
+    ambiente = amb
+    horario, abierto = _horario_hoy(cafe)
+    return {
+        'id': cafe['id'],
+        'nombre': cafe['nombre'],
+        'barrio': cafe['barrio'],
+        'rating': cafe['rating'],
+        'reviews': cafe['reviews'],
+        'direccion': cafe.get('direccion', ''),
+        'sitio_web': cafe.get('sitio_web', ''),
+        'horario_hoy': horario,
+        'abierto_ahora': abierto,
+        'destaca': True,
+        'evidencia': {'productos': productos, 'ambiente': ambiente, 'cumple': [],
+                      'cobertura': 100, 'faltantes': []},
+    }
+
+
+def _aplicar_lookup_nombre(payload, r_nom, consulta):
+    """Combina la respuesta normal con el lookup por nombre.
+
+    ambiguo exacto/núcleo (el texto es nombre Y término: "Merienda", "Patio")
+        -> con resultados: se agregan arriba como 'también hay una que se llama así'
+        -> sin resultados: el café pasa a ser la respuesta
+    ambiguo aproximado (typo, contención: "tinos", "barato" ~ Barto)
+        -> solo si la búsqueda normal quedó vacía: '¿Buscabas esta?'
+    sin match + tiene forma de nombre + Sonnet dijo off_topic ("Fedora")
+        -> 'todavía no la tengo en el mapa' + botón para sugerirla
+    """
+    vacio = not payload.get('resultados')
+    tipo = r_nom.get('tipo') if r_nom else None
+
+    if tipo == 'ambiguo':
+        cafes = r_nom['cafes'][:MAX_CAFES_NOMBRE]
+        aproximado = r_nom['via'] in ('fuzzy', 'contencion')
+        if vacio:
+            payload['modo'] = 'sugerencia_nombre'
+            payload['mensaje'] = PLANTILLAS_BUSCADOR['sugerencia' if len(cafes) == 1 else 'sugerencia_varios']
+            payload['resultados'] = [_ficha_cafe(c) for c in cafes]
+        elif not aproximado:
+            payload['sugerencias'] = [_ficha_cafe(c) for c in cafes]
+            payload['sugerencias_label'] = PLANTILLAS_BUSCADOR[
+                'tambien_nombre' if len(cafes) == 1 else 'tambien_nombre_varios']
+    elif tipo is None and payload.get('modo') == 'off_topic' and parece_nombre(consulta, IDX_NOMBRES):
+        payload['modo'] = 'cafe_no_encontrado'
+        payload['mensaje'] = PLANTILLAS_BUSCADOR['cafe_no_encontrado']
+        payload['sugerir_cafe'] = True
+    return payload
+
 
 def _hubo_filtros(tr):
     """True si la traducción trae algún filtro real (no solo un modo y una nota).
@@ -5416,6 +5603,28 @@ app.index_string = r"""
     body.appendChild(div);
   }
 
+  // ── Ver un café del buscador en el mapa: centra y abre su popup ──
+  // Misma mecánica que el deep link /?cafe=<id>. Si un filtro activo oculta el
+  // pin, al menos queda centrado.
+  window.verCafeEnMapa = function(id) {
+    var info = (window.buscafesLookup || {})[id];
+    var map = window._buscafesMap;
+    if (!info || info.lat == null || !map) return;
+    if (window.cerrarBuscador) window.cerrarBuscador();
+    map.setView([info.lat, info.lng], 17, {animate: true});
+    var intentos = 0;
+    var timer = setInterval(function() {
+      if (++intentos > 25) { clearInterval(timer); return; }
+      var found = null;
+      map.eachLayer(function(l) {
+        if (found || !(l instanceof L.Marker)) return;
+        var ll = l.getLatLng();
+        if (Math.abs(ll.lat - info.lat) < 1e-5 && Math.abs(ll.lng - info.lng) < 1e-5) found = l;
+      });
+      if (found) { clearInterval(timer); found.fire('click'); }
+    }, 300);
+  };
+
   function mostrarResultadosBuscador(data) {
     var body = document.getElementById('buscador-sheet-body');
     body.innerHTML = '';
@@ -5425,14 +5634,47 @@ app.index_string = r"""
     msg.textContent = data.mensaje;
     body.appendChild(msg);
 
-    (data.resultados || []).forEach(function(r, _idx) {
+    if (data.sugerir_cafe) {
+      var sug = document.createElement('button');
+      sug.className = 'buscador-ejemplo-chip';
+      sug.textContent = '➕ Sugerir esta cafetería';
+      sug.onclick = function() {
+        if (window.bcTrack) window.bcTrack('buscador_sugerir_cafe', {});
+        window.cerrarBuscador();
+        document.getElementById('btn-nav-suggest')?.click();
+      };
+      body.appendChild(sug);
+    }
+
+    if ((data.sugerencias || []).length) {
+      var lab = document.createElement('div');
+      lab.className = 'buscador-ejemplos-label';
+      lab.textContent = data.sugerencias_label || '';
+      body.appendChild(lab);
+      data.sugerencias.forEach(function(r, i) { body.appendChild(crearCardResultado(r, i, 'sugerencia')); });
+      if ((data.resultados || []).length) {
+        var lab2 = document.createElement('div');
+        lab2.className = 'buscador-ejemplos-label';
+        lab2.textContent = 'Y para tu búsqueda:';
+        body.appendChild(lab2);
+      }
+    }
+
+    (data.resultados || []).forEach(function(r, i) { body.appendChild(crearCardResultado(r, i, data.modo)); });
+  }
+
+  function crearCardResultado(r, _idx, origen) {
       var card = document.createElement('div');
       card.className = 'buscador-resultado-card';
       card.addEventListener('click', function(e) {
-        var esWeb = !!(e.target && e.target.closest && e.target.closest('a'));
+        var t = e.target && e.target.closest ? e.target : null;
+        var esWeb = !!(t && t.closest('a'));
+        var esMapa = !!(t && t.closest('.buscador-ver-mapa'));
         if (window.bcHito) window.bcHito('resultado_click');
-        if (window.bcTrack) window.bcTrack(esWeb ? 'resultado_click_web' : 'resultado_click_card', {
-          posicion: _idx + 1
+        if (window.bcTrack) window.bcTrack(
+          esMapa ? 'resultado_click_mapa' : (esWeb ? 'resultado_click_web' : 'resultado_click_card'), {
+          posicion: _idx + 1,
+          origen: origen || ''
         });
       });
 
@@ -5452,6 +5694,13 @@ app.index_string = r"""
         dir.textContent = '📍 ' + r.direccion;
         card.appendChild(dir);
       }
+      if (r.horario_hoy) {
+        var hor = document.createElement('div');
+        hor.className = 'buscador-resultado-meta';
+        hor.textContent = '🕒 ' + r.horario_hoy;
+        if (r.abierto_ahora === true) hor.style.color = '#2E7D32';
+        card.appendChild(hor);
+      }
       if (r.sitio_web) {
         var web = document.createElement('a');
         web.className = 'buscador-resultado-meta';
@@ -5465,6 +5714,13 @@ app.index_string = r"""
 
       var ev = r.evidencia || {};
       var chipsWrap = document.createElement('div');
+      if (r.destaca && ((ev.productos || []).length || (ev.ambiente || []).length)) {
+        var dest = document.createElement('div');
+        dest.className = 'buscador-resultado-meta';
+        dest.style.cssText = 'margin-top:6px;font-weight:600;';
+        dest.textContent = 'Lo que más destacan:';
+        card.appendChild(dest);
+      }
 
       (ev.productos || []).forEach(function(p) {
         var chip = document.createElement('span');
@@ -5486,8 +5742,18 @@ app.index_string = r"""
       });
 
       card.appendChild(chipsWrap);
-      body.appendChild(card);
-    });
+
+      var info = (window.buscafesLookup || {})[r.id];
+      if (info && info.lat != null) {
+        var vm = document.createElement('button');
+        vm.className = 'buscador-ver-mapa';
+        vm.textContent = '🗺️ Ver en el mapa';
+        vm.style.cssText = 'margin-top:8px;padding:6px 12px;border-radius:16px;border:1px solid #104547;' +
+                           'background:transparent;color:#104547;font-size:13px;cursor:pointer;';
+        vm.onclick = function() { window.verCafeEnMapa(r.id); };
+        card.appendChild(vm);
+      }
+      return card;
   }
 
   window.abrirBuscador = function() {
@@ -5555,6 +5821,7 @@ app.index_string = r"""
         return;
       }
       if (window.bcTrack) window.bcTrack('busqueda_ok', {
+        modo: data.modo || '',
         ms: Date.now() - _tBusq,
         n_resultados: (data.resultados || []).length,
         sin_resultados: (data.resultados || []).length === 0
