@@ -24,3 +24,15 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Archivos locales de trabajo (datos, credenciales, scripts no versionados)
+local/
+
+# Por las dudas, aunque estén fuera de local/
+*.xlsx
+*.xls
+serviceAccountKey.json
+*firebase-adminsdk*.json
+.env
+*.jsonl
+__pycache__/

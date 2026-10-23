@@ -945,15 +945,24 @@ def _horario_hoy(cafe):
     return f"{'Abierto ahora' if abierto else 'Cerrado ahora'} · hoy {o}–{c}", abierto
 
 
+# "café" es hero en ~1.200 cafés: sirve para ordenar búsquedas de café, pero en la ficha no
+# distingue a nadie (todo el mapa son cafeterías). Se esconde solo de los chips.
+PRODUCTOS_GENERICOS_FICHA = {'cafe', 'el cafe', 'cafes', 'cafecito', 'coffee', 'cafe de especialidad',
+                             'cafe de calidad', 'cafe rico', 'el cafe de especialidad'}
+
+
 def _ficha_cafe(cafe):
     """Ficha de un café encontrado por nombre. Mismo formato que _ficha() para que el
     frontend la dibuje igual; los chips acá son 'lo que más destacan' de sus tags,
     no evidencia de una consulta."""
     tags = cafe.get('tags') or {}
     # productos: los hero (con menciones) primero; si son pocos, completa con destacados
-    prod = _tags_ordenados(tags.get('productos_hero'), 3)
+    prod = [p for p in _tags_ordenados(tags.get('productos_hero'), 4)
+            if norm_buscador(p[0]) not in PRODUCTOS_GENERICOS_FICHA][:3]
     vistos = {t for t, _ in prod}
-    for txt, _ in _tags_ordenados(tags.get('productos_destacados'), 3):
+    for txt, _ in _tags_ordenados(tags.get('productos_destacados'), 4):
+        if norm_buscador(txt) in PRODUCTOS_GENERICOS_FICHA:
+            continue
         if len(prod) >= 3:
             break
         if txt not in vistos:
