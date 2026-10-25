@@ -597,6 +597,20 @@ REGLAS:
    solo cuando una keyword aparece entera, como frase, adentro de otra.
    Los lugares que liberes usalos para sinónimos realmente distintos, o dejalos sin usar:
    quedarse corto es mejor que llenar con repeticiones.
+16. ACOGEDOR / CALIDO SOLO SI EL USUARIO LOS PIDIÓ. "acogedor", "calido", "cozy" y "hogareno"
+   están entre los tags más comunes de la base: como directa, cualquiera de ellos vuelve trivial
+   la condición y el orden termina siendo popularidad. Van en keywords_directas SOLO si el
+   usuario nombró esa cualidad ("un lugar acogedor", "café cálido"). Si pidió otra cosa que
+   apenas se ASOCIA con lo acogedor (un clima, un momento, refugiarse, quedarse un rato largo),
+   van en keywords_proxy y la intención se llama como lo que el usuario pidió, no "acogedor".
+   LLUVIA: si la consulta nombra la lluvia ("día de lluvia", "cuando llueve", "lluvioso"), la
+   condición es "dia de lluvia" y en keywords_directas va la palabra misma: "lluvia", "lluvioso".
+   Las señales de interior cómodo (acogedor, calido, sillones) van en keywords_proxy de esa
+   MISMA condición. Si además pidió otra cosa por separado (leer, sillones), eso es su propia
+   condición, como siempre.
+   Ejemplo: "café ideal para días de lluvia" -> condiciones: [
+     {{"tipo": "ambiente", "intencion": "dia de lluvia", "keywords_directas": ["lluvia", "lluvioso"], "keywords_proxy": ["acogedor", "calido", "sillones"]}}
+   ]
 
 BARRIOS OFICIALES:
 {json.dumps(vocab['barrios'], ensure_ascii=False)}
