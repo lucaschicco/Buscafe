@@ -339,6 +339,17 @@ def limpiar_cache_indice():
     _CACHE_INDICE.clear()
 
 
+def _textos_indice(t, tipo):
+    if tipo == "producto":
+        return _textos_producto(t)
+    if tipo == "aislada":
+        # productos con 1 sola mención positiva y 0 quejas: no llegan a destacado (2+), no se
+        # muestran en la ficha, pero alcanzan como evidencia PROXY de que el café lo tiene
+        # ("leche de avena", "latte art"). Ver preparar_condiciones.
+        return t.get("menciones_aisladas", [])
+    return _textos_ambiente(t)
+
+
 def indice_keyword(keyword, tipo, cafes):
     """Índice invertido: qué cafés matchean este keyword y con qué texto.
 
@@ -354,7 +365,7 @@ def indice_keyword(keyword, tipo, cafes):
         return _CACHE_INDICE[key]
     idx = {}
     for c in cafes:
-        textos = _textos_producto(c["tags"]) if tipo == "producto" else _textos_ambiente(c["tags"])
+        textos = _textos_indice(c["tags"], tipo)
         m = next((tx for tx in textos if matchea(keyword, tx)), None)
         if m:
             idx[c["id"]] = m
@@ -393,6 +404,11 @@ def preparar_condiciones(condiciones, cafes):
                         and total and len(idx) > GUARDRAIL_DIRECTAS_ANCHAS):
                     f = FUERZA_PROXY   # directa demasiado ancha: se degrada a proxy
                 fila.append((k, idx, f))
+                # productos con una sola mención: siempre proxy, aunque el keyword sea
+                # directa. Así la consulta devuelve algo pero queda como "aproximado",
+                # nunca como match completo.
+                if tipo == "producto":
+                    fila.append((k, indice_keyword(k, "aislada", cafes), FUERZA_PROXY))
         fila.sort(key=lambda x: -x[2])
         prep.append(fila)
     return prep
