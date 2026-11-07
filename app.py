@@ -4054,10 +4054,20 @@ app.index_string = r"""
     if (esInApp || !(esIOS || esAndroid)) return;  // in-app browsers y desktop: nada
 
     var DIAS_SILENCIO = 30;
+    var MAX_VISITAS_INVITACION = 3;  // tope por navegador (localStorage): en iOS no hay forma de saber si ya la instaló
+    var vecesMostrada = 0;
+    var mostradaEnEstaSesion = false;
     try {
       var descartado = localStorage.getItem('bc_pwa_descartado');
       if (descartado && (Date.now() - new Date(descartado).getTime()) < DIAS_SILENCIO * 864e5) return;
+      vecesMostrada = parseInt(localStorage.getItem('bc_pwa_veces_mostrada') || '0', 10);
+      mostradaEnEstaSesion = sessionStorage.getItem('bc_pwa_mostrada_sesion') === '1';
+      if (vecesMostrada >= MAX_VISITAS_INVITACION && !mostradaEnEstaSesion) return;
     } catch (e) {}
+
+    function silenciar() {
+      try { localStorage.setItem('bc_pwa_descartado', new Date().toISOString()); } catch (e) {}
+    }
 
     // Segunda visita: cuenta visitas en distintas sesiones
     var visitas = 1;
@@ -4099,7 +4109,16 @@ app.index_string = r"""
       }
       mostrada = true;
       caja.style.display = 'flex';
-      track('pwa_invitacion_mostrada', { plataforma: plataforma });
+      // Cuenta una vez por visita (sesión), aunque recargue la página
+      if (!mostradaEnEstaSesion) {
+        mostradaEnEstaSesion = true;
+        vecesMostrada += 1;
+        try {
+          localStorage.setItem('bc_pwa_veces_mostrada', String(vecesMostrada));
+          sessionStorage.setItem('bc_pwa_mostrada_sesion', '1');
+        } catch (e) {}
+      }
+      track('pwa_invitacion_mostrada', { plataforma: plataforma, vez: vecesMostrada });
     }
 
     // Señal de interés: primer click en un resultado o en un pin
@@ -4125,12 +4144,13 @@ app.index_string = r"""
         ev.prompt();
         ev.userChoice.then(function(r) {
           track('pwa_prompt_resultado', { resultado: r && r.outcome });
+          if (!r || r.outcome !== 'accepted') silenciar();  // cancelar el instalador cuenta como la ✕
           ocultar();
         }).catch(function() {});
       });
       document.getElementById('pwa-invitacion-close').addEventListener('click', function() {
         track('pwa_invitacion_descartada', {});
-        try { localStorage.setItem('bc_pwa_descartado', new Date().toISOString()); } catch (e) {}
+        silenciar();
         ocultar();
       });
       intentarMostrar();  // segunda visita en iOS (no hay beforeinstallprompt)
