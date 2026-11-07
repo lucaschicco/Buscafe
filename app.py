@@ -1225,6 +1225,68 @@ def admin_publicar():
 
 
 # ════════════════════════════════════════════════════════════
+# PWA: manifest, service worker y etiquetas del <head>
+# ════════════════════════════════════════════════════════════
+PWA_THEME_COLOR = '#104547'       # header y círculo del logo
+PWA_BACKGROUND_COLOR = '#ffffff'  # el body carga sin fondo propio (blanco)
+
+# Se inserta en el <head> de index_string, /perfil, /comunidad, /privacidad y /terminos
+# reemplazando el marcador __PWA_HEAD__.
+PWA_HEAD = f'''
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="{PWA_THEME_COLOR}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Buscafes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="/assets/pwa/apple-touch-icon.png">
+'''
+
+PWA_MANIFEST = json.dumps({
+    "name": "Buscafes",
+    "short_name": "Buscafes",
+    "description": "Encontrá cafeterías en Buenos Aires",
+    "id": "/",
+    "start_url": "/?source=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "lang": "es-AR",
+    "background_color": PWA_BACKGROUND_COLOR,
+    "theme_color": PWA_THEME_COLOR,
+    "icons": [
+        {"src": "/assets/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/assets/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "/assets/pwa/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+    ],
+}, ensure_ascii=False)
+
+# Sin caché a propósito: Azure ya sirvió versiones viejas tras un deploy.
+PWA_SW = """// Buscafes SW — sin caché a propósito. NO agregar cache sin estrategia de versionado.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(fetch(e.request));
+});
+"""
+
+
+@server.route('/manifest.webmanifest')
+def pwa_manifest():
+    return Response(PWA_MANIFEST, mimetype='application/manifest+json',
+                    headers={'Cache-Control': 'no-cache'})
+
+
+@server.route('/sw.js')
+def pwa_service_worker():
+    # Servido desde la raíz para que su alcance sea '/' (desde /assets/ solo controlaría /assets/).
+    return Response(PWA_SW, mimetype='application/javascript',
+                    headers={'Cache-Control': 'no-cache, no-store, must-revalidate',
+                             'Service-Worker-Allowed': '/'})
+
+
+# ════════════════════════════════════════════════════════════
 # PÁGINAS LEGALES (para Google OAuth verification)
 # ════════════════════════════════════════════════════════════
 @server.route('/privacidad')
@@ -1234,6 +1296,7 @@ def privacidad():
     <html lang="es">
     <head>
         <title>Política de Privacidad - Buscafes</title>
+        __PWA_HEAD__
         <style>
             body { font-family: 'Montserrat', Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6; }
             h1 { color: #104547; }
@@ -1263,7 +1326,7 @@ def privacidad():
         <p><a href="/">Volver al inicio</a></p>
     </body>
     </html>
-    '''
+    '''.replace("__PWA_HEAD__", PWA_HEAD)
 
 @server.route('/terminos')
 def terminos():
@@ -1272,6 +1335,7 @@ def terminos():
     <html lang="es">
     <head>
         <title>Términos de Servicio - Buscafes</title>
+        __PWA_HEAD__
         <style>
             body { font-family: 'Montserrat', Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6; }
             h1 { color: #104547; }
@@ -1299,7 +1363,7 @@ def terminos():
         <p><a href="/">Volver al inicio</a></p>
     </body>
     </html>
-    '''
+    '''.replace("__PWA_HEAD__", PWA_HEAD)
 
 @server.route('/perfil')
 def perfil():
@@ -1314,6 +1378,7 @@ def perfil():
         <title>Mi Perfil - Buscafes</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" type="image/png" href="/assets/icono_cafeterias.png">
+        __PWA_HEAD__
         <!-- Firebase SDK -->
         <script type="module">
             import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
@@ -2684,6 +2749,7 @@ def perfil():
     return (html
     .replace("__GEO_LOOKUP__", json.dumps(geo_lookup, ensure_ascii=False))
     .replace("__FIREBASE_CONFIG_PERFIL__", json.dumps(firebase_config_perfil))
+    .replace("__PWA_HEAD__", PWA_HEAD)
     )
 
 @server.route('/comunidad')
@@ -2697,6 +2763,7 @@ def comunidad():
         <title>Comunidad - Buscafes</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" type="image/png" href="/assets/icono_cafeterias.png">
+        __PWA_HEAD__
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
         
         <script type="module">
@@ -3639,6 +3706,7 @@ def comunidad():
     '''
     return (html
     .replace("__FIREBASE_CONFIG_COMUNIDAD__", json.dumps(firebase_config_comunidad))
+    .replace("__PWA_HEAD__", PWA_HEAD)
     .replace("__GEO_LOOKUP__", json.dumps(geo_lookup, ensure_ascii=False))
 )
 
@@ -3698,7 +3766,7 @@ app.index_string = r"""
   <title>{%title%}</title>
   {%favicon%}
   <link rel="icon" type="image/png" href="/assets/icono_cafeterias.png" sizes="32x32">
-  <link rel="apple-touch-icon" href="/assets/icono_cafeterias.png">
+  __PWA_HEAD__
   {%css%}
 
   <!-- Application Insights JS SDK -->
@@ -3734,10 +3802,14 @@ app.index_string = r"""
     window.bcPines = 0;
     window.bcVerMas = 0;
 
+    window.bcEsStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                            window.navigator.standalone === true;
+
     window.bcTrack = function(nombre, props) {
       try {
         if (!window.appInsights || typeof window.appInsights.trackEvent !== 'function') return;
-        var base = { segundos_desde_carga: Math.round((Date.now() - t0) / 1000) };
+        var base = { segundos_desde_carga: Math.round((Date.now() - t0) / 1000),
+                     modo: window.bcEsStandalone ? 'standalone' : 'browser' };
         if (props) { for (var k in props) { if (props.hasOwnProperty(k)) base[k] = props[k]; } }
         window.appInsights.trackEvent({ name: nombre, properties: base });
       } catch (e) { /* el tracking nunca rompe la app */ }
@@ -3937,6 +4009,132 @@ app.index_string = r"""
         moverHeader('0');
       });
     }
+  })();
+  </script>
+
+  <!-- ===== PWA: registro del service worker + invitación a instalar ===== -->
+  <div id="pwa-invitacion" role="dialog" aria-label="Instalar Buscafes" style="display:none; position:fixed; left:12px; right:12px; bottom:calc(77px + env(safe-area-inset-bottom, 0px)); z-index:2550; max-width:420px; margin:0 auto; background:#104547; color:#fff; padding:10px 12px 10px 16px; border-radius:12px; font-family:'Montserrat',sans-serif; box-shadow:0 2px 8px rgba(0,0,0,0.2); align-items:center; justify-content:space-between; gap:10px;">
+    <span id="pwa-invitacion-texto" style="font-size:13px; line-height:1.3;"></span>
+    <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+      <button id="pwa-invitacion-btn" style="display:none; background:#dac69a; color:#104547; border:none; border-radius:20px; padding:8px 16px; font-weight:700; font-size:13px; white-space:nowrap;">Instalar</button>
+      <button id="pwa-invitacion-close" aria-label="Cerrar" style="background:transparent; color:#fff; border:none; font-size:18px; line-height:1; padding:4px 6px; opacity:0.7;">✕</button>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
+      });
+    }
+
+    function track(nombre, props) { if (window.bcTrack) window.bcTrack(nombre, props); }
+
+    // Aperturas en modo instalado: una vez por sesión
+    if (window.bcEsStandalone) {
+      try {
+        if (!sessionStorage.getItem('bc_pwa_sesion')) {
+          sessionStorage.setItem('bc_pwa_sesion', '1');
+          var esIOSStd = /iPad|iPhone|iPod/.test(navigator.userAgent) || window.navigator.standalone === true;
+          track('pwa_sesion_standalone', { plataforma: esIOSStd ? 'ios' : 'android' });
+        }
+      } catch (e) {}
+      return;  // ya instalada: no se invita
+    }
+
+    window.addEventListener('appinstalled', function() { track('pwa_instalada', { plataforma: 'android' }); });
+
+    var ua = navigator.userAgent || '';
+    var esInApp = /Instagram|FBAN|FBAV|BytedanceWebview|musical_ly/.test(ua);
+    var esIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var esAndroid = /Android/.test(ua);
+    // En iOS solo Safari puede "Agregar a inicio" (Chrome/Firefox/Edge en iOS no)
+    var esSafariIOS = esIOS && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(ua);
+    if (esInApp || !(esIOS || esAndroid)) return;  // in-app browsers y desktop: nada
+
+    var DIAS_SILENCIO = 30;
+    try {
+      var descartado = localStorage.getItem('bc_pwa_descartado');
+      if (descartado && (Date.now() - new Date(descartado).getTime()) < DIAS_SILENCIO * 864e5) return;
+    } catch (e) {}
+
+    // Segunda visita: cuenta visitas en distintas sesiones
+    var visitas = 1;
+    try {
+      visitas = parseInt(localStorage.getItem('bc_visitas') || '0', 10);
+      if (!sessionStorage.getItem('bc_visita_contada')) {
+        visitas += 1;
+        localStorage.setItem('bc_visitas', String(visitas));
+        sessionStorage.setItem('bc_visita_contada', '1');
+      }
+    } catch (e) {}
+
+    var promptDiferido = null;
+    var mostrada = false;
+    var interes = visitas >= 2;
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      promptDiferido = e;
+      intentarMostrar();
+    });
+
+    function intentarMostrar() {
+      if (mostrada || !interes) return;
+      var caja = document.getElementById('pwa-invitacion');
+      if (!caja) return;
+      var texto = document.getElementById('pwa-invitacion-texto');
+      var btn = document.getElementById('pwa-invitacion-btn');
+      var plataforma;
+      if (esAndroid && promptDiferido) {
+        plataforma = 'android';
+        texto.textContent = 'Instalá Buscafes en tu teléfono';
+        btn.style.display = 'inline-block';
+      } else if (esSafariIOS) {
+        plataforma = 'ios';
+        texto.textContent = 'Instalá Buscafes: tocá Compartir y después “Agregar a inicio”';
+      } else {
+        return;
+      }
+      mostrada = true;
+      caja.style.display = 'flex';
+      track('pwa_invitacion_mostrada', { plataforma: plataforma });
+    }
+
+    // Señal de interés: primer click en un resultado o en un pin
+    var hitoOriginal = window.bcHito;
+    if (typeof hitoOriginal === 'function') {
+      window.bcHito = function(nombre, props) {
+        hitoOriginal(nombre, props);
+        if ((nombre === 'resultado_click' || nombre === 'pin_click') && !interes) {
+          interes = true;
+          setTimeout(intentarMostrar, 1500);  // que no aparezca encima del popup recién abierto
+        }
+      };
+    }
+
+    function ocultar() { var c = document.getElementById('pwa-invitacion'); if (c) c.style.display = 'none'; }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('pwa-invitacion-btn').addEventListener('click', function() {
+        track('pwa_invitacion_click', { plataforma: 'android' });
+        if (!promptDiferido) return;
+        var ev = promptDiferido;
+        promptDiferido = null;
+        ev.prompt();
+        ev.userChoice.then(function(r) {
+          track('pwa_prompt_resultado', { resultado: r && r.outcome });
+          ocultar();
+        }).catch(function() {});
+      });
+      document.getElementById('pwa-invitacion-close').addEventListener('click', function() {
+        track('pwa_invitacion_descartada', {});
+        try { localStorage.setItem('bc_pwa_descartado', new Date().toISOString()); } catch (e) {}
+        ocultar();
+      });
+      intentarMostrar();  // segunda visita en iOS (no hay beforeinstallprompt)
+    });
   })();
   </script>
 
@@ -5893,6 +6091,7 @@ app.index_string = r"""
 app.index_string = app.index_string.replace("__AI_CONN__", CLIENT_CONN)
 app.index_string = app.index_string.replace("__GEO_LOOKUP__", json.dumps(geo_lookup, ensure_ascii=False))
 app.index_string = app.index_string.replace("__FIREBASE_CONFIG__", FIREBASE_CONFIG_JSON)
+app.index_string = app.index_string.replace("__PWA_HEAD__", PWA_HEAD)
 
 # Calcular latitud y longitud mín/máx desde el GeoJSON
 latitudes = [feature['geometry']['coordinates'][1] for feature in geojson_data['features']]
