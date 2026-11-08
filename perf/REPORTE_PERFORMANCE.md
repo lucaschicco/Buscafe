@@ -42,7 +42,7 @@ la segunda con caché.
   del geojson y fuentes subseteadas a Latin.
 * **Etapa B**: lo de la Etapa A, más `buscafesLookup` armado en el cliente desde el geojson en
   vez de venir inline en el HTML.
-* El diff exacto que se midió está en [`propuesta_etapa_B.patch`](propuesta_etapa_B.patch).
+* **Estado:** la Etapa B y las fuentes subseteadas ya están aplicadas en `app.py` y `assets/` (puntos 1 a 5). Después de aplicarlas se repitió la medición: overlay a 5,1 s, el lookup del cliente idéntico al que generaba el servidor, filtros y deep link funcionando, 0 POST grandes. Los puntos 6 a 10 siguen pendientes.
   Las fuentes subseteadas se generan con el comando de la sección 5.
 
 En desktop sin throttling, el primer marcador aparece a 1,57 s aunque la página termina de
@@ -87,7 +87,7 @@ Consecuencias:
   tráfico.
 - **Application Insights** también instrumenta esos POST.
 
-**Fix** (incluido en el patch): pasarlo a `app.clientside_callback` con la misma lógica. No
+**Fix** (aplicado): pasarlo a `app.clientside_callback` con la misma lógica. No
 tiene que ir al servidor.
 
 ### 2. 🟠 Debounce de 700 ms en la carga inicial
@@ -109,11 +109,11 @@ una cascada HTML → 18 scripts → layout → deps → geojson → render.
 `geo_lookup` (nombre, dirección, barrio, web y coordenadas de cada café) se mete con
 `json.dumps` en `index_string`, `/perfil` y `/comunidad`. Todo eso ya viene en el geojson. Como
 el HTML no se cachea, se baja y se parsea entero en cada visita.
-**Fix (en el patch, solo para el mapa)**: arrancar con `window.buscafesLookup = {}` y llenarlo
+**Fix (aplicado, solo para el mapa)**: arrancar con `window.buscafesLookup = {}` y llenarlo
 en el mismo callback que hace el fetch del geojson. Casi todos los usos de `buscafesLookup`
 en el index dependen de interacciones del usuario (favoritos, ficha, buscador), que pasan
 después de la carga. La excepción es el deep link `/?cafe=<id>`, que lo lee apenas corre el
-script: el patch lo resuelve dentro del `setInterval` que ya tenía, y se verificó que el popup
+script: se resuelve dentro del `setInterval` que ya tenía, y se verificó que el popup
 se sigue abriendo.
 **Pendiente**: hacer lo mismo en `/perfil` y `/comunidad` (692 KB y 670 KB de HTML), que pueden
 leer `/api/geojson` desde la caché del navegador. Hoy además ejecutan `json.dumps(geo_lookup)`

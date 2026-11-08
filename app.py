@@ -3949,6 +3949,7 @@ app.index_string = r"""
     #panel-sugerencia { display: none; }
   </style>
 
+  <link rel="preload" as="fetch" href="/api/geojson" crossorigin="anonymous" fetchpriority="high">
   <link rel="preload" as="image" href="/assets/buscafes_header2.png" fetchpriority="high">
   <link rel="preload" as="font" type="font/woff2" href="/assets/Montserrat-Regular.woff2" crossorigin="anonymous">
   <link rel="preload" as="font" type="font/woff2" href="/assets/Montserrat-Bold.woff2" crossorigin="anonymous">
@@ -4360,7 +4361,7 @@ app.index_string = r"""
 
   <!-- UI Logic -->
   <script>
-    window.buscafesLookup = __GEO_LOOKUP__;
+    window.buscafesLookup = window.buscafesLookup || {};
 
     // ── Capturar la instancia del mapa de Leaflet al crearse ──
     (function captureMap() {
@@ -4376,13 +4377,16 @@ app.index_string = r"""
     (function() {
         const cafeId = new URLSearchParams(window.location.search).get('cafe');
         if (!cafeId) return;
-        const info = window.buscafesLookup[cafeId];
-        if (!info || info.lat == null) return;
-    
+        let info = null;
         let intentos = 0;
         const timer = setInterval(function() {
             intentos++;
             if (intentos > 40) { clearInterval(timer); return; }  // corta a los ~16s
+            if (!info) {
+                info = (window.buscafesLookup || {})[cafeId];
+                if (!info) return;  // todavía no llegó el geojson
+                if (info.lat == null) { clearInterval(timer); return; }
+            }
     
             const map = window._buscafesMap;
             if (!map) return;
@@ -6109,7 +6113,6 @@ app.index_string = r"""
 
 # Reemplaza el placeholder por tu connection string sin romper las llaves de Dash/JS
 app.index_string = app.index_string.replace("__AI_CONN__", CLIENT_CONN)
-app.index_string = app.index_string.replace("__GEO_LOOKUP__", json.dumps(geo_lookup, ensure_ascii=False))
 app.index_string = app.index_string.replace("__FIREBASE_CONFIG__", FIREBASE_CONFIG_JSON)
 app.index_string = app.index_string.replace("__PWA_HEAD__", PWA_HEAD)
 
@@ -6699,23 +6702,16 @@ def actualizar_campos_sugerencia(tipo):
 
     return url_style, desc_style, nombre_ph, dir_ph, url_ph, desc_ph
 
-@app.callback(
+app.clientside_callback(
+    """function(gj, store) {
+        if ((gj && gj.features && gj.features.length) || store) return {display: 'none'};
+        return window.dash_clientside.no_update;
+    }""",
     Output('loading-div', 'style'),
     Input('geojson-layer', 'data'),
-    Input('clientside-store-data', 'data'),  # ← trigger alternativo
+    Input('clientside-store-data', 'data'),
     prevent_initial_call=True
 )
-def hide_spinner_on_load(geojson_data, store_data):
-    # Ocultar si llegó cualquiera de los dos
-    if geojson_data or store_data:
-        return {'display': 'none'}
-    return {
-        'position': 'fixed', 'top': '0', 'left': '0',
-        'width': '100%', 'height': '100%', 'display': 'flex',
-        'justify-content': 'center', 'align-items': 'center',
-        'background-color': 'rgba(255,255,255,0.8)', 'z-index': '2000'
-    }
-
 
 
 # Configuración de Azure Blob Storage
@@ -6789,6 +6785,19 @@ app.clientside_callback(
     async function(_ignored) {
         const res  = await fetch('/api/geojson');
         const data = await res.json();
+        const lk = {};
+        for (const f of data.features) {
+            const p = f.properties, c = f.geometry.coordinates;
+            // mismo criterio que extraer_url() en Python
+            const sw = p['Sitio Web'];
+            let web = '';
+            if (sw && sw !== 'Sin datos') {
+                const m = /href="([^"]+)"/.exec(sw);
+                web = m ? m[1] : sw;
+            }
+            lk[p.id] = {nombre: p.Nombre, dir: p['Dirección'], barrio: p.Barrio, web: web, lat: c[1], lng: c[0]};
+        }
+        window.buscafesLookup = lk;
         return data;
     }
     """,
@@ -6820,7 +6829,8 @@ app.clientside_callback(
         const ctx = dash_clientside.callback_context;
         const triggered = ctx.triggered[0]?.prop_id || '';
         const isMapMove = triggered.includes('map.bounds') || triggered.includes('map.zoom');
-        const delay = isMapMove ? 0 : 700;
+        const isInitial = triggered.includes('clientside-store-data') || !triggered;
+        const delay = (isMapMove || isInitial) ? 0 : 700;
         
         return new Promise((resolve, reject) => {
             window._filterDebounceReject = reject;
