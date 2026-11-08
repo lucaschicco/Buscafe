@@ -128,12 +128,12 @@ prioridad alta, así que compiten por ancho de banda con los bundles de JS. En S
 ```bash
 pip install fonttools brotli
 pyftsubset assets/Montserrat-Regular.ttf --flavor=woff2 --layout-features='kern,liga' \
-  --unicodes="U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" \
+  --unicodes="U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2190-2193,U+2212,U+2215,U+25BC,U+FEFF,U+FFFD" \
   --output-file=assets/Montserrat-Regular.woff2
 # ídem para Bold
 ```
 
-(No incluye emojis, que de todos modos los dibuja la fuente del sistema.)
+(Incluye ← → ▼, que la app usa. No incluye emojis, que de todos modos los dibuja la fuente del sistema.)
 
 ### 6. 🟡 Tiles del mapa bajados dos veces en celulares (pantallas retina)
 
