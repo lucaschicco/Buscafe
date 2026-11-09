@@ -4095,7 +4095,9 @@ app.index_string = r"""
     if (esInApp || !(esIOS || esAndroid)) return;  // in-app browsers y desktop: nada
 
     var DIAS_SILENCIO = 30;
-    var MAX_VISITAS_INVITACION = 3;  // tope por navegador (localStorage): en iOS no hay forma de saber si ya la instaló
+    // Tope de visitas por navegador (localStorage): en iOS no hay forma de saber si ya la instaló.
+    // null = sin tope, mientras validamos que la invitación funciona. Para volver a limitar: 3.
+    var MAX_VISITAS_INVITACION = null;
     var vecesMostrada = 0;
     var mostradaEnEstaSesion = false;
     try {
@@ -4103,7 +4105,7 @@ app.index_string = r"""
       if (descartado && (Date.now() - new Date(descartado).getTime()) < DIAS_SILENCIO * 864e5) return;
       vecesMostrada = parseInt(localStorage.getItem('bc_pwa_veces_mostrada') || '0', 10);
       mostradaEnEstaSesion = sessionStorage.getItem('bc_pwa_mostrada_sesion') === '1';
-      if (vecesMostrada >= MAX_VISITAS_INVITACION && !mostradaEnEstaSesion) return;
+      if (MAX_VISITAS_INVITACION !== null && vecesMostrada >= MAX_VISITAS_INVITACION && !mostradaEnEstaSesion) return;
     } catch (e) {}
 
     function silenciar() {
