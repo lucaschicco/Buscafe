@@ -4022,6 +4022,46 @@ app.index_string = r"""
     </div>
   </div>
 
+  <!-- Guía de instalación para Safari en iPhone: Apple no permite instalar desde un botón -->
+  <style>
+    #pwa-guia-ios { display:none; position:fixed; inset:0; z-index:2600; background:rgba(0,0,0,0.45); font-family:'Montserrat',sans-serif; }
+    #pwa-guia-ios .guia-hoja { position:absolute; left:10px; right:10px; bottom:calc(64px + env(safe-area-inset-bottom, 0px)); max-width:420px; margin:0 auto; background:#fff; border-radius:18px; padding:20px 20px 18px; box-shadow:0 4px 20px rgba(0,0,0,0.25); }
+    #pwa-guia-ios h2 { margin:0; color:#104547; font-size:19px; text-align:center; }
+    #pwa-guia-ios .guia-sub { margin:6px 0 14px; text-align:center; color:#666; font-size:12.5px; line-height:1.4; }
+    #pwa-guia-ios .guia-paso { display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid #eee; }
+    #pwa-guia-ios .guia-n { width:24px; height:24px; border-radius:12px; background:#104547; color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex:none; }
+    #pwa-guia-ios .guia-ic { width:42px; height:42px; border-radius:10px; background:#f2f2f2; display:flex; align-items:center; justify-content:center; flex:none; }
+    #pwa-guia-ios .guia-t { font-size:14px; color:#222; line-height:1.35; }
+    #pwa-guia-ios .guia-t b { color:#104547; }
+    #pwa-guia-ios .guia-t small { display:block; color:#888; font-size:11.5px; }
+    #pwa-guia-ios-ok { display:block; width:100%; margin-top:12px; background:#104547; color:#fff; border:none; border-radius:24px; padding:12px; font-weight:700; font-size:14px; font-family:inherit; }
+    #pwa-guia-ios .guia-flecha { position:absolute; right:22px; bottom:calc(10px + env(safe-area-inset-bottom, 0px)); color:#dac69a; font-size:34px; font-weight:700; line-height:1; animation:bcGuiaRebote 1s ease-in-out infinite; }
+    @keyframes bcGuiaRebote { 0%,100% { transform:translateY(0); } 50% { transform:translateY(8px); } }
+  </style>
+  <div id="pwa-guia-ios" role="dialog" aria-modal="true" aria-labelledby="pwa-guia-ios-titulo">
+    <div class="guia-hoja">
+      <h2 id="pwa-guia-ios-titulo">Instalá Buscafes</h2>
+      <p class="guia-sub">En iPhone se instala desde Safari en 3 pasos.</p>
+      <div class="guia-paso">
+        <div class="guia-n">1</div>
+        <div class="guia-ic"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2.2" fill="#222"/><circle cx="12" cy="12" r="2.2" fill="#222"/><circle cx="19" cy="12" r="2.2" fill="#222"/></svg></div>
+        <div class="guia-t">Tocá <b>···</b><small>abajo a la derecha de Safari (o arriba, según cómo lo tengas)</small></div>
+      </div>
+      <div class="guia-paso">
+        <div class="guia-n">2</div>
+        <div class="guia-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 10H6v11h12V10h-2"/><path d="M12 15V3M8 7l4-4 4 4"/></svg></div>
+        <div class="guia-t">Elegí <b>Compartir</b><small>si no ves los ···, tocá directo el botón Compartir</small></div>
+      </div>
+      <div class="guia-paso">
+        <div class="guia-n">3</div>
+        <div class="guia-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg></div>
+        <div class="guia-t">Deslizá hacia arriba y tocá <b>Agregar a inicio</b><small>después, Agregar</small></div>
+      </div>
+      <button id="pwa-guia-ios-ok">Entendido</button>
+    </div>
+    <div class="guia-flecha" aria-hidden="true">↓</div>
+  </div>
+
   <script>
   (function() {
     if ('serviceWorker' in navigator) {
@@ -4104,7 +4144,8 @@ app.index_string = r"""
         btn.style.display = 'inline-block';
       } else if (esSafariIOS) {
         plataforma = 'ios';
-        texto.textContent = 'Instalá Buscafes: tocá Compartir y después “Agregar a inicio”';
+        texto.textContent = 'Instalá Buscafes en tu teléfono';
+        btn.style.display = 'inline-block';  // abre la guía de 3 pasos
       } else {
         return;
       }
@@ -4138,6 +4179,11 @@ app.index_string = r"""
 
     document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('pwa-invitacion-btn').addEventListener('click', function() {
+        if (esSafariIOS) {
+          track('pwa_invitacion_click', { plataforma: 'ios' });
+          document.getElementById('pwa-guia-ios').style.display = 'block';
+          return;
+        }
         track('pwa_invitacion_click', { plataforma: 'android' });
         if (!promptDiferido) return;
         var ev = promptDiferido;
@@ -4154,6 +4200,10 @@ app.index_string = r"""
         silenciar();
         ocultar();
       });
+      var guia = document.getElementById('pwa-guia-ios');
+      function cerrarGuia() { guia.style.display = 'none'; track('pwa_guia_ios_cerrada', {}); }
+      document.getElementById('pwa-guia-ios-ok').addEventListener('click', cerrarGuia);
+      guia.addEventListener('click', function(e) { if (e.target === guia) cerrarGuia(); });  // tocar afuera
       intentarMostrar();  // segunda visita en iOS (no hay beforeinstallprompt)
     });
   })();
