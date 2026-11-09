@@ -4094,6 +4094,8 @@ app.index_string = r"""
     var esSafariIOS = esIOS && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(ua);
     if (esInApp || !(esIOS || esAndroid)) return;  // in-app browsers y desktop: nada
 
+    // Claves _v2: se cambiaron para reiniciar la ✕ y el contador en todos los navegadores.
+    // Para volver a reiniciarlos, subir a _v3.
     var DIAS_SILENCIO = 30;
     // Tope de visitas por navegador (localStorage): en iOS no hay forma de saber si ya la instaló.
     // null = sin tope, mientras validamos que la invitación funciona. Para volver a limitar: 3.
@@ -4101,15 +4103,15 @@ app.index_string = r"""
     var vecesMostrada = 0;
     var mostradaEnEstaSesion = false;
     try {
-      var descartado = localStorage.getItem('bc_pwa_descartado');
+      var descartado = localStorage.getItem('bc_pwa_descartado_v2');
       if (descartado && (Date.now() - new Date(descartado).getTime()) < DIAS_SILENCIO * 864e5) return;
-      vecesMostrada = parseInt(localStorage.getItem('bc_pwa_veces_mostrada') || '0', 10);
+      vecesMostrada = parseInt(localStorage.getItem('bc_pwa_veces_mostrada_v2') || '0', 10);
       mostradaEnEstaSesion = sessionStorage.getItem('bc_pwa_mostrada_sesion') === '1';
       if (MAX_VISITAS_INVITACION !== null && vecesMostrada >= MAX_VISITAS_INVITACION && !mostradaEnEstaSesion) return;
     } catch (e) {}
 
     function silenciar() {
-      try { localStorage.setItem('bc_pwa_descartado', new Date().toISOString()); } catch (e) {}
+      try { localStorage.setItem('bc_pwa_descartado_v2', new Date().toISOString()); } catch (e) {}
     }
 
     // Segunda visita: cuenta visitas en distintas sesiones
@@ -4158,7 +4160,7 @@ app.index_string = r"""
         mostradaEnEstaSesion = true;
         vecesMostrada += 1;
         try {
-          localStorage.setItem('bc_pwa_veces_mostrada', String(vecesMostrada));
+          localStorage.setItem('bc_pwa_veces_mostrada_v2', String(vecesMostrada));
           sessionStorage.setItem('bc_pwa_mostrada_sesion', '1');
         } catch (e) {}
       }
