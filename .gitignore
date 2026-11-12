@@ -36,6 +36,3 @@ serviceAccountKey.json
 .env
 *.jsonl
 __pycache__/
-
-# Builds del sinte
-synth/Recuerdo/build/
